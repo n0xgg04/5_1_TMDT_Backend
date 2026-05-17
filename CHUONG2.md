@@ -4,9 +4,6 @@
 
 ## 1. Mô tả Usecase tổng quát (Bảng danh mục Usecase):
 
-- Lập bảng liệt kê tất cả các usecase từ biểu đồ Usecase tổng quát.
-- Phân loại theo tác nhân và thêm một cột "Mô tả ngắn gọn".
-
 | Tác nhân | Tên Usecase | Mô tả ngắn gọn |
 |---|---|---|
 | Khách hàng | Quản lý tài khoản cá nhân | Cho phép khách hàng đăng ký, đăng nhập, cập nhật hồ sơ cá nhân và quản lý thông tin tài khoản. |
