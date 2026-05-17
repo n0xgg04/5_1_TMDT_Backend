@@ -55,7 +55,7 @@ Biểu đồ Use Case tổng quát mô tả các chức năng chính của hệ 
 - Gửi thông báo tự động.
 
 
-####Code mermaid
+####Code UML
 
 
 @startuml
