@@ -1,11 +1,5 @@
 # THIẾT KẾ HỆ THỐNG - TÁC NHÂN VÀ BIỂU ĐỒ USE CASE
 
-## Mục tiêu
-
-Xác định rõ ràng tất cả các tác nhân và toàn bộ chức năng chính của hệ thống đặt phòng khách sạn trực tuyến.
-
-## Yêu cầu cụ thể
-
 ## 1. Danh sách các tác nhân (Actors) và mô tả
 
 Liệt kê các tác nhân sẽ tương tác trực tiếp với hệ thống, mô tả chi tiết vai trò của từng tác nhân trong hệ thống.
