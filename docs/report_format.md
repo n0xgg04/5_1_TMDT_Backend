@@ -57,7 +57,6 @@ Các tác nhân điển hình:
 * Quản trị viên
 * Nhân viên kho
 * Cổng thanh toán
-* Đơn vị vận chuyển
 
 ## 1.2. Biểu đồ Usecase tổng quát
 
@@ -256,14 +255,6 @@ Ví dụ:
 * VNPAY
 * PayPal
 * Stripe
-
-### Vận chuyển
-
-Ví dụ:
-
-* Giao Hàng Nhanh
-* Viettel Post
-* GHTK
 
 ### Công cụ hỗ trợ
 
