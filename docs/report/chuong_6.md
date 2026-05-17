@@ -1,14 +1,16 @@
 # CHƯƠNG 6: LỰA CHỌN CÔNG CỤ PHÁT TRIỂN HỆ THỐNG
 
+## 6.1. Giới thiệu chương
+
 Việc lựa chọn các công cụ và bộ giải pháp công nghệ (Tech Stack) đóng vai trò quyết định đến sự thành công của dự án "Hệ thống đặt phòng khách sạn trực tuyến" (Online Hotel Booking System). Dựa trên các phân tích chuyên sâu về yêu cầu nghiệp vụ (đảm bảo tính toàn vẹn dữ liệu đặt phòng, xử lý đồng thời chống overbooking), yêu cầu phi chức năng (thời gian phản hồi nhanh dưới 2s, bảo mật thanh toán, khả năng mở rộng hệ thống) và cấu trúc quản lý mã nguồn Monorepo, chương này trình bày chi tiết và chốt danh sách các công nghệ được áp dụng trong toàn bộ vòng đời phát triển hệ thống.
 
 ---
 
-## 6.1. Giới thiệu các công nghệ dự kiến
+## 6.2. Giới thiệu các công nghệ dự kiến
 
 Hệ thống áp dụng kiến trúc hiện đại, phân tách rõ ràng giữa lớp giao diện (Frontend) và lớp dịch vụ xử lý nghiệp vụ (Backend), kết hợp với hạ tầng cơ sở dữ liệu mạnh mẽ và các dịch vụ tích hợp bên thứ ba. Tất cả công cụ được liệt kê dưới đây là lựa chọn chính thức và duy nhất được sử dụng cho việc triển khai dự án.
 
-### 6.1.1. Lớp xử lý nghiệp vụ (Backend)
+### 6.2.1. Lớp xử lý nghiệp vụ (Backend)
 
 *Bảng 6.1: Danh mục công nghệ lớp xử lý nghiệp vụ (Backend).* 
 
@@ -21,7 +23,7 @@ Hệ thống áp dụng kiến trúc hiện đại, phân tách rõ ràng giữa
 | **JWT & Passport** | 10.x | Tiêu chuẩn mã hóa và quản lý phiên người dùng bằng Access Token (ngắn hạn) và Refresh Token (dài hạn, lưu trữ bảo mật qua HttpOnly cookie) để xác thực và ủy quyền. |
 | **BullMQ** | 5.x | Hệ thống quản lý hàng đợi tác vụ bất đồng bộ (Background Job Queue) hoạt động trên nền Redis. Đảm nhiệm các tác vụ nặng hoặc định kỳ như: tự động hủy đơn khi quá hạn thanh toán, gửi email thông báo, đồng bộ dữ liệu. |
 
-### 6.1.2. Lớp giao diện người dùng (Frontend)
+### 6.2.2. Lớp giao diện người dùng (Frontend)
 
 *Bảng 6.2: Danh mục công nghệ lớp giao diện người dùng (Frontend).* 
 
@@ -36,7 +38,7 @@ Hệ thống áp dụng kiến trúc hiện đại, phân tách rõ ràng giữa
 | **react-hook-form & Zod** | 7.x / 3.x | Bộ công cụ quản lý trạng thái form và kiểm chứng dữ liệu (validation) phía client, cung cấp trải nghiệm nhập liệu tức thì và chuẩn xác trước khi gửi dữ liệu lên server. |
 | **Recharts** | 2.x | Thư viện đồ thị trực quan hóa dữ liệu, sử dụng để xây dựng các biểu đồ thống kê doanh thu, tỷ lệ lấp đầy phòng (occupancy) trên trang quản trị Dashboard của Admin. |
 
-### 6.1.3. Lớp cơ sở dữ liệu và lưu trữ đệm (Database & Caching)
+### 6.2.3. Lớp cơ sở dữ liệu và lưu trữ đệm (Database & Caching)
 
 *Bảng 6.3: Danh mục công nghệ lớp cơ sở dữ liệu và lưu trữ đệm.* 
 
@@ -45,7 +47,7 @@ Hệ thống áp dụng kiến trúc hiện đại, phân tách rõ ràng giữa
 | **PostgreSQL** | 16.x | Hệ quản trị cơ sở dữ liệu quan hệ (RDBMS) cốt lõi của toàn bộ hệ thống. Đảm bảo tuân thủ nghiêm ngặt chuẩn ACID cho các bảng giao dịch tài chính, thông tin đặt phòng, tài khoản và lịch sử kiểm toán (audit logs). |
 | **Redis** | 7.x | Hệ thống lưu trữ dữ liệu trên bộ nhớ RAM (In-memory data store). Thực hiện ba chức năng then chốt: (1) Caching dữ liệu danh mục phòng và thông tin tra cứu nhiều; (2) Cơ chế khóa phân tán (Distributed Lock) chống xung đột đặt phòng (overbooking); (3) Engine lưu trữ cho hàng đợi BullMQ. |
 
-### 6.1.4. Dịch vụ tích hợp bên thứ ba (Third-party Services)
+### 6.2.4. Dịch vụ tích hợp bên thứ ba (Third-party Services)
 
 *Bảng 6.4: Danh mục dịch vụ tích hợp bên thứ ba.* 
 
@@ -54,7 +56,7 @@ Hệ thống áp dụng kiến trúc hiện đại, phân tách rõ ràng giữa
 | **Cổng thanh toán trực tuyến** | **VNPAY Sandbox / VNPAY Gateway** | Xử lý giao dịch thanh toán trực tuyến qua thẻ ATM nội địa, thẻ quốc tế (Visa/Mastercard) và VNPAY QR. Hỗ trợ luồng chuyển hướng bảo mật và trả kết quả tự động qua Webhook (IPN). |
 | **Dịch vụ thông báo & Email** | **Resend HTTP API** | Nền tảng gửi email tự động với độ ổn định cao và khả năng tích hợp linh hoạt qua REST API. Đảm nhận việc gửi thư xác nhận đặt phòng, hóa đơn thanh toán và thông báo hủy đơn. |
 
-### 6.1.5. Công cụ hỗ trợ phát triển, Vận hành và DevOps
+### 6.2.5. Công cụ hỗ trợ phát triển, Vận hành và DevOps
 
 *Bảng 6.5: Danh mục công cụ hỗ trợ phát triển, vận hành và DevOps.* 
 
@@ -70,11 +72,11 @@ Hệ thống áp dụng kiến trúc hiện đại, phân tách rõ ràng giữa
 
 ---
 
-## 6.2. Lý do lựa chọn và sự phù hợp
+## 6.3. Lý do lựa chọn và sự phù hợp
 
 Việc chốt danh sách bộ công cụ trên không phải ngẫu nhiên mà xuất phát từ quá trình phân tích kỹ lưỡng nhằm đáp ứng tối ưu các bài toán đặc thù của hệ thống khách sạn trực tuyến. Bảng so sánh dưới đây đánh giá tổng quan các công nghệ cốt lõi theo 5 tiêu chí then chốt:
 
-### 6.2.1. Ma trận đánh giá các công nghệ cốt lõi
+### 6.3.1. Ma trận đánh giá các công nghệ cốt lõi
 
 *Bảng 6.6: Ma trận đánh giá các công nghệ cốt lõi theo tiêu chí lựa chọn.* 
 
@@ -86,7 +88,7 @@ Việc chốt danh sách bộ công cụ trên không phải ngẫu nhiên mà x
 | **Redis** | **Cao**: Hỗ trợ xác thực ACL, mã hóa kết nối TLS, hoạt động độc lập trong lớp mạng nội bộ (Private VPC). | **Xuất sắc**: Độ trễ cực thấp (sub-millisecond) do thao tác trực tiếp trên RAM, thông lượng xử lý khổng lồ. | **Thấp**: Chi phí rất nhỏ khi dùng Upstash Redis hoặc tự chạy container trên máy chủ hiện có. | **Rất lớn**: Chuẩn mực công nghiệp cho giải pháp in-memory cache và distributed lock. | **Dễ**: Cấu trúc dữ liệu đơn giản (Key-Value, Hashes, Lists), API trực quan dễ tích hợp. |
 | **Prisma ORM** | **Cao**: Tự động xử lý tham số hóa truy vấn (Parameterized queries), loại bỏ hoàn toàn nguy cơ SQL Injection. | **Cao**: Khả năng tạo các câu lệnh SQL tối ưu, tích hợp connection pooling hiệu quả cho môi trường serverless. | **Thấp**: Công cụ mã nguồn mở miễn phí, tiết kiệm đáng kể nguồn lực và thời gian viết mã của lập trình viên. | **Lớn**: ORM phổ biến nhất hiện nay cho hệ sinh thái TypeScript/Node.js. | **Rất dễ**: Cú pháp khai báo schema cực kỳ tường minh, gợi ý code tự động (auto-complete) hoàn hảo. |
 
-### 6.2.2. Lập luận chi tiết về sự phù hợp với quy mô dự án
+### 6.3.2. Lập luận chi tiết về sự phù hợp với quy mô dự án
 
 1. **Giải quyết triệt để bài toán Concurrency và Overbooking:**
    Trong hệ thống đặt phòng khách sạn trực tuyến, rủi ro lớn nhất là nhiều khách hàng cùng chọn đặt một phòng duy nhất tại cùng một thời điểm. Bộ đôi **NestJS** và **Redis** giải quyết hoàn hảo vấn đề này thông qua cơ chế *Distributed Lock*. Ngay khi khách hàng bấm đặt phòng, hệ thống thiết lập một khóa tạm thời trên Redis trong vòng 15 phút (cửa sổ thanh toán). Mọi yêu cầu đặt phòng khác đối với căn phòng đó sẽ ngay lập tức nhận thông báo "Phòng đang được tạm giữ", loại bỏ hoàn toàn tình trạng đặt trùng (overbooking) mà không gây áp lực khóa bảng (table locking) trực tiếp lên cơ sở dữ liệu PostgreSQL.
@@ -105,11 +107,11 @@ Việc chốt danh sách bộ công cụ trên không phải ngẫu nhiên mà x
 
 ---
 
-## 6.3. Kiến trúc tổng thể dự kiến
+## 6.4. Kiến trúc tổng thể dự kiến
 
 Kiến trúc hệ thống được thiết kế theo mô hình **Client – Server – Database – Third-party services**, tuân thủ nguyên tắc phân lớp rõ ràng nhằm tối ưu hóa hiệu suất, tăng cường tính bảo mật và dễ dàng bảo trì.
 
-### 6.3.1. Sơ đồ kiến trúc tổng thể (System Architecture Diagram)
+### 6.4.1. Sơ đồ kiến trúc tổng thể (System Architecture Diagram)
 
 ```mermaid
 graph TD
@@ -180,7 +182,7 @@ graph TD
     class PAY,MAIL third;
 ```
 
-### 6.3.2. Phương thức giao tiếp giữa các thành phần
+### 6.4.2. Phương thức giao tiếp giữa các thành phần
 
 Hệ thống áp dụng đa dạng các phương thức giao tiếp phù hợp với từng kịch bản cụ thể nhằm đảm bảo tốc độ phản hồi và tính tin cậy của dữ liệu:
 
@@ -209,7 +211,7 @@ Hệ thống áp dụng đa dạng các phương thức giao tiếp phù hợp v
    * **Phạm vi áp dụng:** Xử lý các tác vụ nền bất đồng bộ nội bộ giữa các service trong Backend.
    * **Cơ chế:** Để đảm bảo API phản hồi cho khách hàng ngay lập tức (dưới 500ms), các tác vụ mất thời gian như gọi dịch vụ Resend gửi email xác nhận đặt phòng hay lên lịch kiểm tra quá hạn thanh toán đều được đóng gói thành các `Job` và đẩy vào hàng đợi Redis. Worker chạy ngầm sẽ lần lượt nhặt các job này ra xử lý tuần tự, cho phép tự động thử lại (retry) khi gặp sự cố đường truyền mạng.
 
-### 6.3.3. Mô tả luồng dữ liệu tổng quan (Core Data Flow)
+### 6.4.3. Mô tả luồng dữ liệu tổng quan (Core Data Flow)
 
 Để làm rõ phương thức hoạt động tổng thể của kiến trúc trên, dưới đây là chi tiết luồng xử lý dữ liệu cho chu trình cốt lõi nhất của hệ thống: **Tìm kiếm phòng – Đặt phòng – Thanh toán – Hoàn tất giao dịch**.
 
@@ -269,3 +271,11 @@ sequenceDiagram
 3. **Chuyển hướng Thanh toán (Payment Orchestration):** Backend tạo chuỗi tham số ký số bảo mật và tạo URL chuyển hướng tới cổng thanh toán **VNPAY**. Trình duyệt của khách hàng được tự động chuyển sang trang thanh toán của VNPAY để thực hiện giao dịch.
 4. **Xác nhận Bất đồng bộ (Asynchronous Callback & Fulfillment):** Ngay sau khi thanh toán thành công, VNPAY gọi trực tiếp đến Webhook (IPN) của hệ thống. NestJS xác thực chữ ký SHA256 hợp lệ, tiến hành cập nhật trạng thái hóa đơn và đơn đặt phòng trong cơ sở dữ liệu thành `PAID`.
 5. **Hậu xử lý & Thời gian thực (Post-processing & Realtime Sync):** Backend tiến hành giải phóng khóa trên Redis, đồng thời đẩy một tác vụ vào hàng đợi **BullMQ**. Worker chạy nền sẽ thực thi việc gọi API của dịch vụ **Resend** để gửi email hóa đơn và thông tin đặt phòng chi tiết cho khách hàng. Đồng thời, thông qua cổng WebSocket, một thông điệp được phát sóng (broadcast) tới tất cả các màn hình Room Map của lễ tân và quản lý khách sạn, tự động chuyển màu phòng từ "Chờ thanh toán" sang "Đã đặt", hoàn tất một chu trình khép kín, chuẩn xác và an toàn tuyệt đối.
+
+---
+
+## 6.5. Kết luận chương
+
+Chương 6 đã xác định đầy đủ bộ công cụ và nền tảng công nghệ cho toàn bộ hệ thống đặt phòng khách sạn trực tuyến, bao phủ từ lớp giao diện, lớp xử lý nghiệp vụ, dữ liệu, tích hợp bên thứ ba đến công cụ vận hành và tự động hóa. Việc lựa chọn công nghệ được thực hiện trên cơ sở cân bằng giữa yêu cầu nghiệp vụ đặc thù, tiêu chí hiệu năng, tính bảo mật, khả năng mở rộng và chi phí triển khai thực tế.
+
+Các phân tích trong chương cho thấy tổ hợp công nghệ đã chọn có mức độ tương thích cao với mục tiêu phát triển hệ thống theo hướng hiện đại, ổn định và dễ bảo trì. Đồng thời, kiến trúc tổng thể và các cơ chế giao tiếp giữa thành phần đã tạo nền tảng rõ ràng để triển khai nhất quán ở các giai đoạn xây dựng, kiểm thử, triển khai và vận hành. Đây là cơ sở quan trọng bảo đảm hệ thống đáp ứng được cả yêu cầu hiện tại lẫn định hướng mở rộng trong tương lai.
