@@ -2,12 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "regions": ["sin1"],
-  "builds": [
-    {
-      "src": "src/vercel/index.ts",
-      "use": "@vercel/node",
-      "config": { "maxDuration": 60, "memory": 1024 }
-    }
-  ],
-  "routes": [{ "src": "/(.*)", "dest": "src/vercel/index.ts" }]
+  "installCommand": "npm install",
+  "buildCommand": "npm run vercel-build"
 }

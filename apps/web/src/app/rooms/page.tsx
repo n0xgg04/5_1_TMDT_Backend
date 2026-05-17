@@ -190,9 +190,15 @@ function RoomCard({
   guests: number;
 }) {
   const router = useRouter();
+  const FALLBACK_IMAGES = [
+    "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=900&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=900&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=900&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=900&auto=format&fit=crop&q=80",
+  ];
   const img =
     (item.roomType.images && item.roomType.images[0]) ||
-    `https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=900&auto=format&fit=crop`;
+    FALLBACK_IMAGES[item.roomType.name.length % FALLBACK_IMAGES.length];
 
   const goBook = () => {
     const qs = new URLSearchParams({

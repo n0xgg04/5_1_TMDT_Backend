@@ -174,7 +174,7 @@ function BookingInner() {
                   <img
                     src={
                       rt.data.images[0] ||
-                      "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=400"
+                      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&auto=format&fit=crop&q=80"
                     }
                     alt={rt.data.name}
                     className="h-32 w-44 rounded-lg object-cover"

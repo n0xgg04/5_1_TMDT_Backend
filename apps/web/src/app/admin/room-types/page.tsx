@@ -134,7 +134,7 @@ export default function AdminRoomTypesPage() {
               <img
                 src={
                   rt.images?.[0] ||
-                  "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600"
+                  "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&auto=format&fit=crop&q=80"
                 }
                 alt={rt.name}
                 className="h-full w-full object-cover"

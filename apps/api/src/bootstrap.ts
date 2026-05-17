@@ -45,14 +45,17 @@ export async function configureApp(
 
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle("Hotel Booking API")
-    .setDescription("REST API cho hệ thống đặt phòng khách sạn")
-    .setVersion("1.0")
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup("api/docs", app, document);
+  // Skip Swagger UI in serverless/production to save bundle size
+  if (process.env.NODE_ENV !== "production") {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle("Hotel Booking API")
+      .setDescription("REST API cho hệ thống đặt phòng khách sạn")
+      .setVersion("1.0")
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup("api/docs", app, document);
+  }
 
   return app;
 }

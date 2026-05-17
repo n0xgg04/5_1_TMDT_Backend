@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -11,8 +12,36 @@ import {
   Shield,
   Sparkles,
   Wifi,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+/* Unsplash real hotel photos (free to use) */
+const HERO_IMG =
+  "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1920&auto=format&fit=crop&q=80";
+
+const ROOM_SHOWCASE = [
+  {
+    title: "Deluxe Suite",
+    img: "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800&auto=format&fit=crop&q=80",
+    desc: "Phòng suite rộng rãi với ban công nhìn ra thành phố",
+  },
+  {
+    title: "Superior Room",
+    img: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&auto=format&fit=crop&q=80",
+    desc: "Phòng tiêu chuẩn cao cấp, nội thất hiện đại",
+  },
+  {
+    title: "Presidential Suite",
+    img: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&auto=format&fit=crop&q=80",
+    desc: "Phòng tổng thống sang trọng với phòng khách riêng",
+  },
+  {
+    title: "Ocean View",
+    img: "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&auto=format&fit=crop&q=80",
+    desc: "Tầm nhìn tuyệt đẹp với tiện nghi 5 sao",
+  },
+];
 
 function todayISO(offset = 0) {
   const d = new Date();
@@ -39,8 +68,15 @@ export default function HomePage() {
   return (
     <main>
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 text-white">
-        <div className="absolute inset-0 opacity-20 [background:radial-gradient(closest-side,white,transparent)] [mask-image:linear-gradient(white,transparent)]" />
+      <section className="relative overflow-hidden border-b border-slate-200 text-white">
+        <Image
+          src={HERO_IMG}
+          alt="Sapphire Stay Hotel"
+          fill
+          priority
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/60 to-slate-900/40" />
         <div className="container-page relative py-20 lg:py-28">
           <div className="max-w-3xl">
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium ring-1 ring-white/20 backdrop-blur">
@@ -132,6 +168,50 @@ export default function HomePage() {
             title="Tiện nghi đầy đủ"
             desc="Wifi tốc độ cao, TV màn hình lớn, mini-bar và đầy đủ tiện nghi 5 sao trong mỗi phòng."
           />
+        </div>
+      </section>
+
+      {/* Room Showcase */}
+      <section className="bg-slate-50 py-16">
+        <div className="container-page">
+          <div className="mx-auto mb-10 max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+              Khám phá các hạng phòng
+            </h2>
+            <p className="mt-3 text-slate-600">
+              Từ phòng tiêu chuẩn đến suite tổng thống, mỗi phòng đều mang đến
+              trải nghiệm nghỉ dưỡng hoàn hảo.
+            </p>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {ROOM_SHOWCASE.map((room) => (
+              <Link
+                key={room.title}
+                href="/rooms"
+                className="group overflow-hidden rounded-2xl bg-white shadow-card transition-all hover:-translate-y-1 hover:shadow-lg"
+              >
+                <div className="relative aspect-[4/3] overflow-hidden">
+                  <Image
+                    src={room.img}
+                    alt={room.title}
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center gap-1 text-amber-500">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className="h-3.5 w-3.5 fill-current" />
+                    ))}
+                  </div>
+                  <h3 className="mt-1 font-semibold text-slate-900">
+                    {room.title}
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-600">{room.desc}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
