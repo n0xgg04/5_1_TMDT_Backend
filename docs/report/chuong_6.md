@@ -115,71 +115,22 @@ Kiến trúc hệ thống được thiết kế theo mô hình **Client – Serv
 
 ```mermaid
 graph TD
-    %% Định nghĩa Client Layer
-    subgraph Client_Layer [Lớp Máy Khách - Client Layer]
-        C1[Trình duyệt Khách hàng<br>Web App - Next.js SSR]
-        C2[Trình duyệt Nhân viên / Admin<br>Portal - Next.js SPA]
-    end
+    U[Người dùng<br/>Khách hàng / Nhân viên / Admin]
+    FE[Frontend Web<br/>Next.js]
+    BE[Backend API<br/>NestJS]
+    DB[(PostgreSQL)]
+    CACHE[(Redis)]
+    PAY[VNPAY]
+    MAIL[Resend Email]
 
-    %% Định nghĩa Edge / Gateway Layer
-    subgraph Edge_Layer [Lớp Bảo mật & Gateway]
-        CDN[Cloudflare / Vercel Edge<br>SSL/TLS & DDoS Protection]
-    end
-
-    %% Định nghĩa Application Layer (Backend)
-    subgraph App_Layer [Lớp Xử lý Nghiệp vụ - NestJS Backend]
-        API_GW[NestJS API Gateway<br>Controller & Middleware]
-        AUTH[Module Xác thực & Phân quyền<br>JWT / RBAC Guards]
-        BIZ[Các Module Nghiệp vụ<br>Rooms, Bookings, Payments, Reports]
-        SOCKET[WebSocket Gateway<br>Socket.io - Realtime Update]
-        QUEUE[BullMQ Job Worker<br>Async Task Processor]
-    end
-
-    %% Định nghĩa Data Layer
-    subgraph Data_Layer [Lớp Dữ liệu & Caching - Data Layer]
-        REDIS[(Redis In-Memory Cache<br>Lock & Job Queue)]
-        DB[(PostgreSQL 16 DB<br>Prisma ORM - ACID Data)]
-    end
-
-    %% Định nghĩa Third-Party Services
-    subgraph Third_Party [Các Dịch vụ Bên thứ 3 - Third-Party Services]
-        PAY[Cổng thanh toán VNPAY]
-        MAIL[Dịch vụ Email Resend]
-    end
-
-    %% Luồng kết nối
-    C1 -->|HTTPS / REST| CDN
-    C2 -->|HTTPS / REST / WSS| CDN
-    CDN -->|Forward Request| API_GW
-
-    API_GW --> AUTH
-    AUTH --> BIZ
-    API_GW -->|WSS| SOCKET
-
-    BIZ <-->|Kiểm tra Lock / Cache| REDIS
-    BIZ <-->|Truy vấn / Ghi dữ liệu| DB
-    QUEUE <-->|Lắng nghe Hàng đợi| REDIS
-    QUEUE -->|Cập nhật Trạng thái| DB
-
-    %% Tích hợp bên thứ 3
-    BIZ -->|Khởi tạo Thanh toán / Redirect| PAY
-    PAY -->|IPN Webhook Callback| BIZ
-    QUEUE -->|Gửi Email Xác nhận / Hủy| MAIL
-    BIZ -->|Đẩy Sự kiện Realtime| SOCKET
-    SOCKET -->|Cập nhật Room Map| C2
-
-    %% Style cho các node
-    classDef client fill:#f9f0ff,stroke:#d3b8ae,stroke-width:2px,color:#333;
-    classDef edge fill:#e3f2fd,stroke:#90caf9,stroke-width:2px,color:#333;
-    classDef app fill:#e8f5e9,stroke:#81c784,stroke-width:2px,color:#333;
-    classDef data fill:#fff3e0,stroke:#ffb74d,stroke-width:2px,color:#333;
-    classDef third fill:#ffebee,stroke:#e57373,stroke-width:2px,color:#333;
-
-    class C1,C2 client;
-    class CDN edge;
-    class API_GW,AUTH,BIZ,SOCKET,QUEUE app;
-    class REDIS,DB data;
-    class PAY,MAIL third;
+    U -->|HTTPS| FE
+    FE -->|REST API| BE
+    BE --> DB
+    BE --> CACHE
+    BE -->|Thanh toán| PAY
+    PAY -->|IPN Callback| BE
+    BE -->|Gửi thông báo| MAIL
+    BE -->|Realtime WSS| FE
 ```
 
 ### 6.4.2. Phương thức giao tiếp giữa các thành phần
