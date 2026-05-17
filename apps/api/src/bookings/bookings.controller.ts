@@ -2,7 +2,13 @@ import { Controller, Post, Get, Body, Param, Query } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { Role, BookingStatus } from "@prisma/client";
 import { BookingsService } from "./bookings.service";
-import { CreateBookingDto, CancelBookingDto } from "./dto/bookings.dto";
+import {
+  CreateBookingDto,
+  CancelBookingDto,
+  UploadReceiptDto,
+  ApproveBookingDto,
+  RejectBookingDto,
+} from "./dto/bookings.dto";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 
@@ -64,5 +70,45 @@ export class BookingsController {
   @ApiOperation({ summary: "Check-out (Staff)" })
   checkout(@Param("id") id: string) {
     return this.bookingsService.checkout(id);
+  }
+
+  @Post(":id/upload-receipt")
+  @Roles(Role.CUSTOMER)
+  @ApiOperation({ summary: "Upload biên lai chuyển khoản" })
+  uploadReceipt(
+    @Param("id") id: string,
+    @CurrentUser() user: { id: string },
+    @Body() dto: UploadReceiptDto,
+  ) {
+    return this.bookingsService.uploadReceipt(id, user.id, dto);
+  }
+
+  @Get("staff/pending")
+  @Roles(Role.RECEPTIONIST, Role.ADMIN)
+  @ApiOperation({ summary: "Danh sách booking chờ duyệt (Staff)" })
+  getPendingBookings(@Query("page") page = 1, @Query("limit") limit = 10) {
+    return this.bookingsService.getPendingBookings(+page, +limit);
+  }
+
+  @Post(":id/approve")
+  @Roles(Role.RECEPTIONIST, Role.ADMIN)
+  @ApiOperation({ summary: "Duyệt booking (Staff)" })
+  approveBooking(
+    @Param("id") id: string,
+    @CurrentUser() user: { id: string },
+    @Body() dto: ApproveBookingDto,
+  ) {
+    return this.bookingsService.approveBooking(id, user.id, dto);
+  }
+
+  @Post(":id/reject")
+  @Roles(Role.RECEPTIONIST, Role.ADMIN)
+  @ApiOperation({ summary: "Từ chối booking (Staff)" })
+  rejectBooking(
+    @Param("id") id: string,
+    @CurrentUser() user: { id: string },
+    @Body() dto: RejectBookingDto,
+  ) {
+    return this.bookingsService.rejectBooking(id, user.id, dto);
   }
 }

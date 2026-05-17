@@ -1,0 +1,84 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]: Header
+    - generic [ref=e4]:
+      - generic [ref=e7]:
+        - paragraph [ref=e8]: LOGO
+        - paragraph [ref=e9]: Hệ thống đặt phòng
+      - navigation [ref=e10]:
+        - link "Trang chủ" [ref=e11] [cursor=pointer]:
+          - /url: index.html
+        - link "Tìm phòng" [ref=e12] [cursor=pointer]:
+          - /url: rooms.html
+        - link "Đơn của tôi" [ref=e13] [cursor=pointer]:
+          - /url: my-bookings.html
+      - generic [ref=e14]:
+        - link "Đăng nhập" [ref=e15] [cursor=pointer]:
+          - /url: login.html
+        - link "Đăng ký" [ref=e16] [cursor=pointer]:
+          - /url: register.html
+  - main [ref=e17]:
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]: ▼ Gallery ảnh
+          - generic [ref=e22]: IMG
+          - generic [ref=e23]:
+            - generic [ref=e24]: IMG
+            - generic [ref=e25]: IMG
+            - generic [ref=e26]: IMG
+            - generic [ref=e27]: IMG
+        - generic [ref=e28]:
+          - generic [ref=e29]: Thông tin chi tiết
+          - heading "Tên phòng" [level=1] [ref=e30]
+          - paragraph [ref=e31]: Mô tả chi tiết phòng.
+          - generic [ref=e32]:
+            - generic [ref=e33]: Thông số
+            - generic [ref=e34]: Thông số
+            - generic [ref=e35]: Thông số
+            - generic [ref=e36]: Thông số
+            - generic [ref=e37]: Thông số
+            - generic [ref=e38]: Thông số
+        - generic [ref=e39]:
+          - generic [ref=e40]: Tiện nghi
+          - generic [ref=e41]:
+            - generic [ref=e42]:
+              - generic [ref=e43]: o
+              - text: Tiện ích 1
+            - generic [ref=e44]:
+              - generic [ref=e45]: o
+              - text: Tiện ích 2
+            - generic [ref=e46]:
+              - generic [ref=e47]: o
+              - text: Tiện ích 3
+            - generic [ref=e48]:
+              - generic [ref=e49]: o
+              - text: Tiện ích 4
+            - generic [ref=e50]:
+              - generic [ref=e51]: o
+              - text: Tiện ích 5
+            - generic [ref=e52]:
+              - generic [ref=e53]: o
+              - text: Tiện ích 6
+      - generic [ref=e55]:
+        - generic [ref=e56]: ▼ Card đặt phòng
+        - heading "Đặt phòng này" [level=2] [ref=e57]
+        - generic [ref=e58]:
+          - generic [ref=e59]: Nhận phòng
+          - generic [ref=e61]: Trả phòng
+          - generic [ref=e63]: Số khách
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - generic [ref=e67]: Giá x Số đêm
+              - generic [ref=e68]: Thành tiền
+            - generic [ref=e69]:
+              - generic [ref=e70]: Phí dịch vụ
+              - generic [ref=e71]: Miễn phí
+            - generic [ref=e72]:
+              - generic [ref=e73]: Tổng cộng
+              - generic [ref=e74]: Giá tiền
+          - generic [ref=e75]: Đặt phòng ngay
+          - paragraph [ref=e76]: Đơn sẽ tự động hủy sau 15 phút nếu không thanh toán.
+  - contentinfo [ref=e77]:
+    - generic [ref=e78]: Footer
+    - generic [ref=e79]: 2026 LOGO · Nhóm 1 · PTIT

@@ -1,0 +1,72 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]: Header
+    - generic [ref=e4]:
+      - generic [ref=e7]:
+        - paragraph [ref=e8]: LOGO
+        - paragraph [ref=e9]: Hệ thống đặt phòng
+      - navigation [ref=e10]:
+        - link "Trang chủ" [ref=e11] [cursor=pointer]:
+          - /url: index.html
+        - link "Tìm phòng" [ref=e12] [cursor=pointer]:
+          - /url: rooms.html
+        - link "Đơn của tôi" [ref=e13] [cursor=pointer]:
+          - /url: my-bookings.html
+      - generic [ref=e15]:
+        - generic [ref=e16]: A
+        - generic [ref=e17]: User
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: ▼ Sidebar hồ sơ
+        - generic [ref=e23]:
+          - generic [ref=e24]: A
+          - generic [ref=e25]:
+            - paragraph [ref=e26]: User Name
+            - paragraph [ref=e27]: user@email.com
+        - navigation [ref=e28]:
+          - link "Lịch sử đơn hàng" [ref=e29] [cursor=pointer]:
+            - /url: "#"
+          - link "Thông tin cá nhân" [ref=e30] [cursor=pointer]:
+            - /url: "#"
+          - link "Đổi mật khẩu" [ref=e31] [cursor=pointer]:
+            - /url: "#"
+      - generic [ref=e32]:
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - heading "Đơn của tôi" [level=1] [ref=e35]
+            - paragraph [ref=e36]: Xem và quản lý các đơn đặt phòng
+          - generic [ref=e37]: Trạng thái
+        - generic [ref=e39]:
+          - generic [ref=e40]: ▼ Item đơn hàng
+          - generic [ref=e41]:
+            - generic [ref=e42]:
+              - generic [ref=e43]: RM
+              - generic [ref=e44]:
+                - generic [ref=e45]:
+                  - paragraph [ref=e46]: "Tên phòng · #XXX"
+                  - generic [ref=e47]: Trạng thái
+                - paragraph [ref=e48]: Mã đơn hàng
+                - paragraph [ref=e49]: Ngày nhận → Ngày trả (Số đêm)
+            - generic [ref=e50]:
+              - paragraph [ref=e51]: Giá tiền
+              - generic [ref=e52]:
+                - generic [ref=e53]: Thanh toán
+                - generic [ref=e54]: Hủy
+        - generic [ref=e55]:
+          - generic [ref=e56]: ▼ Item đơn hàng
+          - generic [ref=e57]:
+            - generic [ref=e58]:
+              - generic [ref=e59]: RM
+              - generic [ref=e60]:
+                - generic [ref=e61]:
+                  - paragraph [ref=e62]: "Tên phòng · #XXX"
+                  - generic [ref=e63]: Trạng thái
+                - paragraph [ref=e64]: Mã đơn hàng
+                - paragraph [ref=e65]: Ngày nhận → Ngày trả (Số đêm)
+            - generic [ref=e66]:
+              - paragraph [ref=e67]: Giá tiền
+              - generic [ref=e68]: Đánh giá
+  - contentinfo [ref=e69]:
+    - generic [ref=e70]: Footer
+    - generic [ref=e71]: 2026 LOGO · Nhóm 1 · PTIT

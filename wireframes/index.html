@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wireframe — Trang chủ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="bg-white text-slate-800">
+    <header class="wf-zone border-b border-slate-200 bg-white">
+      <span class="wf-zone-label">Header</span>
+      <div
+        class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between"
+      >
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-lg bg-slate-200"></div>
+          <div>
+            <p class="text-sm font-bold">LOGO</p>
+            <p class="text-xs text-slate-500">Hệ thống đặt phòng</p>
+          </div>
+        </div>
+        <nav class="hidden md:flex gap-1">
+          <a href="index.html" class="wf-nav-link-active">Trang chủ</a>
+          <a href="rooms.html" class="wf-nav-link">Tìm phòng</a>
+          <a href="my-bookings.html" class="wf-nav-link">Đơn của tôi</a>
+        </nav>
+        <div class="flex gap-2">
+          <a href="login.html" class="wf-btn-outline text-xs px-3 py-2"
+            >Đăng nhập</a
+          >
+          <a href="register.html" class="wf-btn text-xs px-3 py-2">Đăng ký</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="wf-zone bg-slate-800 text-white">
+      <span class="wf-zone-label">Hero / Banner</span>
+      <div class="max-w-7xl mx-auto px-4 py-16 relative">
+        <p class="text-xs text-slate-300">Hà Nội · Việt Nam</p>
+        <h1 class="mt-3 text-3xl font-bold">
+          Kỳ nghỉ đáng nhớ bắt đầu tại LOGO
+        </h1>
+        <p class="mt-3 text-sm text-slate-300 max-w-xl">
+          Đặt phòng khách sạn trực tuyến nhanh chóng, an toàn. Hơn 200 phòng
+          hạng sang.
+        </p>
+
+        <div class="relative wf-box bg-white text-slate-900 mt-8 p-4">
+          <span class="wf-center-label">▼ Form tìm kiếm</span>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="wf-box-light p-3">
+              <p class="text-[10px] uppercase text-slate-500">Nhận phòng</p>
+              <div class="h-5 bg-slate-100 mt-1 rounded"></div>
+            </div>
+            <div class="wf-box-light p-3">
+              <p class="text-[10px] uppercase text-slate-500">Trả phòng</p>
+              <div class="h-5 bg-slate-100 mt-1 rounded"></div>
+            </div>
+            <div class="wf-box-light p-3">
+              <p class="text-[10px] uppercase text-slate-500">Số khách</p>
+              <div class="h-5 bg-slate-100 mt-1 rounded"></div>
+            </div>
+            <div class="flex items-end">
+              <div class="wf-btn w-full text-center">Tìm phòng</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wf-zone max-w-7xl mx-auto px-4 py-12">
+      <span class="wf-zone-label">Features</span>
+      <div class="text-center mb-8">
+        <h2 class="text-xl font-bold">Vì sao chọn LOGO?</h2>
+        <p class="text-sm text-slate-500 mt-1">
+          Trải nghiệm lưu trú đẳng cấp với công nghệ hiện đại.
+        </p>
+      </div>
+      <div class="grid gap-4 md:grid-cols-3">
+        <div class="relative wf-box p-5">
+          <span class="wf-center-label-sm">▼ Feature card</span>
+          <div class="w-10 h-10 rounded-lg bg-slate-200"></div>
+          <h3 class="mt-3 font-semibold text-sm">Thanh toán an toàn</h3>
+          <p class="text-xs text-slate-500 mt-1">
+            Mã hóa đầu cuối, tích hợp VNPay & MoMo.
+          </p>
+        </div>
+        <div class="relative wf-box p-5">
+          <span class="wf-center-label-sm">▼ Feature card</span>
+          <div class="w-10 h-10 rounded-lg bg-slate-200"></div>
+          <h3 class="mt-3 font-semibold text-sm">Dịch vụ đẳng cấp</h3>
+          <p class="text-xs text-slate-500 mt-1">
+            Đội ngũ nhân viên chuyên nghiệp, tận tâm.
+          </p>
+        </div>
+        <div class="relative wf-box p-5">
+          <span class="wf-center-label-sm">▼ Feature card</span>
+          <div class="w-10 h-10 rounded-lg bg-slate-200"></div>
+          <h3 class="mt-3 font-semibold text-sm">Tiện nghi đầy đủ</h3>
+          <p class="text-xs text-slate-500 mt-1">
+            Wifi, TV, mini-bar và tiện nghi 5 sao.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="wf-zone bg-slate-50 py-12">
+      <span class="wf-zone-label">Room showcase</span>
+      <div class="max-w-7xl mx-auto px-4">
+        <div class="text-center mb-8">
+          <h2 class="text-xl font-bold">Khám phá các hạng phòng</h2>
+          <p class="text-sm text-slate-500 mt-1">
+            Từ phòng tiêu chuẩn đến suite tổng thống.
+          </p>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="relative wf-box overflow-hidden">
+            <span class="wf-center-label-sm">▼ Product card</span>
+            <div class="aspect-[4/3] wf-img">IMG</div>
+            <div class="p-3">
+              <div class="text-[10px] text-slate-400 text-center">*****</div>
+              <h3 class="mt-1 text-sm font-semibold text-center">Tên phòng</h3>
+              <p class="text-xs text-slate-500 mt-1 text-center">
+                Mô tả ngắn về phòng.
+              </p>
+            </div>
+          </div>
+          <div class="relative wf-box overflow-hidden">
+            <span class="wf-center-label-sm">▼ Product card</span>
+            <div class="aspect-[4/3] wf-img">IMG</div>
+            <div class="p-3">
+              <div class="text-[10px] text-slate-400 text-center">*****</div>
+              <h3 class="mt-1 text-sm font-semibold text-center">Tên phòng</h3>
+              <p class="text-xs text-slate-500 mt-1 text-center">
+                Mô tả ngắn về phòng.
+              </p>
+            </div>
+          </div>
+          <div class="relative wf-box overflow-hidden">
+            <span class="wf-center-label-sm">▼ Product card</span>
+            <div class="aspect-[4/3] wf-img">IMG</div>
+            <div class="p-3">
+              <div class="text-[10px] text-slate-400 text-center">*****</div>
+              <h3 class="mt-1 text-sm font-semibold text-center">Tên phòng</h3>
+              <p class="text-xs text-slate-500 mt-1 text-center">
+                Mô tả ngắn về phòng.
+              </p>
+            </div>
+          </div>
+          <div class="relative wf-box overflow-hidden">
+            <span class="wf-center-label-sm">▼ Product card</span>
+            <div class="aspect-[4/3] wf-img">IMG</div>
+            <div class="p-3">
+              <div class="text-[10px] text-slate-400 text-center">*****</div>
+              <h3 class="mt-1 text-sm font-semibold text-center">Tên phòng</h3>
+              <p class="text-xs text-slate-500 mt-1 text-center">
+                Mô tả ngắn về phòng.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wf-zone bg-slate-800 text-white py-12">
+      <span class="wf-zone-label">CTA</span>
+      <div class="max-w-7xl mx-auto px-4">
+        <div
+          class="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-700 rounded-xl p-8"
+        >
+          <div>
+            <h3 class="text-lg font-bold">Sẵn sàng cho chuyến đi?</h3>
+            <p class="text-sm text-slate-300 mt-1">
+              Tạo tài khoản miễn phí và nhận ưu đãi.
+            </p>
+          </div>
+          <div class="flex gap-2">
+            <a href="register.html" class="wf-btn text-xs">Tạo tài khoản</a>
+            <a
+              href="rooms.html"
+              class="wf-btn-outline text-xs border-white text-white"
+              >Xem phòng</a
+            >
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="wf-zone border-t border-slate-200 bg-white py-6">
+      <span class="wf-zone-label">Footer</span>
+      <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+        2026 LOGO · Nhóm 1 · PTIT
+      </div>
+    </footer>
+  </body>
+</html>

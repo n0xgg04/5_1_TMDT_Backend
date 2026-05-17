@@ -7,7 +7,12 @@ import {
 import { PrismaService } from "../common/prisma/prisma.service";
 import { EventsService } from "../common/events/events.service";
 import { VNPayGateway } from "./gateway/vnpay.gateway";
-import { PaymentMethod, PaymentStatus, BookingStatus } from "@prisma/client";
+import {
+  PaymentMethod,
+  PaymentStatus,
+  BookingStatus,
+  PaymentType,
+} from "@prisma/client";
 
 @Injectable()
 export class PaymentsService {
@@ -22,6 +27,7 @@ export class PaymentsService {
     customerId: string,
     method: PaymentMethod,
     ipAddr: string,
+    paymentType: PaymentType = PaymentType.FULL,
   ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
@@ -44,11 +50,16 @@ export class PaymentsService {
       throw new ConflictException("Đơn đã được thanh toán");
     }
 
+    let amount = Number(booking.totalAmount);
+    if (paymentType === PaymentType.DEPOSIT) {
+      amount = Math.floor(amount * 0.3);
+    }
+
     let gatewayUrl: string | undefined;
     if (method === PaymentMethod.VNPAY) {
       gatewayUrl = this.vnpay.createPaymentUrl({
         bookingId,
-        amount: Number(booking.totalAmount),
+        amount,
         orderInfo: `Thanh toan dat phong ${booking.bookingCode}`,
         ipAddr,
       });
@@ -60,7 +71,8 @@ export class PaymentsService {
           bookingId,
           customerId,
           method,
-          amount: booking.totalAmount,
+          paymentType,
+          amount: amount,
           status: PaymentStatus.PROCESSING,
           gatewayUrl,
         },
@@ -68,8 +80,25 @@ export class PaymentsService {
     } else {
       payment = await this.prisma.payment.update({
         where: { bookingId },
-        data: { status: PaymentStatus.PROCESSING, method, gatewayUrl },
+        data: {
+          status: PaymentStatus.PROCESSING,
+          method,
+          paymentType,
+          amount,
+          gatewayUrl,
+        },
       });
+    }
+
+    if (method === PaymentMethod.BANK_TRANSFER) {
+      await this.prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: BookingStatus.PENDING_PAYMENT },
+      });
+      const bankInfo = await this.prisma.paymentMethodInfo.findFirst({
+        where: { isActive: true },
+      });
+      return { payment, gatewayUrl, bankInfo, amount };
     }
 
     await this.prisma.booking.update({
@@ -77,7 +106,7 @@ export class PaymentsService {
       data: { status: BookingStatus.PAYING },
     });
 
-    return { payment, gatewayUrl };
+    return { payment, gatewayUrl, amount };
   }
 
   async handleWebhook(query: Record<string, string>) {

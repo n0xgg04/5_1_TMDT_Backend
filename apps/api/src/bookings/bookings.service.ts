@@ -9,8 +9,18 @@ import { PrismaService } from "../common/prisma/prisma.service";
 import { RedisService } from "../common/redis/redis.service";
 import { EventsService } from "../common/events/events.service";
 import { PricingService } from "../rooms/pricing.service";
-import { CreateBookingDto } from "./dto/bookings.dto";
-import { BookingStatus, Role } from "@prisma/client";
+import {
+  CreateBookingDto,
+  UploadReceiptDto,
+  ApproveBookingDto,
+  RejectBookingDto,
+} from "./dto/bookings.dto";
+import {
+  BookingStatus,
+  Role,
+  PaymentMethod,
+  PaymentStatus,
+} from "@prisma/client";
 
 @Injectable()
 export class BookingsService {
@@ -74,9 +84,14 @@ export class BookingsService {
           roomId: dto.roomId,
           checkIn,
           checkOut,
+          checkInTime: dto.checkInTime ?? "14:00",
+          checkOutTime: dto.checkOutTime ?? "12:00",
+          adults: dto.adults ?? 2,
+          children: dto.children ?? 0,
           totalAmount,
           paymentDeadline,
           guestNotes: dto.guestNotes,
+          specialRequests: dto.specialRequests,
           status: BookingStatus.PENDING_PAYMENT,
         },
         include: { room: { include: { roomType: true } } },
@@ -298,6 +313,164 @@ export class BookingsService {
         paymentDeadline: { lt: new Date() },
       },
     });
+  }
+
+  async uploadReceipt(
+    bookingId: string,
+    customerId: string,
+    dto: UploadReceiptDto,
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { payment: true },
+    });
+    if (!booking) throw new NotFoundException("Đơn đặt phòng không tồn tại");
+    if (booking.customerId !== customerId) {
+      throw new ForbiddenException("Không có quyền thao tác");
+    }
+    if (booking.status !== BookingStatus.PENDING_PAYMENT) {
+      throw new BadRequestException("Đơn không ở trạng thái chờ thanh toán");
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.payment.updateMany({
+        where: { bookingId },
+        data: {
+          receiptImageUrl: dto.receiptImageUrl,
+          status: PaymentStatus.PENDING,
+        },
+      }),
+      this.prisma.bookingAttachment.create({
+        data: { bookingId, type: "receipt", fileUrl: dto.receiptImageUrl },
+      }),
+      this.prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: BookingStatus.PENDING_APPROVAL },
+      }),
+    ]);
+
+    return { message: "Đã upload biên lai, chờ staff xác nhận" };
+  }
+
+  async getPendingBookings(page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where: { status: BookingStatus.PENDING_APPROVAL },
+        skip,
+        take: limit,
+        include: {
+          room: { include: { roomType: true } },
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+          payment: true,
+          attachments: true,
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+      this.prisma.booking.count({
+        where: { status: BookingStatus.PENDING_APPROVAL },
+      }),
+    ]);
+    return { items, total, page, limit };
+  }
+
+  async approveBooking(
+    bookingId: string,
+    staffId: string,
+    _dto?: ApproveBookingDto,
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { room: true },
+    });
+    if (!booking) throw new NotFoundException("Đơn không tồn tại");
+    if (booking.status !== BookingStatus.PENDING_APPROVAL) {
+      throw new BadRequestException("Đơn không ở trạng thái chờ duyệt");
+    }
+
+    const conflict = await this.prisma.booking.findFirst({
+      where: {
+        roomId: booking.roomId,
+        id: { not: bookingId },
+        status: { in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] },
+        AND: [
+          { checkIn: { lt: booking.checkOut } },
+          { checkOut: { gt: booking.checkIn } },
+        ],
+      },
+    });
+    if (conflict) {
+      throw new ConflictException("Phòng đã có đơn confirmed trong khoảng này");
+    }
+
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+          status: BookingStatus.CONFIRMED,
+          approvedById: staffId,
+          approvedAt: new Date(),
+        },
+      }),
+      this.prisma.room.update({
+        where: { id: booking.roomId },
+        data: { status: "RESERVED" },
+      }),
+    ]);
+
+    await this.events.emit("booking.approved", {
+      bookingId,
+      staffId,
+    });
+
+    return updated;
+  }
+
+  async rejectBooking(
+    bookingId: string,
+    staffId: string,
+    dto: RejectBookingDto,
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { payment: true },
+    });
+    if (!booking) throw new NotFoundException("Đơn không tồn tại");
+    if (booking.status !== BookingStatus.PENDING_APPROVAL) {
+      throw new BadRequestException("Đơn không ở trạng thái chờ duyệt");
+    }
+
+    await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: BookingStatus.REJECTED,
+        approvedById: staffId,
+        rejectedReason: dto.reason,
+      },
+    });
+
+    if (booking.payment?.status === PaymentStatus.COMPLETED) {
+      await this.prisma.payment.update({
+        where: { bookingId },
+        data: { status: PaymentStatus.REFUNDED, refundedAt: new Date() },
+      });
+    }
+
+    await this.events.emit("booking.rejected", {
+      bookingId,
+      staffId,
+      reason: dto.reason,
+    });
+
+    return { message: "Đã từ chối booking" };
   }
 
   /**

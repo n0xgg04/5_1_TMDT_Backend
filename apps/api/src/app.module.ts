@@ -13,6 +13,7 @@ import { RoomsModule } from "./rooms/rooms.module";
 import { SearchModule } from "./search/search.module";
 import { BookingsModule } from "./bookings/bookings.module";
 import { PaymentsModule } from "./payments/payments.module";
+import { PaymentMethodsModule } from "./payment-methods/payment-methods.module";
 import { ReviewsModule } from "./reviews/reviews.module";
 import { StaffModule } from "./staff/staff.module";
 import { ReportsModule } from "./reports/reports.module";
@@ -33,6 +34,7 @@ import { CronModule } from "./cron/cron.module";
     SearchModule,
     BookingsModule,
     PaymentsModule,
+    PaymentMethodsModule,
     ReviewsModule,
     StaffModule,
     ReportsModule,

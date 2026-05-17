@@ -1,0 +1,70 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]: SIDEBAR
+    - generic [ref=e7]:
+      - paragraph [ref=e8]: LOGO
+      - paragraph [ref=e9]: Admin Panel
+    - navigation [ref=e10]:
+      - link "Tổng quan" [ref=e11] [cursor=pointer]:
+        - /url: admin-dashboard.html
+      - link "Loại phòng" [ref=e12] [cursor=pointer]:
+        - /url: admin-rooms.html
+      - link "Quản lý phòng" [ref=e13] [cursor=pointer]:
+        - /url: admin-rooms.html
+      - link "Nhân viên" [ref=e14] [cursor=pointer]:
+        - /url: admin-users.html
+      - link "Quản lý đơn" [ref=e15] [cursor=pointer]:
+        - /url: admin-bookings.html
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]: A
+        - generic [ref=e19]:
+          - paragraph [ref=e20]: Admin
+          - paragraph [ref=e21]: ADMIN
+      - button "Đăng xuất" [ref=e22] [cursor=pointer]
+  - main [ref=e24]:
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - heading "Quản lý phòng" [level=1] [ref=e27]
+        - paragraph [ref=e28]: Thêm phòng mới và cập nhật trạng thái
+      - generic [ref=e29]: + Thêm phòng
+    - generic [ref=e30]:
+      - generic [ref=e31]: ▼ BỘ LỌC
+      - generic [ref=e32]:
+        - generic [ref=e33]: Loại phòng
+        - generic [ref=e35]: Tầng
+    - generic [ref=e37]:
+      - generic [ref=e38]: BẢNG DỮ LIỆU
+      - table [ref=e40]:
+        - rowgroup [ref=e41]:
+          - row "Số phòng Tầng Loại phòng Trạng thái Hành động" [ref=e42]:
+            - columnheader "Số phòng" [ref=e43]
+            - columnheader "Tầng" [ref=e44]
+            - columnheader "Loại phòng" [ref=e45]
+            - columnheader "Trạng thái" [ref=e46]
+            - columnheader "Hành động" [ref=e47]
+        - rowgroup [ref=e48]:
+          - row "#XXX Tầng X Loại phòng Trạng thái Xóa" [ref=e49]:
+            - cell "#XXX" [ref=e50]
+            - cell "Tầng X" [ref=e51]
+            - cell "Loại phòng" [ref=e52]
+            - cell "Trạng thái" [ref=e53]:
+              - generic [ref=e55]: Trạng thái
+            - cell "Xóa" [ref=e56]:
+              - generic [ref=e57]: Xóa
+          - row "#XXX Tầng X Loại phòng Trạng thái Xóa" [ref=e58]:
+            - cell "#XXX" [ref=e59]
+            - cell "Tầng X" [ref=e60]
+            - cell "Loại phòng" [ref=e61]
+            - cell "Trạng thái" [ref=e62]:
+              - generic [ref=e64]: Trạng thái
+            - cell "Xóa" [ref=e65]:
+              - generic [ref=e66]: Xóa
+          - row "#XXX Tầng X Loại phòng Trạng thái Xóa" [ref=e67]:
+            - cell "#XXX" [ref=e68]
+            - cell "Tầng X" [ref=e69]
+            - cell "Loại phòng" [ref=e70]
+            - cell "Trạng thái" [ref=e71]:
+              - generic [ref=e73]: Trạng thái
+            - cell "Xóa" [ref=e74]:
+              - generic [ref=e75]: Xóa

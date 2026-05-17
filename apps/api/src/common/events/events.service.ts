@@ -18,6 +18,8 @@ export type DomainEvent =
   | "booking.confirmed"
   | "booking.cancelled"
   | "booking.expired"
+  | "booking.approved"
+  | "booking.rejected"
   | "checkout.completed"
   | "payment.success"
   | "payment.failed";

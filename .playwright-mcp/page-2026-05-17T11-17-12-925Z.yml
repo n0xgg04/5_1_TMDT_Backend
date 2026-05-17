@@ -1,0 +1,82 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]: Sidebar
+    - generic [ref=e7]:
+      - paragraph [ref=e8]: LOGO
+      - paragraph [ref=e9]: Admin Panel
+    - navigation [ref=e10]:
+      - link "Tổng quan" [ref=e11] [cursor=pointer]:
+        - /url: admin-dashboard.html
+      - link "Loại phòng" [ref=e12] [cursor=pointer]:
+        - /url: admin-rooms.html
+      - link "Quản lý phòng" [ref=e13] [cursor=pointer]:
+        - /url: admin-rooms.html
+      - link "Nhân viên" [ref=e14] [cursor=pointer]:
+        - /url: admin-users.html
+      - link "Quản lý đơn" [ref=e15] [cursor=pointer]:
+        - /url: admin-bookings.html
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]: A
+        - generic [ref=e19]:
+          - paragraph [ref=e20]: Admin
+          - paragraph [ref=e21]: ADMIN
+      - button "Đăng xuất" [ref=e22] [cursor=pointer]
+  - main [ref=e24]:
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - heading "Quản lý ngườ dùng" [level=1] [ref=e27]
+        - paragraph [ref=e28]: Tạo tài khoản nhân viên, khóa/mở khóa tài khoản
+      - generic [ref=e29]: + Thêm nhân viên
+    - generic [ref=e30]:
+      - generic [ref=e31]: ▼ Bộ lọc
+      - generic [ref=e32]:
+        - generic [ref=e33]: Vai trò
+        - generic [ref=e35]: Trạng thái
+    - generic [ref=e37]:
+      - generic [ref=e38]: Bảng dữ liệu
+      - table [ref=e40]:
+        - rowgroup [ref=e41]:
+          - row "Ngườ dùng Email Vai trò Trạng thái Hành động" [ref=e42]:
+            - columnheader "Ngườ dùng" [ref=e43]
+            - columnheader "Email" [ref=e44]
+            - columnheader "Vai trò" [ref=e45]
+            - columnheader "Trạng thái" [ref=e46]
+            - columnheader "Hành động" [ref=e47]
+        - rowgroup [ref=e48]:
+          - row "A Tên ngườ dùng email@example.com Vai trò Trạng thái Khóa" [ref=e49]:
+            - cell "A Tên ngườ dùng" [ref=e50]:
+              - generic [ref=e51]:
+                - generic [ref=e52]: A
+                - generic [ref=e53]: Tên ngườ dùng
+            - cell "email@example.com" [ref=e54]
+            - cell "Vai trò" [ref=e55]:
+              - generic [ref=e56]: Vai trò
+            - cell "Trạng thái" [ref=e57]:
+              - generic [ref=e58]: Trạng thái
+            - cell "Khóa" [ref=e59]:
+              - generic [ref=e60]: Khóa
+          - row "U Tên ngườ dùng email@example.com Vai trò Trạng thái Khóa" [ref=e61]:
+            - cell "U Tên ngườ dùng" [ref=e62]:
+              - generic [ref=e63]:
+                - generic [ref=e64]: U
+                - generic [ref=e65]: Tên ngườ dùng
+            - cell "email@example.com" [ref=e66]
+            - cell "Vai trò" [ref=e67]:
+              - generic [ref=e68]: Vai trò
+            - cell "Trạng thái" [ref=e69]:
+              - generic [ref=e70]: Trạng thái
+            - cell "Khóa" [ref=e71]:
+              - generic [ref=e72]: Khóa
+          - row "U Tên ngườ dùng email@example.com Vai trò Trạng thái Mở khóa" [ref=e73]:
+            - cell "U Tên ngườ dùng" [ref=e74]:
+              - generic [ref=e75]:
+                - generic [ref=e76]: U
+                - generic [ref=e77]: Tên ngườ dùng
+            - cell "email@example.com" [ref=e78]
+            - cell "Vai trò" [ref=e79]:
+              - generic [ref=e80]: Vai trò
+            - cell "Trạng thái" [ref=e81]:
+              - generic [ref=e82]: Trạng thái
+            - cell "Mở khóa" [ref=e83]:
+              - generic [ref=e84]: Mở khóa

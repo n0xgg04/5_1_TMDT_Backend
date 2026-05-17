@@ -245,7 +245,7 @@ export default function HomePage() {
 
       <footer className="border-t border-slate-200 bg-white py-8">
         <div className="container-page text-center text-sm text-slate-500">
-          © {new Date().getFullYear()} Sapphire Stay · Nhóm 05 · PTIT
+          © {new Date().getFullYear()} Sapphire Stay · Nhóm 01 · PTIT
         </div>
       </footer>
     </main>

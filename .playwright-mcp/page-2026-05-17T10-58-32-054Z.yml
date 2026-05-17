@@ -1,0 +1,54 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]: SIDEBAR
+    - generic [ref=e7]:
+      - paragraph [ref=e8]: LOGO
+      - paragraph [ref=e9]: Admin Panel
+    - navigation [ref=e10]:
+      - link "Tổng quan" [ref=e11] [cursor=pointer]:
+        - /url: admin-dashboard.html
+      - link "Loại phòng" [ref=e12] [cursor=pointer]:
+        - /url: admin-rooms.html
+      - link "Quản lý phòng" [ref=e13] [cursor=pointer]:
+        - /url: admin-rooms.html
+      - link "Nhân viên" [ref=e14] [cursor=pointer]:
+        - /url: admin-users.html
+      - link "Quản lý đơn" [ref=e15] [cursor=pointer]:
+        - /url: admin-bookings.html
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]: A
+        - generic [ref=e19]:
+          - paragraph [ref=e20]: Admin
+          - paragraph [ref=e21]: ADMIN
+      - button "Đăng xuất" [ref=e22] [cursor=pointer]
+  - main [ref=e24]:
+    - generic [ref=e26]:
+      - heading "Tổng quan" [level=1] [ref=e27]
+      - paragraph [ref=e28]: Thống kê doanh thu và hiệu suất phòng
+    - generic [ref=e32]:
+      - generic [ref=e33]:
+        - generic [ref=e34]: ▼ KPI CARD
+        - paragraph [ref=e36]: Doanh thu
+        - paragraph [ref=e37]: XXX.XXX.XXX
+      - generic [ref=e38]:
+        - generic [ref=e39]: ▼ KPI CARD
+        - paragraph [ref=e41]: Tỷ lệ lấp phòng
+        - paragraph [ref=e42]: XX.X%
+      - generic [ref=e43]:
+        - generic [ref=e44]: ▼ KPI CARD
+        - paragraph [ref=e46]: Đơn xác nhận
+        - paragraph [ref=e47]: XX
+      - generic [ref=e48]:
+        - generic [ref=e49]: ▼ KPI CARD
+        - paragraph [ref=e51]: Đang lưu trú
+        - paragraph [ref=e52]: XX
+    - generic [ref=e53]:
+      - generic [ref=e54]:
+        - generic [ref=e55]: ▼ BIỂU ĐỒ
+        - heading "Doanh thu theo ngày" [level=2] [ref=e56]
+        - generic [ref=e57]: CHART
+      - generic [ref=e58]:
+        - generic [ref=e59]: ▼ BIỂU ĐỒ
+        - heading "Trạng thái đơn" [level=2] [ref=e60]
+        - generic [ref=e61]: CHART

@@ -1,0 +1,70 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]: HEADER
+    - generic [ref=e4]:
+      - generic [ref=e7]:
+        - paragraph [ref=e8]: LOGO
+        - paragraph [ref=e9]: Hệ thống đặt phòng
+      - navigation [ref=e10]:
+        - link "Trang chủ" [ref=e11] [cursor=pointer]:
+          - /url: index.html
+        - link "Tìm phòng" [ref=e12] [cursor=pointer]:
+          - /url: rooms.html
+        - link "Đơn của tôi" [ref=e13] [cursor=pointer]:
+          - /url: my-bookings.html
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - generic [ref=e16]: A
+          - generic [ref=e17]: User
+        - button "Đăng xuất" [ref=e18] [cursor=pointer]
+  - main [ref=e19]:
+    - generic [ref=e20]:
+      - heading "Xác nhận đặt phòng" [level=1] [ref=e21]
+      - paragraph [ref=e22]: Vui lòng kiểm tra lại thông tin trước khi xác nhận
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - generic [ref=e26]: THÔNG TIN LƯU TRÚ
+          - generic [ref=e27]:
+            - generic [ref=e28]: IMG
+            - generic [ref=e29]:
+              - heading "Tên phòng" [level=3] [ref=e30]
+              - paragraph [ref=e31]: Thông tin chi tiết phòng
+              - generic [ref=e32]:
+                - generic [ref=e33]: Ngày nhận
+                - generic [ref=e34]: Ngày trả
+                - generic [ref=e35]: Số khách
+        - generic [ref=e36]:
+          - generic [ref=e37]: ▼ FORM NHẬP LIỆU
+          - heading "Yêu cầu đặc biệt" [level=2] [ref=e38]
+        - generic [ref=e40]:
+          - generic [ref=e41]: ▼ LỰA CHỌN THANH TOÁN
+          - heading "Phương thức thanh toán" [level=2] [ref=e42]
+          - generic [ref=e43]:
+            - generic [ref=e44]:
+              - paragraph [ref=e46]: VNPay
+              - paragraph [ref=e47]: ATM/Visa
+            - generic [ref=e48]:
+              - paragraph [ref=e50]: MoMo
+              - paragraph [ref=e51]: Ví điện tử
+            - generic [ref=e52]:
+              - paragraph [ref=e54]: Tại quầy
+              - paragraph [ref=e55]: Tiền mặt
+      - generic [ref=e57]:
+        - generic [ref=e58]: ▼ TÓM TẮT ĐƠN
+        - heading "Tóm tắt đơn" [level=2] [ref=e59]
+        - generic [ref=e60]:
+          - generic [ref=e61]:
+            - generic [ref=e62]: Giá x Số đêm
+            - generic [ref=e63]: Thành tiền
+          - generic [ref=e64]:
+            - generic [ref=e65]: Phí dịch vụ
+            - generic [ref=e66]: Miễn phí
+          - generic [ref=e67]:
+            - generic [ref=e68]: Tổng cộng
+            - generic [ref=e69]: Giá tiền
+          - generic [ref=e70]: Xác nhận đặt phòng
+          - paragraph [ref=e71]: Đơn sẽ tự động hủy sau 15 phút nếu không thanh toán.
+  - contentinfo [ref=e72]:
+    - generic [ref=e73]: FOOTER
+    - generic [ref=e74]: 2025 LOGO · Nhóm 05 · PTIT

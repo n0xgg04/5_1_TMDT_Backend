@@ -11,6 +11,8 @@ import {
   Clock,
   CreditCard,
   AlertCircle,
+  Receipt,
+  Upload,
 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
@@ -29,10 +31,12 @@ const STATUSES:
   | { value: string; label: string }[] = [
   { value: "", label: "Tất cả" },
   { value: "PENDING_PAYMENT", label: "Chờ thanh toán" },
+  { value: "PENDING_APPROVAL", label: "Chờ duyệt" },
   { value: "CONFIRMED", label: "Đã xác nhận" },
   { value: "CHECKED_IN", label: "Đang lưu trú" },
   { value: "CHECKED_OUT", label: "Đã hoàn thành" },
   { value: "CANCELLED", label: "Đã hủy" },
+  { value: "REJECTED", label: "Bị từ chối" },
 ];
 
 export default function MyBookingsPage() {
@@ -79,6 +83,18 @@ export default function MyBookingsPage() {
     },
     onError: (e) =>
       toast.error("Không thể mở thanh toán", getApiErrorMessage(e)),
+  });
+
+  const uploadM = useMutation({
+    mutationFn: ({ id, url }: { id: string; url: string }) =>
+      api
+        .post(`/bookings/${id}/upload-receipt`, { receiptImageUrl: url })
+        .then((r) => r.data),
+    onSuccess: () => {
+      toast.success("Đã upload biên lai");
+      qc.invalidateQueries({ queryKey: ["my-bookings"] });
+    },
+    onError: (e) => toast.error("Upload thất bại", getApiErrorMessage(e)),
   });
 
   const items: Booking[] = q.data?.data ?? [];
@@ -133,6 +149,8 @@ export default function MyBookingsPage() {
             onCancel={() => setCancelTarget(b)}
             onPay={() => payM.mutate(b.id)}
             paying={payM.isPending}
+            onUpload={(id, url) => uploadM.mutate({ id, url })}
+            uploading={uploadM.isPending}
           />
         ))}
       </div>
@@ -171,18 +189,30 @@ function BookingItem({
   onCancel,
   onPay,
   paying,
+  onUpload,
+  uploading,
 }: {
   booking: Booking;
   onCancel: () => void;
   onPay: () => void;
   paying: boolean;
+  onUpload: (id: string, url: string) => void;
+  uploading: boolean;
 }) {
   const nights = diffNights(booking.checkIn, booking.checkOut);
-  const canCancel: BookingStatus[] = ["PENDING_PAYMENT", "CONFIRMED"];
+  const canCancel: BookingStatus[] = [
+    "PENDING_PAYMENT",
+    "PENDING_APPROVAL",
+    "CONFIRMED",
+  ];
   const canPay: BookingStatus[] = ["PENDING_PAYMENT"];
+  const canUpload: BookingStatus[] = ["PENDING_PAYMENT"];
+  const [receiptUrl, setReceiptUrl] = useState("");
+  const [showUpload, setShowUpload] = useState(false);
+
   return (
     <Card>
-      <CardContent className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <CardContent className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between py-5">
         <div className="flex flex-1 items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
             <BedDouble className="h-6 w-6" />
@@ -202,7 +232,10 @@ function BookingItem({
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
               <span className="inline-flex items-center gap-1.5">
                 <Calendar className="h-4 w-4 text-slate-400" />
-                {formatDate(booking.checkIn)} → {formatDate(booking.checkOut)} (
+                {formatDate(booking.checkIn)}{" "}
+                {booking.checkInTime ? `(${booking.checkInTime})` : ""} →{" "}
+                {formatDate(booking.checkOut)}{" "}
+                {booking.checkOutTime ? `(${booking.checkOutTime})` : ""} (
                 {nights} đêm)
               </span>
               {booking.status === "PENDING_PAYMENT" && (
@@ -212,6 +245,54 @@ function BookingItem({
                 </span>
               )}
             </div>
+            {booking.specialRequests && (
+              <p className="mt-1 text-xs text-slate-500">
+                Yêu cầu: {booking.specialRequests}
+              </p>
+            )}
+            {booking.rejectedReason && (
+              <p className="mt-1 text-xs text-rose-600">
+                Lý do từ chối: {booking.rejectedReason}
+              </p>
+            )}
+            {canUpload.includes(booking.status) && !showUpload && (
+              <button
+                onClick={() => setShowUpload(true)}
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline"
+              >
+                <Receipt className="h-3.5 w-3.5" /> Upload biên lai chuyển khoản
+              </button>
+            )}
+            {showUpload && (
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Dán link ảnh biên lai"
+                  value={receiptUrl}
+                  onChange={(e) => setReceiptUrl(e.target.value)}
+                  className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs outline-none focus:border-brand-500"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (!receiptUrl.trim()) return;
+                    onUpload(booking.id, receiptUrl.trim());
+                    setShowUpload(false);
+                    setReceiptUrl("");
+                  }}
+                  loading={uploading}
+                >
+                  <Upload className="h-3.5 w-3.5" /> Gửi
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowUpload(false)}
+                >
+                  Hủy
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -219,6 +300,12 @@ function BookingItem({
           <p className="text-xl font-bold text-brand-700">
             {formatCurrency(booking.totalAmount)}
           </p>
+          {booking.payment && (
+            <p className="text-xs text-slate-500">
+              Đã thanh toán: {formatCurrency(booking.payment.amount)} (
+              {booking.payment.paymentType})
+            </p>
+          )}
           <div className="flex gap-2">
             {canPay.includes(booking.status) && (
               <Button size="sm" onClick={onPay} loading={paying}>

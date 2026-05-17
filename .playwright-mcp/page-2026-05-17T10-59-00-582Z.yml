@@ -1,0 +1,71 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]: SIDEBAR
+    - generic [ref=e7]:
+      - paragraph [ref=e8]: LOGO
+      - paragraph [ref=e9]: Admin Panel
+    - navigation [ref=e10]:
+      - link "Tổng quan" [ref=e11] [cursor=pointer]:
+        - /url: admin-dashboard.html
+      - link "Loại phòng" [ref=e12] [cursor=pointer]:
+        - /url: admin-rooms.html
+      - link "Quản lý phòng" [ref=e13] [cursor=pointer]:
+        - /url: admin-rooms.html
+      - link "Nhân viên" [ref=e14] [cursor=pointer]:
+        - /url: admin-users.html
+      - link "Quản lý đơn" [ref=e15] [cursor=pointer]:
+        - /url: admin-bookings.html
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]: A
+        - generic [ref=e19]:
+          - paragraph [ref=e20]: Admin
+          - paragraph [ref=e21]: ADMIN
+      - button "Đăng xuất" [ref=e22] [cursor=pointer]
+  - main [ref=e24]:
+    - generic [ref=e26]:
+      - heading "Quản lý đơn hàng" [level=1] [ref=e27]
+      - paragraph [ref=e28]: Theo dõi và xử lý các đơn đặt phòng
+    - generic [ref=e32]:
+      - generic [ref=e33]: BẢNG DỮ LIỆU
+      - table [ref=e35]:
+        - rowgroup [ref=e36]:
+          - row "Mã đơn Khách hàng Phòng Ngày Tổng tiền Trạng thái Hành động" [ref=e37]:
+            - columnheader "Mã đơn" [ref=e38]
+            - columnheader "Khách hàng" [ref=e39]
+            - columnheader "Phòng" [ref=e40]
+            - columnheader "Ngày" [ref=e41]
+            - columnheader "Tổng tiền" [ref=e42]
+            - columnheader "Trạng thái" [ref=e43]
+            - columnheader "Hành động" [ref=e44]
+        - rowgroup [ref=e45]:
+          - 'row "Mã đơn hàng Tên khách hàng Loại phòng · #XXX Ngày nhận → Ngày trả Giá tiền Trạng thái Chi tiết" [ref=e46]':
+            - cell "Mã đơn hàng" [ref=e47]
+            - cell "Tên khách hàng" [ref=e48]
+            - 'cell "Loại phòng · #XXX" [ref=e49]'
+            - cell "Ngày nhận → Ngày trả" [ref=e50]
+            - cell "Giá tiền" [ref=e51]
+            - cell "Trạng thái" [ref=e52]:
+              - generic [ref=e53]: Trạng thái
+            - cell "Chi tiết" [ref=e54]:
+              - generic [ref=e55]: Chi tiết
+          - 'row "Mã đơn hàng Tên khách hàng Loại phòng · #XXX Ngày nhận → Ngày trả Giá tiền Trạng thái Chi tiết" [ref=e56]':
+            - cell "Mã đơn hàng" [ref=e57]
+            - cell "Tên khách hàng" [ref=e58]
+            - 'cell "Loại phòng · #XXX" [ref=e59]'
+            - cell "Ngày nhận → Ngày trả" [ref=e60]
+            - cell "Giá tiền" [ref=e61]
+            - cell "Trạng thái" [ref=e62]:
+              - generic [ref=e63]: Trạng thái
+            - cell "Chi tiết" [ref=e64]:
+              - generic [ref=e65]: Chi tiết
+          - 'row "Mã đơn hàng Tên khách hàng Loại phòng · #XXX Ngày nhận → Ngày trả Giá tiền Trạng thái Chi tiết" [ref=e66]':
+            - cell "Mã đơn hàng" [ref=e67]
+            - cell "Tên khách hàng" [ref=e68]
+            - 'cell "Loại phòng · #XXX" [ref=e69]'
+            - cell "Ngày nhận → Ngày trả" [ref=e70]
+            - cell "Giá tiền" [ref=e71]
+            - cell "Trạng thái" [ref=e72]:
+              - generic [ref=e73]: Trạng thái
+            - cell "Chi tiết" [ref=e74]:
+              - generic [ref=e75]: Chi tiết

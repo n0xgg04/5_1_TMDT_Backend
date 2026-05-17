@@ -13,15 +13,21 @@ import {
   CreditCard,
   Wallet,
   Banknote,
+  Building2,
+  Receipt,
+  Clock,
+  Baby,
+  MessageSquare,
 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/lib/auth-store";
 import { toast } from "@/lib/toast";
 import { formatCurrency, formatDate, diffNights, cn } from "@/lib/utils";
+import type { PaymentMethodInfo } from "@/lib/types";
 
 interface RoomTypeDetail {
   id: string;
@@ -34,7 +40,7 @@ interface RoomTypeDetail {
   amenities: string[];
 }
 
-type Method = "VNPAY" | "MOMO" | "CASH";
+type Method = "VNPAY" | "MOMO" | "CASH" | "BANK_TRANSFER" | "DEPOSIT";
 
 export default function BookingPage() {
   return (
@@ -57,7 +63,14 @@ function BookingInner() {
   const guests = Number(sp.get("guests") ?? 2);
 
   const [notes, setNotes] = useState("");
+  const [specialRequests, setSpecialRequests] = useState("");
+  const [checkInTime, setCheckInTime] = useState("14:00");
+  const [checkOutTime, setCheckOutTime] = useState("12:00");
+  const [adults, setAdults] = useState(guests);
+  const [children, setChildren] = useState(0);
   const [method, setMethod] = useState<Method>("VNPAY");
+  const [receiptUrl, setReceiptUrl] = useState("");
+  const [bankInfo, setBankInfo] = useState<PaymentMethodInfo | null>(null);
 
   useEffect(() => {
     if (hydrated && !user) {
@@ -74,17 +87,35 @@ function BookingInner() {
       api.get<RoomTypeDetail>(`/rooms/types/${roomTypeId}`).then((r) => r.data),
   });
 
-  // Recompute price (using search endpoint with constraint)
   const priceQ = useQuery({
-    queryKey: ["bookingPrice", roomTypeId, checkIn, checkOut, guests],
+    queryKey: [
+      "bookingPrice",
+      roomTypeId,
+      checkIn,
+      checkOut,
+      adults + children,
+    ],
     enabled: Boolean(roomTypeId && checkIn && checkOut),
     queryFn: () =>
       api
         .get("/search", {
-          params: { checkIn, checkOut, guests, roomTypeId },
+          params: { checkIn, checkOut, guests: adults + children, roomTypeId },
         })
         .then((r) => r.data?.[0]),
   });
+
+  const bankInfoQ = useQuery({
+    queryKey: ["payment-methods"],
+    enabled: method === "BANK_TRANSFER",
+    queryFn: () =>
+      api
+        .get<PaymentMethodInfo[]>("/payment-methods")
+        .then((r) => r.data?.[0] ?? null),
+  });
+
+  useEffect(() => {
+    if (bankInfoQ.data) setBankInfo(bankInfoQ.data);
+  }, [bankInfoQ.data]);
 
   const create = useMutation({
     mutationFn: () =>
@@ -93,16 +124,42 @@ function BookingInner() {
           roomId,
           checkIn,
           checkOut,
+          checkInTime,
+          checkOutTime,
+          adults,
+          children,
           guestNotes: notes || undefined,
+          specialRequests: specialRequests || undefined,
         })
         .then((r) => r.data),
     onSuccess: async (booking) => {
       toast.success("Tạo đơn thành công", `Mã đơn: ${booking.bookingCode}`);
-      // Init payment
       try {
+        if (method === "BANK_TRANSFER") {
+          if (!receiptUrl.trim()) {
+            toast.info(
+              "Vui lòng chuyển khoản và upload biên lai",
+              `Số tiền: ${formatCurrency(total)}`,
+            );
+            return;
+          }
+          await api.post(`/bookings/${booking.id}/upload-receipt`, {
+            receiptImageUrl: receiptUrl,
+          });
+          toast.success("Đã upload biên lai", "Đơn đang chờ staff xác nhận");
+          router.push("/my-bookings");
+          return;
+        }
+
+        const isDeposit = method === "DEPOSIT";
         const pay = await api
-          .post("/payments/initiate", { bookingId: booking.id, method })
+          .post("/payments/initiate", {
+            bookingId: booking.id,
+            method: isDeposit ? "VNPAY" : method,
+            paymentType: isDeposit ? "DEPOSIT" : "FULL",
+          })
           .then((r) => r.data);
+
         if (pay.gatewayUrl) {
           toast.info("Đang chuyển sang cổng thanh toán…");
           window.location.href = pay.gatewayUrl;
@@ -147,6 +204,7 @@ function BookingInner() {
   const nights = diffNights(checkIn, checkOut);
   const total = priceQ.data?.totalPrice ?? 0;
   const pricePerNight = priceQ.data?.pricePerNight ?? 0;
+  const depositAmount = Math.floor(total * 0.3);
 
   return (
     <main className="container-page py-8">
@@ -170,7 +228,6 @@ function BookingInner() {
                 <Skeleton className="h-32 w-full" />
               ) : rt.data ? (
                 <div className="flex gap-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={
                       rt.data.images[0] ||
@@ -201,7 +258,7 @@ function BookingInner() {
                       <Stat
                         icon={<Users className="h-4 w-4" />}
                         label="Khách"
-                        value={`${guests} người`}
+                        value={`${adults + children} người`}
                       />
                     </div>
                   </div>
@@ -212,15 +269,77 @@ function BookingInner() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Yêu cầu đặc biệt</CardTitle>
+              <CardTitle>Chi tiết đặt phòng</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Textarea
-                rows={4}
-                placeholder="Ví dụ: Phòng tầng cao, gần thang máy…"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Giờ nhận phòng
+                  </label>
+                  <Input
+                    type="time"
+                    value={checkInTime}
+                    onChange={(e) => setCheckInTime(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Giờ trả phòng
+                  </label>
+                  <Input
+                    type="time"
+                    value={checkOutTime}
+                    onChange={(e) => setCheckOutTime(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Người lớn
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={adults}
+                    onChange={(e) => setAdults(Number(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Trẻ em
+                  </label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={children}
+                    onChange={(e) => setChildren(Number(e.target.value))}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Yêu cầu đặc biệt
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Ví dụ: View biển, không hút thuốc, giường extra..."
+                  value={specialRequests}
+                  onChange={(e) => setSpecialRequests(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 p-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Ghi chú
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Ví dụ: Phòng tầng cao, gần thang máy…"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 p-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -229,20 +348,27 @@ function BookingInner() {
               <CardTitle>Phương thức thanh toán</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <PayOption
                   active={method === "VNPAY"}
                   onClick={() => setMethod("VNPAY")}
                   icon={<CreditCard className="h-5 w-5" />}
                   title="VNPay"
-                  desc="Thanh toán bằng ATM/Visa qua VNPay"
+                  desc="Thanh toán bằng ATM/Visa"
                 />
                 <PayOption
-                  active={method === "MOMO"}
-                  onClick={() => setMethod("MOMO")}
+                  active={method === "DEPOSIT"}
+                  onClick={() => setMethod("DEPOSIT")}
                   icon={<Wallet className="h-5 w-5" />}
-                  title="MoMo"
-                  desc="Ví điện tử MoMo"
+                  title="Đặt cọc (30%)"
+                  desc={`${formatCurrency(depositAmount)} để giữ phòng`}
+                />
+                <PayOption
+                  active={method === "BANK_TRANSFER"}
+                  onClick={() => setMethod("BANK_TRANSFER")}
+                  icon={<Building2 className="h-5 w-5" />}
+                  title="Chuyển khoản"
+                  desc="CK ngân hàng + upload biên lai"
                 />
                 <PayOption
                   active={method === "CASH"}
@@ -252,6 +378,56 @@ function BookingInner() {
                   desc="Thanh toán khi nhận phòng"
                 />
               </div>
+
+              {method === "BANK_TRANSFER" && (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  {bankInfo ? (
+                    <div className="space-y-2 text-sm">
+                      <p className="font-semibold text-amber-900">
+                        Thông tin chuyển khoản
+                      </p>
+                      <p className="text-amber-800">
+                        Ngân hàng: {bankInfo.bankName}
+                      </p>
+                      <p className="text-amber-800">
+                        Số TK: {bankInfo.accountNumber}
+                      </p>
+                      <p className="text-amber-800">
+                        Chủ TK: {bankInfo.accountHolder}
+                      </p>
+                      <p className="text-amber-800">
+                        Số tiền: {formatCurrency(total)}
+                      </p>
+                      <p className="text-amber-800">
+                        Nội dung: Đặt phòng Sapphire Stay
+                      </p>
+                      <Input
+                        className="mt-2"
+                        placeholder="Dán link ảnh biên lai chuyển khoản"
+                        value={receiptUrl}
+                        onChange={(e) => setReceiptUrl(e.target.value)}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-amber-800">
+                      Đang tải thông tin TK ngân hàng…
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {method === "DEPOSIT" && (
+                <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-800">
+                  <p className="font-semibold">
+                    Bạn sẽ thanh toán trước {formatCurrency(depositAmount)}{" "}
+                    (30%) qua VNPay.
+                  </p>
+                  <p className="mt-1">
+                    Số tiền còn lại {formatCurrency(total - depositAmount)} sẽ
+                    thanh toán khi check-in.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -267,6 +443,12 @@ function BookingInner() {
                 value={formatCurrency(pricePerNight * nights)}
               />
               <Row label="Phí dịch vụ" value="Miễn phí" />
+              {method === "DEPOSIT" && (
+                <Row
+                  label="Đặt cọc (30%)"
+                  value={formatCurrency(depositAmount)}
+                />
+              )}
               <div className="border-t border-slate-100 pt-3">
                 <Row bold label="Tổng cộng" value={formatCurrency(total)} />
               </div>
@@ -274,13 +456,20 @@ function BookingInner() {
                 size="lg"
                 className="w-full"
                 loading={create.isPending}
-                disabled={!user || priceQ.isLoading}
+                disabled={
+                  !user ||
+                  priceQ.isLoading ||
+                  (method === "BANK_TRANSFER" &&
+                    !receiptUrl.trim() &&
+                    bankInfo !== null)
+                }
                 onClick={() => create.mutate()}
               >
                 <CheckCircle2 className="h-4 w-4" /> Xác nhận đặt phòng
               </Button>
               <p className="text-xs text-slate-500">
-                Đơn sẽ tự động hủy sau 15 phút nếu không thanh toán.
+                Đơn sẽ được staff xác nhận sau khi thanh toán. Vui lòng kiểm tra
+                email/SMS.
               </p>
             </CardContent>
           </Card>

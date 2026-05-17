@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wireframe — Lịch sử đơn / Hồ sơ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="bg-white text-slate-800">
+    <header class="wf-zone border-b border-slate-200 bg-white">
+      <span class="wf-zone-label">Header</span>
+      <div
+        class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between"
+      >
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-lg bg-slate-200"></div>
+          <div>
+            <p class="text-sm font-bold">LOGO</p>
+            <p class="text-xs text-slate-500">Hệ thống đặt phòng</p>
+          </div>
+        </div>
+        <nav class="hidden md:flex gap-1">
+          <a href="index.html" class="wf-nav-link">Trang chủ</a>
+          <a href="rooms.html" class="wf-nav-link">Tìm phòng</a>
+          <a href="my-bookings.html" class="wf-nav-link-active">Đơn của tôi</a>
+        </nav>
+        <div class="flex gap-2 items-center">
+          <div
+            class="flex items-center gap-2 rounded-full bg-slate-100 py-1 pr-3 pl-1"
+          >
+            <span
+              class="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white"
+              >A</span
+            >
+            <span class="text-sm font-medium text-slate-700">User</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-4">
+        <div class="lg:col-span-1">
+          <div class="relative wf-box p-4">
+            <span class="wf-center-label-sm">▼ Sidebar hồ sơ</span>
+            <div class="flex items-center gap-3 mb-4">
+              <div
+                class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-white font-bold"
+              >
+                A
+              </div>
+              <div>
+                <p class="font-semibold text-sm">User Name</p>
+                <p class="text-xs text-slate-500">user@email.com</p>
+              </div>
+            </div>
+            <nav class="space-y-1">
+              <a href="#" class="wf-nav-link-active text-sm"
+                >Lịch sử đơn hàng</a
+              >
+              <a href="#" class="wf-nav-link text-sm">Thông tin cá nhân</a>
+              <a href="#" class="wf-nav-link text-sm">Đổi mật khẩu</a>
+            </nav>
+          </div>
+        </div>
+
+        <div class="lg:col-span-3 space-y-4">
+          <div
+            class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+          >
+            <div>
+              <h1 class="text-xl font-bold">Đơn của tôi</h1>
+              <p class="text-sm text-slate-500 mt-1">
+                Xem và quản lý các đơn đặt phòng
+              </p>
+            </div>
+            <div class="w-full sm:w-48">
+              <label class="text-xs text-slate-500">Trạng thái</label>
+              <div class="wf-input mt-1"></div>
+            </div>
+          </div>
+
+          <div class="relative wf-box p-4">
+            <span class="wf-center-label-sm">▼ Item đơn hàng</span>
+            <div
+              class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
+            >
+              <div class="flex flex-1 items-start gap-3">
+                <div
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 text-sm font-bold"
+                >
+                  RM
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2 justify-center">
+                    <p class="font-semibold text-sm">Tên phòng · #XXX</p>
+                    <span class="wf-badge">Trạng thái</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 text-center">
+                    Mã đơn hàng
+                  </p>
+                  <p class="text-xs text-slate-600 mt-1 text-center">
+                    Ngày nhận → Ngày trả (Số đêm)
+                  </p>
+                </div>
+              </div>
+              <div class="flex flex-col items-end gap-2">
+                <p class="text-lg font-bold">Giá tiền</p>
+                <div class="flex gap-2">
+                  <div class="wf-btn text-xs px-3 py-1.5">Thanh toán</div>
+                  <div class="wf-btn-outline text-xs px-3 py-1.5">Hủy</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="relative wf-box p-4">
+            <span class="wf-center-label-sm">▼ Item đơn hàng</span>
+            <div
+              class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
+            >
+              <div class="flex flex-1 items-start gap-3">
+                <div
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 text-sm font-bold"
+                >
+                  RM
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2 justify-center">
+                    <p class="font-semibold text-sm">Tên phòng · #XXX</p>
+                    <span class="wf-badge">Trạng thái</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 text-center">
+                    Mã đơn hàng
+                  </p>
+                  <p class="text-xs text-slate-600 mt-1 text-center">
+                    Ngày nhận → Ngày trả (Số đêm)
+                  </p>
+                </div>
+              </div>
+              <div class="flex flex-col items-end gap-2">
+                <p class="text-lg font-bold">Giá tiền</p>
+                <div class="wf-btn-outline text-xs px-3 py-1.5">Đánh giá</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="wf-zone border-t border-slate-200 bg-white py-6">
+      <span class="wf-zone-label">Footer</span>
+      <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+        2026 LOGO · Nhóm 1 · PTIT
+      </div>
+    </footer>
+  </body>
+</html>

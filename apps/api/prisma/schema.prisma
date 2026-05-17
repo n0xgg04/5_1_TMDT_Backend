@@ -33,10 +33,12 @@ enum PricingType {
 enum BookingStatus {
   PENDING_PAYMENT
   PAYING
+  PENDING_APPROVAL
   CONFIRMED
   CHECKED_IN
   CHECKED_OUT
   CANCELLED
+  REJECTED
   EXPIRED
 }
 
@@ -44,6 +46,13 @@ enum PaymentMethod {
   VNPAY
   MOMO
   CASH
+  BANK_TRANSFER
+}
+
+enum PaymentType {
+  FULL
+  DEPOSIT
+  BALANCE
 }
 
 enum PaymentStatus {
@@ -67,10 +76,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  bookings      Booking[]
-  reviews       Review[]
-  payments      Payment[]
-  notifications Notification[]
+  bookings       Booking[]
+  approvedBookings Booking[] @relation(name: "approvedBookings")
+  reviews        Review[]
+  payments       Payment[]
+  notifications  Notification[]
 
   @@map("users")
 }
@@ -135,24 +145,35 @@ model Booking {
   roomId          String
   checkIn         DateTime      @db.Date
   checkOut        DateTime      @db.Date
+  checkInTime     String?       @default("14:00")
+  checkOutTime    String?       @default("12:00")
+  adults          Int           @default(2)
+  children        Int           @default(0)
   totalAmount     Decimal       @db.Decimal(12, 2)
   status          BookingStatus @default(PENDING_PAYMENT)
   paymentDeadline DateTime
   checkInActual   DateTime?
   checkOutActual  DateTime?
   guestNotes      String?
+  specialRequests String?
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectedReason  String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  customer User           @relation(fields: [customerId], references: [id])
-  room     Room           @relation(fields: [roomId], references: [id])
-  addons   BookingAddon[]
-  review   Review?
-  payment  Payment?
+  customer    User                @relation(fields: [customerId], references: [id])
+  room        Room                @relation(fields: [roomId], references: [id])
+  approvedBy  User?               @relation(fields: [approvedById], references: [id], name: "approvedBookings")
+  addons      BookingAddon[]
+  review      Review?
+  payment     Payment?
+  attachments BookingAttachment[]
 
   @@index([customerId, status])
   @@index([checkIn, checkOut, status])
   @@index([paymentDeadline, status])
+  @@index([status, approvedAt])
   @@map("bookings")
 }
 
@@ -194,11 +215,13 @@ model Payment {
   bookingId            String        @unique
   customerId           String
   method               PaymentMethod
+  paymentType          PaymentType   @default(FULL)
   amount               Decimal       @db.Decimal(12, 2)
   currency             String        @default("VND")
   status               PaymentStatus @default(PENDING)
   gatewayTransactionId String?       @unique
   gatewayUrl           String?
+  receiptImageUrl      String?
   paidAt               DateTime?
   failureReason        String?
   refundedAt           DateTime?
@@ -210,6 +233,32 @@ model Payment {
   customer User    @relation(fields: [customerId], references: [id])
 
   @@map("payments")
+}
+
+model PaymentMethodInfo {
+  id             String   @id @default(cuid())
+  bankName       String
+  accountNumber  String
+  accountHolder  String
+  branch         String?
+  qrImageUrl     String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("payment_method_infos")
+}
+
+model BookingAttachment {
+  id         String   @id @default(cuid())
+  bookingId  String
+  type       String   @default("receipt")
+  fileUrl    String
+  uploadedAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("booking_attachments")
 }
 
 model Notification {

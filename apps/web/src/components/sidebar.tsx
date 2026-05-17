@@ -12,6 +12,7 @@ import {
   Hotel,
   Map,
   CheckSquare,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
@@ -58,6 +59,12 @@ const ITEMS: NavItem[] = [
     href: "/staff/check-in",
     label: "Check-in / out",
     icon: CheckSquare,
+    roles: ["RECEPTIONIST", "ADMIN"],
+  },
+  {
+    href: "/staff/pending-bookings",
+    label: "Duyệt đặt phòng",
+    icon: ClipboardList,
     roles: ["RECEPTIONIST", "ADMIN"],
   },
 ];

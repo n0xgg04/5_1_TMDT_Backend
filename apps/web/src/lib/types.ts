@@ -25,10 +25,12 @@ export type RoomStatus =
 export type BookingStatus =
   | "PENDING_PAYMENT"
   | "PAYING"
+  | "PENDING_APPROVAL"
   | "CONFIRMED"
   | "CHECKED_IN"
   | "CHECKED_OUT"
   | "CANCELLED"
+  | "REJECTED"
   | "EXPIRED";
 
 export interface RoomType {
@@ -68,13 +70,53 @@ export interface Booking {
   roomId: string;
   checkIn: string;
   checkOut: string;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  adults?: number;
+  children?: number;
   totalAmount: string | number;
   status: BookingStatus;
   paymentDeadline: string;
   guestNotes?: string | null;
+  specialRequests?: string | null;
+  approvedById?: string | null;
+  approvedAt?: string | null;
+  rejectedReason?: string | null;
   createdAt: string;
   room?: Room & { roomType?: RoomType };
   customer?: AuthUser;
+  payment?: Payment;
+  attachments?: BookingAttachment[];
+}
+
+export interface Payment {
+  id: string;
+  bookingId: string;
+  method: string;
+  paymentType: string;
+  amount: string | number;
+  status: string;
+  receiptImageUrl?: string | null;
+  gatewayUrl?: string | null;
+  paidAt?: string | null;
+}
+
+export interface BookingAttachment {
+  id: string;
+  bookingId: string;
+  type: string;
+  fileUrl: string;
+  uploadedAt: string;
+}
+
+export interface PaymentMethodInfo {
+  id: string;
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+  branch?: string | null;
+  qrImageUrl?: string | null;
+  isActive: boolean;
 }
 
 export interface Paginated<T> {

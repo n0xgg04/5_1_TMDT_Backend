@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wireframe — Quản lý ngườ dùng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="bg-slate-50 text-slate-800">
+    <div class="flex min-h-screen">
+      <aside class="wf-zone wf-sidebar">
+        <span class="wf-zone-label">Sidebar</span>
+        <div
+          class="flex h-16 items-center gap-2 border-b border-slate-200 px-4"
+        >
+          <div class="w-9 h-9 rounded-lg bg-slate-200"></div>
+          <div>
+            <p class="text-sm font-bold">LOGO</p>
+            <p class="text-xs uppercase tracking-wide text-slate-500">
+              Admin Panel
+            </p>
+          </div>
+        </div>
+        <nav class="flex-1 space-y-0.5 overflow-y-auto p-3">
+          <a
+            href="admin-dashboard.html"
+            class="wf-nav-link flex items-center gap-3"
+            >Tổng quan</a
+          >
+          <a href="admin-rooms.html" class="wf-nav-link flex items-center gap-3"
+            >Loại phòng</a
+          >
+          <a href="admin-rooms.html" class="wf-nav-link flex items-center gap-3"
+            >Quản lý phòng</a
+          >
+          <a
+            href="admin-users.html"
+            class="wf-nav-link-active flex items-center gap-3"
+            >Nhân viên</a
+          >
+          <a
+            href="admin-bookings.html"
+            class="wf-nav-link flex items-center gap-3"
+            >Quản lý đơn</a
+          >
+        </nav>
+        <div class="border-t border-slate-200 p-3">
+          <div class="mb-2 flex items-center gap-3 rounded-lg p-2">
+            <span
+              class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-sm font-semibold text-white"
+              >A</span
+            >
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-semibold">Admin</p>
+              <p class="truncate text-xs text-slate-500">ADMIN</p>
+            </div>
+          </div>
+          <button
+            class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+          >
+            Đăng xuất
+          </button>
+        </div>
+      </aside>
+
+      <div class="flex-1 overflow-x-hidden">
+        <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-xl font-bold">Quản lý ngườ dùng</h1>
+              <p class="text-sm text-slate-500 mt-1">
+                Tạo tài khoản nhân viên, khóa/mở khóa tài khoản
+              </p>
+            </div>
+            <div class="wf-btn text-xs px-3 py-2">+ Thêm nhân viên</div>
+          </div>
+
+          <div class="relative wf-box mt-4 p-4">
+            <span class="wf-center-label-sm">▼ Bộ lọc</span>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="text-xs text-slate-500">Vai trò</label>
+                <div class="wf-input mt-1"></div>
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Trạng thái</label>
+                <div class="wf-input mt-1"></div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="wf-zone mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow"
+          >
+            <span class="wf-zone-label">Bảng dữ liệu</span>
+            <div class="overflow-x-auto">
+              <table class="wf-table">
+                <thead>
+                  <tr>
+                    <th>Ngườ dùng</th>
+                    <th>Email</th>
+                    <th>Vai trò</th>
+                    <th>Trạng thái</th>
+                    <th class="text-right">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="font-semibold">
+                      <div class="flex items-center gap-3">
+                        <span
+                          class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white"
+                          >A</span
+                        >
+                        <span>Tên ngườ dùng</span>
+                      </div>
+                    </td>
+                    <td>email@example.com</td>
+                    <td><span class="wf-badge">Vai trò</span></td>
+                    <td><span class="wf-badge">Trạng thái</span></td>
+                    <td class="text-right">
+                      <div
+                        class="wf-btn-outline text-xs px-2 py-1 inline-block"
+                      >
+                        Khóa
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">
+                      <div class="flex items-center gap-3">
+                        <span
+                          class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-600 text-xs font-semibold text-white"
+                          >U</span
+                        >
+                        <span>Tên ngườ dùng</span>
+                      </div>
+                    </td>
+                    <td>email@example.com</td>
+                    <td><span class="wf-badge">Vai trò</span></td>
+                    <td><span class="wf-badge">Trạng thái</span></td>
+                    <td class="text-right">
+                      <div
+                        class="wf-btn-outline text-xs px-2 py-1 inline-block"
+                      >
+                        Khóa
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">
+                      <div class="flex items-center gap-3">
+                        <span
+                          class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-400 text-xs font-semibold text-white"
+                          >U</span
+                        >
+                        <span>Tên ngườ dùng</span>
+                      </div>
+                    </td>
+                    <td>email@example.com</td>
+                    <td><span class="wf-badge">Vai trò</span></td>
+                    <td><span class="wf-badge">Trạng thái</span></td>
+                    <td class="text-right">
+                      <div
+                        class="wf-btn-outline text-xs px-2 py-1 inline-block"
+                      >
+                        Mở khóa
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

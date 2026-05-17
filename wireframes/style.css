@@ -1,0 +1,212 @@
+html,
+body {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Helvetica,
+    Arial,
+    "Apple Color Emoji",
+    "Segoe UI Emoji";
+}
+
+.wf-zone {
+  position: relative;
+}
+.wf-zone-label {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  left: auto;
+  transform: none;
+  background: #fff;
+  padding: 2px 10px;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 700;
+  border: 1px dashed #94a3b8;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  z-index: 9999;
+}
+
+.wf-box {
+  border: 1.5px dashed #94a3b8;
+  background: #ffffff;
+  border-radius: 0.75rem;
+}
+.wf-box-light {
+  border: 1.5px dashed #cbd5e1;
+  background: #f8fafc;
+  border-radius: 0.75rem;
+}
+
+.wf-img {
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1.5px solid #334155;
+  background: #334155;
+  color: #ffffff;
+}
+.wf-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1.5px dashed #64748b;
+  background: #ffffff;
+  color: #334155;
+}
+
+.wf-input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1.5px dashed #94a3b8;
+  background: #ffffff;
+  padding: 0.5rem 0.75rem;
+  font-size: 13px;
+  color: #475569;
+}
+
+.wf-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.wf-table thead th {
+  text-align: center;
+  padding: 0.75rem 1rem;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  border-bottom: 1.5px dashed #cbd5e1;
+  background: #f8fafc;
+}
+.wf-table tbody td {
+  padding: 0.75rem 1rem;
+  font-size: 13px;
+  color: #334155;
+  border-bottom: 1px dashed #e2e8f0;
+  text-align: center;
+}
+.wf-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.wf-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px dashed #94a3b8;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.wf-center-label {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  left: auto;
+  transform: none;
+  background: #ffffff;
+  border: 2px dashed #0ea5e9;
+  color: #0369a1;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  z-index: 9998;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.12);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.wf-center-label-sm {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  left: auto;
+  transform: none;
+  background: #ffffff;
+  border: 2px dashed #0ea5e9;
+  color: #0369a1;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  z-index: 9998;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.12);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.wf-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.45);
+  z-index: 10;
+  border-radius: inherit;
+}
+
+.wf-nav-link {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+}
+.wf-nav-link:hover {
+  background: #f1f5f9;
+}
+.wf-nav-link-active {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  background: #e2e8f0;
+}
+
+.wf-sidebar {
+  width: 16rem;
+  flex-shrink: 0;
+  border-right: 1.5px dashed #cbd5e1;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.wf-divider {
+  border-top: 1.5px dashed #e2e8f0;
+}

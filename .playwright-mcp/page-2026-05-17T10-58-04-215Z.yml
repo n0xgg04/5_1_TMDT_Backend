@@ -1,0 +1,50 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]: HEADER
+    - generic [ref=e4]:
+      - generic [ref=e7]:
+        - paragraph [ref=e8]: LOGO
+        - paragraph [ref=e9]: Hệ thống đặt phòng
+      - navigation [ref=e10]:
+        - link "Trang chủ" [ref=e11] [cursor=pointer]:
+          - /url: index.html
+        - link "Tìm phòng" [ref=e12] [cursor=pointer]:
+          - /url: rooms.html
+        - link "Đơn của tôi" [ref=e13] [cursor=pointer]:
+          - /url: my-bookings.html
+      - generic [ref=e15]:
+        - generic [ref=e16]: A
+        - generic [ref=e17]: User
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e20]: ▼ THÔNG BÁO KẾT QUẢ
+      - generic [ref=e21]: OK
+      - heading "Thanh toán thành công" [level=1] [ref=e22]
+      - paragraph [ref=e23]: Đơn đặt phòng của bạn đã được xác nhận. Email xác nhận đã được gửi.
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - generic [ref=e26]: Mã đơn
+          - generic [ref=e27]: Mã đơn hàng
+        - generic [ref=e28]:
+          - generic [ref=e29]: Phòng
+          - generic [ref=e30]: Tên phòng · Thông tin
+        - generic [ref=e31]:
+          - generic [ref=e32]: Nhận phòng
+          - generic [ref=e33]: Ngày nhận
+        - generic [ref=e34]:
+          - generic [ref=e35]: Trả phòng
+          - generic [ref=e36]: Ngày trả
+        - generic [ref=e37]:
+          - generic [ref=e38]: Phương thức
+          - generic [ref=e39]: Phương thức TT
+        - generic [ref=e40]:
+          - generic [ref=e41]: Tổng thanh toán
+          - generic [ref=e42]: Giá tiền
+      - generic [ref=e43]:
+        - link "Xem đơn của tôi" [ref=e44] [cursor=pointer]:
+          - /url: my-bookings.html
+        - link "Về trang chủ" [ref=e45] [cursor=pointer]:
+          - /url: index.html
+  - contentinfo [ref=e46]:
+    - generic [ref=e47]: FOOTER
+    - generic [ref=e48]: 2025 LOGO · Nhóm 05 · PTIT
