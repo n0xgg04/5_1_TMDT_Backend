@@ -54,5 +54,68 @@ Biểu đồ Use Case tổng quát mô tả các chức năng chính của hệ 
 
 - Gửi thông báo tự động.
 
+
+Code mermaid
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Khách hàng" as Customer
+actor "Nhân viên / Lễ tân" as Staff
+actor "Quản trị viên" as Admin
+
+rectangle "Hệ thống đặt phòng khách sạn trực tuyến" {
+
+  usecase "Quản lý tài khoản cá nhân" as UC1
+  usecase "Tra cứu thông tin phòng" as UC2
+  usecase "Đặt phòng trực tuyến" as UC3
+  usecase "Quản lý đặt phòng cá nhân" as UC4
+  usecase "Thanh toán" as UC5
+  usecase "Đánh giá / phản hồi" as UC6
+
+  usecase "Quản lý đặt phòng" as UC7
+  usecase "Quản lý check-in / check-out" as UC8
+  usecase "Quản lý tình trạng phòng" as UC9
+  usecase "Quản lý yêu cầu khách hàng" as UC10
+
+  usecase "Quản lý phòng & loại phòng" as UC11
+  usecase "Quản lý giá & khuyến mãi" as UC12
+  usecase "Quản lý tài khoản người dùng" as UC13
+  usecase "Quản lý dịch vụ khách sạn" as UC14
+  usecase "Thống kê / báo cáo" as UC15
+
+  usecase "Gửi thông báo tự động" as UC16
+}
+
+Customer --> UC1
+Customer --> UC2
+Customer --> UC3
+Customer --> UC4
+Customer --> UC5
+Customer --> UC6
+
+Staff --> UC7
+Staff --> UC8
+Staff --> UC9
+Staff --> UC10
+Staff --> UC5
+
+Admin --> UC11
+Admin --> UC12
+Admin --> UC13
+Admin --> UC14
+Admin --> UC15
+Admin --> UC7
+
+UC3 ..> UC2 : <<include>>
+UC3 ..> UC5 : <<include>>
+
+UC4 ..> UC16 : <<include>>
+UC7 ..> UC16 : <<include>>
+UC8 ..> UC9 : <<include>>
+
+@enduml
+
 ---
 
