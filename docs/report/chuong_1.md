@@ -1,5 +1,37 @@
 # CHƯƠNG 1: TÁC NHÂN VÀ BIỂU ĐỒ USECASE TỔNG QUÁT
 
+## Trang ký hiệu và chữ viết tắt
+
+Bảng dưới đây liệt kê các ký hiệu, thuật ngữ viết tắt được sử dụng xuyên suốt báo cáo, sắp xếp theo thứ tự chữ cái để thuận tiện tra cứu.
+
+| STT | Ký hiệu/Viết tắt | Thuật ngữ đầy đủ | Diễn giải ngắn gọn trong ngữ cảnh hệ thống |
+| --- | --- | --- | --- |
+| 1 | ACID | Atomicity, Consistency, Isolation, Durability | Nhóm thuộc tính đảm bảo tính toàn vẹn và độ tin cậy của giao dịch dữ liệu. |
+| 2 | API | Application Programming Interface | Giao diện lập trình ứng dụng dùng để giao tiếp giữa các thành phần hệ thống. |
+| 3 | CI/CD | Continuous Integration / Continuous Deployment | Quy trình tích hợp, kiểm tra và triển khai liên tục nhằm tăng chất lượng phát hành. |
+| 4 | CSS | Cascading Style Sheets | Ngôn ngữ định kiểu giao diện hiển thị cho các trang web. |
+| 5 | DTO | Data Transfer Object | Cấu trúc dữ liệu trung gian dùng để trao đổi dữ liệu giữa các lớp và dịch vụ. |
+| 6 | ERD | Entity Relationship Diagram | Sơ đồ mô tả thực thể dữ liệu và mối quan hệ giữa các thực thể. |
+| 7 | FCP | First Contentful Paint | Chỉ số hiệu năng phản ánh thời điểm nội dung đầu tiên hiển thị cho người dùng. |
+| 8 | HTML | HyperText Markup Language | Ngôn ngữ đánh dấu dùng để cấu trúc nội dung trang web. |
+| 9 | HTTPS | HyperText Transfer Protocol Secure | Giao thức truyền tải bảo mật giữa máy khách và máy chủ. |
+| 10 | IPN | Instant Payment Notification | Cơ chế thông báo kết quả thanh toán bất đồng bộ từ cổng thanh toán về hệ thống. |
+| 11 | JWT | JSON Web Token | Chuẩn định dạng mã thông báo dùng cho xác thực và phân quyền truy cập. |
+| 12 | ORM | Object Relational Mapping | Kỹ thuật ánh xạ giữa mô hình đối tượng và cơ sở dữ liệu quan hệ. |
+| 13 | RBAC | Role-Based Access Control | Mô hình kiểm soát truy cập dựa trên vai trò người dùng. |
+| 14 | REST | Representational State Transfer | Phong cách kiến trúc thiết kế dịch vụ web theo tài nguyên và phương thức HTTP. |
+| 15 | SEO | Search Engine Optimization | Tập kỹ thuật tối ưu nội dung để tăng khả năng hiển thị trên công cụ tìm kiếm. |
+| 16 | SPA | Single Page Application | Mô hình ứng dụng web tải một trang chính và cập nhật nội dung động. |
+| 17 | SQL | Structured Query Language | Ngôn ngữ truy vấn và thao tác dữ liệu trên hệ quản trị cơ sở dữ liệu quan hệ. |
+| 18 | SSR | Server-Side Rendering | Cơ chế dựng giao diện phía máy chủ trước khi gửi tới trình duyệt. |
+| 19 | SSG | Static Site Generation | Cơ chế sinh trước trang tĩnh trong giai đoạn xây dựng để tăng tốc độ truy cập. |
+| 20 | TLS | Transport Layer Security | Chuẩn bảo mật mã hóa dữ liệu trên đường truyền mạng. |
+| 21 | UI/UX | User Interface / User Experience | Giao diện người dùng và trải nghiệm người dùng của hệ thống. |
+| 22 | UML | Unified Modeling Language | Ngôn ngữ mô hình hóa chuẩn dùng để đặc tả thiết kế hệ thống. |
+| 23 | UUID | Universally Unique Identifier | Định danh duy nhất toàn cục cho thực thể dữ liệu. |
+| 24 | VNPAY | Vietnam Payment | Cổng thanh toán trực tuyến tích hợp trong quy trình thanh toán booking. |
+| 25 | WSS | WebSocket Secure | Kênh giao tiếp WebSocket có mã hóa bảo mật, phục vụ cập nhật thời gian thực. |
+
 ## 1.1. Giới thiệu chương
 
 Trong quá trình phân tích và thiết kế hệ thống đặt phòng khách sạn trực tuyến, việc xác định đúng tác nhân và phạm vi tương tác nghiệp vụ là bước nền tảng để bảo đảm tính đầy đủ của yêu cầu, tính nhất quán của luồng xử lý và khả năng mở rộng hệ thống về sau. Chương này tập trung mô tả toàn cảnh các đối tượng tương tác với hệ thống, các mục tiêu nghiệp vụ của từng tác nhân, cùng tập use case tổng quát làm khung tham chiếu cho các chương đặc tả chi tiết tiếp theo.
