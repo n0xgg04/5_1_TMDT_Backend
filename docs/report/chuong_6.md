@@ -10,6 +10,8 @@ Hệ thống áp dụng kiến trúc hiện đại, phân tách rõ ràng giữa
 
 ### 6.1.1. Lớp xử lý nghiệp vụ (Backend)
 
+*Bảng 6.1: Danh mục công nghệ lớp xử lý nghiệp vụ (Backend).* 
+
 | Công nghệ | Phiên bản | Vai trò & Mục đích sử dụng trong hệ thống |
 | :--- | :---: | :--- |
 | **NestJS** | 10.x | Framework chính xây dựng các dịch vụ RESTful API theo cấu trúc module hóa. Quản lý luồng nghiệp vụ, dependency injection, cùng với hệ thống Guard (phân quyền), Interceptor (xử lý dữ liệu) và Filter (quản lý lỗi tập trung). |
@@ -20,6 +22,8 @@ Hệ thống áp dụng kiến trúc hiện đại, phân tách rõ ràng giữa
 | **BullMQ** | 5.x | Hệ thống quản lý hàng đợi tác vụ bất đồng bộ (Background Job Queue) hoạt động trên nền Redis. Đảm nhiệm các tác vụ nặng hoặc định kỳ như: tự động hủy đơn khi quá hạn thanh toán, gửi email thông báo, đồng bộ dữ liệu. |
 
 ### 6.1.2. Lớp giao diện người dùng (Frontend)
+
+*Bảng 6.2: Danh mục công nghệ lớp giao diện người dùng (Frontend).* 
 
 | Công nghệ | Phiên bản | Vai trò & Mục đích sử dụng trong hệ thống |
 | :--- | :---: | :--- |
@@ -34,6 +38,8 @@ Hệ thống áp dụng kiến trúc hiện đại, phân tách rõ ràng giữa
 
 ### 6.1.3. Lớp cơ sở dữ liệu và lưu trữ đệm (Database & Caching)
 
+*Bảng 6.3: Danh mục công nghệ lớp cơ sở dữ liệu và lưu trữ đệm.* 
+
 | Công nghệ | Phiên bản | Vai trò & Mục đích sử dụng trong hệ thống |
 | :--- | :---: | :--- |
 | **PostgreSQL** | 16.x | Hệ quản trị cơ sở dữ liệu quan hệ (RDBMS) cốt lõi của toàn bộ hệ thống. Đảm bảo tuân thủ nghiêm ngặt chuẩn ACID cho các bảng giao dịch tài chính, thông tin đặt phòng, tài khoản và lịch sử kiểm toán (audit logs). |
@@ -41,13 +47,16 @@ Hệ thống áp dụng kiến trúc hiện đại, phân tách rõ ràng giữa
 
 ### 6.1.4. Dịch vụ tích hợp bên thứ ba (Third-party Services)
 
+*Bảng 6.4: Danh mục dịch vụ tích hợp bên thứ ba.* 
+
 | Nhóm dịch vụ | Công nghệ / Nhà cung cấp | Vai trò & Mục đích sử dụng |
 | :--- | :--- | :--- |
 | **Cổng thanh toán trực tuyến** | **VNPAY Sandbox / VNPAY Gateway** | Xử lý giao dịch thanh toán trực tuyến qua thẻ ATM nội địa, thẻ quốc tế (Visa/Mastercard) và VNPAY QR. Hỗ trợ luồng chuyển hướng bảo mật và trả kết quả tự động qua Webhook (IPN). |
 | **Dịch vụ thông báo & Email** | **Resend HTTP API** | Nền tảng gửi email tự động với độ ổn định cao và khả năng tích hợp linh hoạt qua REST API. Đảm nhận việc gửi thư xác nhận đặt phòng, hóa đơn thanh toán và thông báo hủy đơn. |
-| **Vận chuyển & Giao nhận** | *(Không áp dụng)* | Do đặc thù dự án là nền tảng đặt phòng lưu trú tại chỗ (khách hàng trực tiếp đến khách sạn làm thủ tục check-in), hệ thống không yêu cầu tích hợp các dịch vụ giao nhận hàng hóa vật lý. |
 
 ### 6.1.5. Công cụ hỗ trợ phát triển, Vận hành và DevOps
+
+*Bảng 6.5: Danh mục công cụ hỗ trợ phát triển, vận hành và DevOps.* 
 
 | Công nghệ / Công cụ | Vai trò & Mục đích sử dụng trong hệ thống |
 | :--- | :--- |
@@ -66,6 +75,8 @@ Hệ thống áp dụng kiến trúc hiện đại, phân tách rõ ràng giữa
 Việc chốt danh sách bộ công cụ trên không phải ngẫu nhiên mà xuất phát từ quá trình phân tích kỹ lưỡng nhằm đáp ứng tối ưu các bài toán đặc thù của hệ thống khách sạn trực tuyến. Bảng so sánh dưới đây đánh giá tổng quan các công nghệ cốt lõi theo 5 tiêu chí then chốt:
 
 ### 6.2.1. Ma trận đánh giá các công nghệ cốt lõi
+
+*Bảng 6.6: Ma trận đánh giá các công nghệ cốt lõi theo tiêu chí lựa chọn.* 
 
 | Công nghệ | Tính bảo mật (Security) | Hiệu năng xử lý (Performance) | Chi phí triển khai (Cost) | Cộng đồng & Sinh thái | Đường cong học tập |
 | :--- | :--- | :--- | :--- | :--- | :--- |

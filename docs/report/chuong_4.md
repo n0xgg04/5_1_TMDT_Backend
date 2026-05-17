@@ -285,6 +285,8 @@ erDiagram
 
 ### 4.4.1. Bảng `users`
 
+*Bảng 4.1: Cấu trúc dữ liệu bảng `users`.*
+
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | --- | --- | --- | --- |
 | user_id | UUID | PK | Định danh duy nhất người dùng |
@@ -298,12 +300,16 @@ erDiagram
 
 ### 4.4.2. Bảng `roles` và `user_roles`
 
+*Bảng 4.2: Cấu trúc dữ liệu bảng `roles` và `user_roles`.*
+
 | Tên bảng | Cột chính | Ràng buộc trọng yếu | Ý nghĩa |
 | --- | --- | --- | --- |
 | roles | role_id (UUID) | PK, role_name UNIQUE | Danh mục vai trò hệ thống |
 | user_roles | user_role_id (UUID) | PK, FK user_id, FK role_id, UNIQUE(user_id, role_id) | Ánh xạ người dùng - vai trò |
 
 ### 4.4.3. Bảng `addresses`
+
+*Bảng 4.3: Cấu trúc dữ liệu bảng `addresses`.*
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | --- | --- | --- | --- |
@@ -319,6 +325,8 @@ erDiagram
 
 ### 4.4.4. Bảng `categories`
 
+*Bảng 4.4: Cấu trúc dữ liệu bảng `categories`.*
+
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | --- | --- | --- | --- |
 | category_id | UUID | PK | Định danh danh mục |
@@ -327,6 +335,8 @@ erDiagram
 | is_active | BOOLEAN | NOT NULL, DEFAULT TRUE | Trạng thái hoạt động |
 
 ### 4.4.5. Bảng `products` và `product_variants`
+
+*Bảng 4.5: Cấu trúc dữ liệu bảng `products` và `product_variants`.*
 
 | Tên bảng | Cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | --- | --- | --- | --- | --- |
@@ -348,6 +358,8 @@ erDiagram
 
 ### 4.4.6. Bảng `inventories`
 
+*Bảng 4.6: Cấu trúc dữ liệu bảng `inventories`.*
+
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | --- | --- | --- | --- |
 | inventory_id | UUID | PK | Định danh bản ghi tồn kho |
@@ -358,6 +370,8 @@ erDiagram
 | updated_at | TIMESTAMP | NOT NULL | Thời điểm cập nhật |
 
 ### 4.4.7. Bảng `carts` và `cart_items`
+
+*Bảng 4.7: Cấu trúc dữ liệu bảng `carts` và `cart_items`.*
 
 | Tên bảng | Cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | --- | --- | --- | --- | --- |
@@ -374,6 +388,8 @@ erDiagram
 
 ### 4.4.8. Bảng `vouchers`
 
+*Bảng 4.8: Cấu trúc dữ liệu bảng `vouchers`.*
+
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | --- | --- | --- | --- |
 | voucher_id | UUID | PK | Định danh mã giảm giá |
@@ -388,6 +404,8 @@ erDiagram
 | is_active | BOOLEAN | NOT NULL, DEFAULT TRUE | Trạng thái hoạt động |
 
 ### 4.4.9. Bảng `orders` và `order_items`
+
+*Bảng 4.9: Cấu trúc dữ liệu bảng `orders` và `order_items`.*
 
 | Tên bảng | Cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | --- | --- | --- | --- | --- |
@@ -411,6 +429,8 @@ erDiagram
 
 ### 4.4.10. Bảng `payments`
 
+*Bảng 4.10: Cấu trúc dữ liệu bảng `payments`.*
+
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | --- | --- | --- | --- |
 | payment_id | UUID | PK | Định danh thanh toán |
@@ -423,6 +443,8 @@ erDiagram
 
 ### 4.4.11. Bảng `shipments`
 
+*Bảng 4.11: Cấu trúc dữ liệu bảng `shipments`.*
+
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | --- | --- | --- | --- |
 | shipment_id | UUID | PK | Định danh vận đơn |
@@ -434,6 +456,8 @@ erDiagram
 | delivered_at | TIMESTAMP |  | Thời điểm giao thành công |
 
 ### 4.4.12. Bảng `reviews`
+
+*Bảng 4.12: Cấu trúc dữ liệu bảng `reviews`.*
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | --- | --- | --- | --- |
