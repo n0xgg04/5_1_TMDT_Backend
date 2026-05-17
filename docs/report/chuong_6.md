@@ -279,3 +279,51 @@ sequenceDiagram
 Chương 6 đã xác định đầy đủ bộ công cụ và nền tảng công nghệ cho toàn bộ hệ thống đặt phòng khách sạn trực tuyến, bao phủ từ lớp giao diện, lớp xử lý nghiệp vụ, dữ liệu, tích hợp bên thứ ba đến công cụ vận hành và tự động hóa. Việc lựa chọn công nghệ được thực hiện trên cơ sở cân bằng giữa yêu cầu nghiệp vụ đặc thù, tiêu chí hiệu năng, tính bảo mật, khả năng mở rộng và chi phí triển khai thực tế.
 
 Các phân tích trong chương cho thấy tổ hợp công nghệ đã chọn có mức độ tương thích cao với mục tiêu phát triển hệ thống theo hướng hiện đại, ổn định và dễ bảo trì. Đồng thời, kiến trúc tổng thể và các cơ chế giao tiếp giữa thành phần đã tạo nền tảng rõ ràng để triển khai nhất quán ở các giai đoạn xây dựng, kiểm thử, triển khai và vận hành. Đây là cơ sở quan trọng bảo đảm hệ thống đáp ứng được cả yêu cầu hiện tại lẫn định hướng mở rộng trong tương lai.
+
+---
+
+# CHƯƠNG 7: TỔNG KẾT
+
+Chương 7 tổng hợp toàn bộ kết quả của quá trình phân tích và thiết kế hệ thống đặt phòng khách sạn trực tuyến, đồng thời đánh giá khách quan những điểm còn tồn tại và định hướng phát triển trong các giai đoạn tiếp theo. Nội dung chương được trình bày theo ba trục chính: kết quả đạt được, hạn chế và hướng phát triển. Cách tiếp cận này giúp bảo đảm báo cáo không chỉ dừng ở mô tả kỹ thuật mà còn thể hiện năng lực đánh giá chất lượng hệ thống theo góc nhìn quản trị và vận hành thực tiễn.
+
+## 7.1. Kết quả đạt được
+
+Trong phạm vi đồ án, hệ thống đã đạt được các kết quả nổi bật sau:
+
+1. **Hoàn thiện khung phân tích nghiệp vụ có cấu trúc:** Các tác nhân, danh mục use case, đặc tả luồng nghiệp vụ và điều kiện rẽ nhánh đã được xác lập đầy đủ, bảo đảm tính nhất quán giữa yêu cầu nghiệp vụ và mô hình hóa hệ thống.
+
+2. **Xây dựng được mô hình thiết kế toàn diện:** Hệ thống đã được biểu diễn thông qua các nhóm biểu đồ quan trọng (use case, tuần tự, lớp, ERD), qua đó làm rõ trách nhiệm thành phần, quan hệ dữ liệu và vòng đời xử lý giao dịch.
+
+3. **Chuẩn hóa quy tắc nghiệp vụ cốt lõi:** Các quy tắc liên quan đến tìm kiếm phòng, tạo booking, thanh toán, hủy booking, check-in/check-out và cập nhật trạng thái phòng đã được mô tả rõ ràng, tạo nền tảng cho kiểm thử và kiểm soát vận hành.
+
+4. **Đề xuất bộ công nghệ phù hợp và khả thi:** Nền tảng công nghệ được lựa chọn đáp ứng đồng thời các tiêu chí bảo mật, hiệu năng, chi phí, khả năng mở rộng và mức độ phù hợp với quy mô triển khai thực tế.
+
+5. **Hình thành cơ sở triển khai trong thực tiễn:** Kết quả phân tích - thiết kế cho phép chuyển tiếp thuận lợi sang giai đoạn phát triển hệ thống, hỗ trợ tốt cho tổ chức công việc nhóm, kiểm thử chức năng và lập kế hoạch vận hành.
+
+## 7.2. Hạn chế
+
+Bên cạnh các kết quả đạt được, hệ thống vẫn còn một số hạn chế cần được nhìn nhận khách quan:
+
+1. **Phạm vi nghiệp vụ chưa bao phủ toàn bộ tình huống đặc thù:** Một số kịch bản nâng cao như liên thông đa khách sạn, chính sách giá động phức tạp theo nhu cầu thời gian thực, hoặc quản lý gói dịch vụ kết hợp chưa được mở rộng đầy đủ.
+
+2. **Chiều sâu đánh giá phi chức năng còn giới hạn:** Các chỉ tiêu về tải cao điểm, khả năng chịu lỗi phân tán, khôi phục sau sự cố và độ trễ theo từng vùng truy cập mới dừng ở mức định hướng, chưa có bộ số liệu đo kiểm thực nghiệm đầy đủ.
+
+3. **Chưa triển khai đầy đủ khung quản trị dữ liệu nâng cao:** Các cơ chế phân tích hành vi chuyên sâu, mô hình dự báo nhu cầu và điều phối doanh thu theo thời gian thực vẫn cần được đầu tư ở giai đoạn sau.
+
+4. **Phụ thuộc vào mức độ sẵn sàng của dịch vụ tích hợp:** Hiệu quả vận hành của các nghiệp vụ thanh toán và thông báo chịu ảnh hưởng bởi chất lượng dịch vụ bên thứ ba, đòi hỏi chiến lược dự phòng và đối soát chặt chẽ hơn.
+
+## 7.3. Hướng phát triển
+
+Trên cơ sở kết quả hiện tại và các hạn chế đã nêu, các hướng phát triển ưu tiên được đề xuất như sau:
+
+1. **Mở rộng phạm vi nghiệp vụ theo mô hình đa cơ sở lưu trú:** Hỗ trợ quản lý tập trung nhiều khách sạn/chi nhánh, đồng bộ tồn phòng liên cơ sở và cấu hình chính sách kinh doanh linh hoạt theo từng địa điểm.
+
+2. **Nâng cao năng lực tối ưu doanh thu:** Bổ sung cơ chế giá động theo mùa vụ, theo mức lấp đầy và theo hành vi đặt phòng; tích hợp mô hình dự báo để hỗ trợ quyết định điều hành.
+
+3. **Tăng cường độ tin cậy và an toàn vận hành:** Hoàn thiện cơ chế giám sát thời gian thực, cảnh báo sớm bất thường giao dịch, chiến lược dự phòng đa lớp và quy trình khôi phục dịch vụ khi có sự cố.
+
+4. **Phát triển trải nghiệm người dùng toàn diện hơn:** Cá nhân hóa gợi ý phòng, mở rộng đa ngôn ngữ, tối ưu luồng đặt phòng trên thiết bị di động và tăng mức độ tự phục vụ của khách hàng sau đặt phòng.
+
+5. **Chuẩn hóa đánh giá chất lượng theo vòng đời liên tục:** Thiết lập bộ chỉ số đo lường định kỳ cho cả khía cạnh nghiệp vụ và kỹ thuật, từ đó cải tiến hệ thống theo dữ liệu thực tế thay vì chỉ theo giả định thiết kế.
+
+Nhìn chung, hệ thống đã hình thành được nền tảng phân tích và thiết kế đủ vững chắc để triển khai thực tế, đồng thời vẫn duy trì không gian mở cho các cải tiến chiến lược trong tương lai. Việc tiếp tục phát triển theo các định hướng trên sẽ giúp hệ thống nâng cao năng lực cạnh tranh, tối ưu hiệu quả vận hành và đáp ứng tốt hơn nhu cầu ngày càng đa dạng của người dùng.
