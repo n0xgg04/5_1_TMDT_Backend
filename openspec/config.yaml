@@ -1,13 +1,17 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Project: Sapphire Stay - online hotel booking system.
+  Domain: customer room search/booking/payment, staff room operations and booking approval, admin inventory/users/promotions/reports.
+  Actors: CUSTOMER, RECEPTIONIST, HOUSEKEEPING, ADMIN, external payment gateways, scheduler.
+  Backend: NestJS 10, Prisma 6, PostgreSQL, JWT access/refresh tokens, Upstash Redis REST with in-memory dev fallback, Resend email, VNPay, Stripe.
+  Frontend: Next.js 16 App Router, React 19, Tailwind CSS, React Query, Zustand, axios.
+  API conventions: REST endpoints live under /api/v1; public endpoints use @Public; protected endpoints use Bearer JWT; anonymous wishlist uses x-session-id.
+  Validation: global ValidationPipe with whitelist, transform, and forbidNonWhitelisted; errors are normalized to statusCode/timestamp/path/message.
+  Booking statuses: PENDING_PAYMENT, PAYING, PENDING_APPROVAL, CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED, REJECTED, EXPIRED.
+  Payment statuses: PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED.
+  Room statuses: AVAILABLE, OCCUPIED, DIRTY, CLEANING, MAINTENANCE, RESERVED.
+  Eventing: in-process domain event bus; payment.success confirms bookings; payment.failed expires bookings; lifecycle events create notification records and optional Resend emails.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
