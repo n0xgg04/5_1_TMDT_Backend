@@ -3,9 +3,11 @@ import { BookingsController } from "./bookings.controller";
 import { BookingsService } from "./bookings.service";
 import { BookingEventHandlers } from "./booking.events";
 import { RoomsModule } from "../rooms/rooms.module";
+import { CouponsModule } from "../coupons/coupons.module";
+import { FlashSalesModule } from "../flash-sales/flash-sales.module";
 
 @Module({
-  imports: [RoomsModule],
+  imports: [RoomsModule, CouponsModule, FlashSalesModule],
   controllers: [BookingsController],
   providers: [BookingsService, BookingEventHandlers],
   exports: [BookingsService],

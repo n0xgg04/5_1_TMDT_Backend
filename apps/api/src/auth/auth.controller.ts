@@ -1,14 +1,21 @@
 import {
   Controller,
+  Get,
   Post,
+  Patch,
   Body,
   HttpCode,
   HttpStatus,
-  Version,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
-import { RegisterDto, LoginDto, RefreshTokenDto } from "./dto/auth.dto";
+import {
+  RegisterDto,
+  LoginDto,
+  RefreshTokenDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+} from "./dto/auth.dto";
 import { Public } from "../common/decorators/public.decorator";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 
@@ -38,6 +45,31 @@ export class AuthController {
   @ApiOperation({ summary: "Làm mới access token" })
   refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refresh(dto.refreshToken);
+  }
+
+  @Get("me")
+  @ApiOperation({ summary: "Thông tin cá nhân" })
+  me(@CurrentUser() user: { id: string }) {
+    return this.authService.getMe(user.id);
+  }
+
+  @Patch("me")
+  @ApiOperation({ summary: "Cập nhật thông tin cá nhân" })
+  updateProfile(
+    @CurrentUser() user: { id: string },
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.authService.updateProfile(user.id, dto);
+  }
+
+  @Patch("change-password")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Đổi mật khẩu" })
+  changePassword(
+    @CurrentUser() user: { id: string },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(user.id, dto);
   }
 
   @Post("logout")

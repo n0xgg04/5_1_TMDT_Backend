@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,12 +15,13 @@ import { Select } from "@/components/ui/select";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
 import { RoomStatusBadge } from "@/components/ui/badge";
 import { toast } from "@/lib/toast";
-import type { Room, RoomStatus } from "@/lib/types";
+import type { Room, RoomStatus, HotelBranch } from "@/lib/types";
 
 const schema = z.object({
   roomNumber: z.string().min(1, "Bắt buộc"),
   floor: z.coerce.number().int().min(0).max(100),
   roomTypeId: z.string().min(1, "Bắt buộc"),
+  branchId: z.string().min(1, "Bắt buộc"),
   notes: z.string().optional(),
 });
 type FormValues = z.infer<typeof schema>;
@@ -30,6 +31,7 @@ export default function AdminRoomsPage() {
   const [open, setOpen] = useState(false);
   const [floor, setFloor] = useState<string>("");
   const [roomTypeId, setRoomTypeId] = useState<string>("");
+  const [branchId, setBranchId] = useState<string>("");
 
   const rooms = useQuery({
     queryKey: ["admin-rooms", floor, roomTypeId],
@@ -47,6 +49,12 @@ export default function AdminRoomsPage() {
   const types = useQuery({
     queryKey: ["roomTypes"],
     queryFn: () => api.get("/rooms/types").then((r) => r.data),
+  });
+
+  const branches = useQuery({
+    queryKey: ["branches"],
+    queryFn: () =>
+      api.get<HotelBranch[]>("/rooms/branches").then((r) => r.data),
   });
 
   const create = useMutation({
@@ -80,7 +88,18 @@ export default function AdminRoomsPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { floor: 1, roomNumber: "", roomTypeId: "", notes: "" },
+    defaultValues: {
+      floor: 1,
+      roomNumber: "",
+      roomTypeId: "",
+      branchId: "",
+      notes: "",
+    },
+  });
+
+  const filteredRooms = rooms.data?.filter((r) => {
+    if (branchId && r.branchId !== branchId) return false;
+    return true;
   });
 
   return (
@@ -97,7 +116,7 @@ export default function AdminRoomsPage() {
         </Button>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-4">
         <Select
           label="Loại phòng"
           value={roomTypeId}
@@ -117,6 +136,18 @@ export default function AdminRoomsPage() {
           value={floor}
           onChange={(e) => setFloor(e.target.value)}
         />
+        <Select
+          label="Chi nhánh"
+          value={branchId}
+          onChange={(e) => setBranchId(e.target.value)}
+        >
+          <option value="">Tất cả</option>
+          {branches.data?.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
+        </Select>
       </div>
 
       <Card className="mt-5 overflow-hidden">
@@ -127,6 +158,7 @@ export default function AdminRoomsPage() {
                 <Th>Số phòng</Th>
                 <Th>Tầng</Th>
                 <Th>Loại phòng</Th>
+                <Th>Chi nhánh</Th>
                 <Th>Trạng thái</Th>
                 <Th className="text-right">Hành động</Th>
               </tr>
@@ -134,25 +166,26 @@ export default function AdminRoomsPage() {
             <tbody className="divide-y divide-slate-100 bg-white">
               {rooms.isLoading && (
                 <tr>
-                  <td colSpan={5} className="p-4">
+                  <td colSpan={6} className="p-4">
                     <Skeleton className="h-10 w-full" />
                   </td>
                 </tr>
               )}
-              {rooms.data && rooms.data.length === 0 && (
+              {filteredRooms && filteredRooms.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-8">
+                  <td colSpan={6} className="p-8">
                     <EmptyState title="Chưa có phòng nào" />
                   </td>
                 </tr>
               )}
-              {rooms.data?.map((r) => (
+              {filteredRooms?.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50">
                   <Td className="font-semibold text-slate-900">
                     #{r.roomNumber}
                   </Td>
                   <Td>Tầng {r.floor}</Td>
                   <Td>{r.roomType?.name ?? "-"}</Td>
+                  <Td>{r.branch?.name ?? "-"}</Td>
                   <Td>
                     <select
                       value={r.status}
@@ -242,6 +275,18 @@ export default function AdminRoomsPage() {
             {types.data?.map((t: any) => (
               <option key={t.id} value={t.id}>
                 {t.name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            label="Chi nhánh"
+            {...form.register("branchId")}
+            error={form.formState.errors.branchId?.message}
+          >
+            <option value="">-- Chọn chi nhánh --</option>
+            {branches.data?.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
               </option>
             ))}
           </Select>

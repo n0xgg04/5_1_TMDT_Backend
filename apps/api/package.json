@@ -31,6 +31,8 @@
     "reflect-metadata": "^0.2.2",
     "resend": "^6.12.0",
     "rxjs": "^7.8.1",
+    "stream-chat": "^9.44.2",
+    "stripe": "^22.1.1",
     "uuid": "^11.0.5"
   },
   "devDependencies": {

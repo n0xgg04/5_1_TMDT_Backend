@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
+import { ChatWrapper } from "@/components/chat/chat-wrapper";
 
 export const metadata: Metadata = {
   title: "Sapphire Stay – Hệ thống đặt phòng khách sạn",
@@ -20,6 +21,7 @@ export default function RootLayout({
         <Providers>
           <Navbar />
           {children}
+          <ChatWrapper />
         </Providers>
       </body>
     </html>

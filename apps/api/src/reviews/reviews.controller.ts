@@ -20,6 +20,15 @@ export class ReviewsController {
     return this.reviewsService.createReview(user.id, dto);
   }
 
+  @Get("can-review/:roomTypeId")
+  @ApiOperation({ summary: "Kiểm tra có thể đánh giá phòng này không" })
+  canReview(
+    @CurrentUser() user: { id: string },
+    @Param("roomTypeId") roomTypeId: string,
+  ) {
+    return this.reviewsService.findReviewableBooking(user.id, roomTypeId);
+  }
+
   @Public()
   @Get("room-type/:roomTypeId")
   @ApiOperation({ summary: "Đánh giá theo loại phòng" })

@@ -49,3 +49,34 @@ export class RefreshTokenDto {
   @IsString()
   refreshToken!: string;
 }
+
+export class UpdateProfileDto {
+  @ApiPropertyOptional({ example: "Nguyen" })
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @ApiPropertyOptional({ example: "Van A" })
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @ApiPropertyOptional({ example: "0901234567" })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+}
+
+export class ChangePasswordDto {
+  @ApiProperty({ example: "Password@123" })
+  @IsString()
+  currentPassword!: string;
+
+  @ApiProperty({ example: "NewPass@456" })
+  @IsString()
+  @MinLength(8)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/, {
+    message: "Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt",
+  })
+  newPassword!: string;
+}

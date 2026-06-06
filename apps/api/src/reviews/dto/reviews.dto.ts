@@ -16,4 +16,8 @@ export class CreateReviewDto {
   @IsOptional()
   @IsString()
   comment?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  images?: string[];
 }

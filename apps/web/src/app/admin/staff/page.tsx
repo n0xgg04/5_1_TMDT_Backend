@@ -78,7 +78,11 @@ export default function AdminStaffPage() {
     defaultValues: { role: "RECEPTIONIST" },
   });
 
-  const items: UserRow[] = list.data?.data ?? list.data ?? [];
+  const items: UserRow[] = Array.isArray(list.data?.data)
+    ? list.data.data
+    : Array.isArray(list.data)
+      ? list.data
+      : [];
 
   return (
     <div>

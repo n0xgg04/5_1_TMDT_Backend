@@ -1,0 +1,133 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CreateCouponDto, ApplyCouponDto } from "./coupons.dto";
+
+@Injectable()
+export class CouponsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async findAll() {
+    return this.prisma.coupon.findMany({ orderBy: { createdAt: "desc" } });
+  }
+
+  async findActive() {
+    const now = new Date();
+    return this.prisma.coupon.findMany({
+      where: {
+        isActive: true,
+        startDate: { lte: now },
+        endDate: { gte: now },
+        usageCount: { lt: this.prisma.coupon.fields.usageLimit },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async create(dto: CreateCouponDto) {
+    return this.prisma.coupon.create({
+      data: {
+        code: dto.code.toUpperCase(),
+        type: dto.type ?? "percentage",
+        value: dto.value,
+        minAmount: dto.minAmount ? dto.minAmount : null,
+        maxDiscount: dto.maxDiscount ? dto.maxDiscount : null,
+        usageLimit: dto.usageLimit ?? 1,
+        startDate: new Date(dto.startDate),
+        endDate: new Date(dto.endDate),
+      },
+    });
+  }
+
+  async applyCoupon(dto: ApplyCouponDto) {
+    const coupon = await this.prisma.coupon.findUnique({
+      where: { code: dto.code.toUpperCase() },
+    });
+    if (!coupon) throw new NotFoundException("Mã giảm giá không tồn tại");
+    if (!coupon.isActive)
+      throw new BadRequestException("Mã giảm giá không còn hiệu lực");
+
+    const now = new Date();
+    if (now < coupon.startDate || now > coupon.endDate) {
+      throw new BadRequestException("Mã giảm giá đã hết hạn hoặc chưa bắt đầu");
+    }
+    if (coupon.usageCount >= coupon.usageLimit) {
+      throw new BadRequestException("Mã giảm giá đã hết lượt sử dụng");
+    }
+
+    const amount = dto.amount;
+    if (coupon.minAmount && amount < Number(coupon.minAmount)) {
+      throw new BadRequestException(
+        `Đơn hàng tối thiểu ${coupon.minAmount}đ mới được áp dụng`,
+      );
+    }
+
+    let discount = 0;
+    if (coupon.type === "percentage") {
+      discount = (amount * Number(coupon.value)) / 100;
+      if (coupon.maxDiscount) {
+        discount = Math.min(discount, Number(coupon.maxDiscount));
+      }
+    } else {
+      discount = Number(coupon.value);
+    }
+
+    discount = Math.min(discount, amount);
+
+    return {
+      code: coupon.code,
+      type: coupon.type,
+      value: coupon.value,
+      discount,
+      finalAmount: amount - discount,
+    };
+  }
+
+  async incrementUsage(code: string) {
+    return this.prisma.coupon.update({
+      where: { code: code.toUpperCase() },
+      data: { usageCount: { increment: 1 } },
+    });
+  }
+
+  async getMyCoupons(userId: string) {
+    return this.prisma.userCoupon.findMany({
+      where: { userId },
+      include: { coupon: true },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async findActivePublic(userId?: string) {
+    const now = new Date();
+    const coupons = await this.prisma.coupon.findMany({
+      where: {
+        isActive: true,
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!userId) return coupons.map((c) => ({ ...c, isClaimed: false }));
+    const userCoupons = await this.prisma.userCoupon.findMany({
+      where: { userId },
+      select: { couponId: true },
+    });
+    const claimedIds = new Set(userCoupons.map((uc) => uc.couponId));
+    return coupons.map((c) => ({ ...c, isClaimed: claimedIds.has(c.id) }));
+  }
+
+  async claimCoupon(userId: string, couponId: string) {
+    const existing = await this.prisma.userCoupon.findUnique({
+      where: { userId_couponId: { userId, couponId } },
+    });
+    if (existing) return existing;
+    return this.prisma.userCoupon.create({
+      data: { userId, couponId },
+      include: { coupon: true },
+    });
+  }
+}

@@ -47,6 +47,8 @@ enum PaymentMethod {
   MOMO
   CASH
   BANK_TRANSFER
+  VISA
+  SHOPEEPAY
 }
 
 enum PaymentType {
@@ -81,28 +83,59 @@ model User {
   reviews        Review[]
   payments       Payment[]
   notifications  Notification[]
+  conversations  Conversation[] @relation(name: "customerConversations")
+  staffConversations Conversation[] @relation(name: "staffConversations")
+  userCoupons    UserCoupon[]
+  userPaymentMethods UserPaymentMethod[]
+  wishlists      Wishlist[]
 
   @@map("users")
 }
 
 model RoomType {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  maxGuests   Int
-  areaSqm     Float
-  bedType     String
-  amenities   Json     @default("[]")
-  images      Json     @default("[]")
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  maxGuests        Int
+  areaSqm          Float
+  bedType          String
+  amenities        Json     @default("[]")
+  images           Json     @default("[]")
+  starRating       Int      @default(3)
+  policies         Json     @default("{}")
+  popularFacilities String[] @default([])
+  distanceToCenter String?
+  nearbyPoints     String[] @default([])
+  faqs             Json     @default("[]")
+  totalRooms       Int      @default(0)
+  numFloors        Int      @default(1)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   rooms        Room[]
   pricingRules PricingRule[]
   reviews      Review[]
+  flashSales   FlashSale[]
+  wishlists    Wishlist[]
 
   @@map("room_types")
+}
+
+model HotelBranch {
+  id        String   @id @default(cuid())
+  name      String
+  province  String
+  city      String
+  address   String
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rooms Room[]
+
+  @@map("hotel_branches")
 }
 
 model Room {
@@ -110,12 +143,14 @@ model Room {
   roomNumber String     @unique
   floor      Int
   roomTypeId String
+  branchId   String
   status     RoomStatus @default(AVAILABLE)
   notes      String?
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 
-  roomType RoomType  @relation(fields: [roomTypeId], references: [id])
+  roomType RoomType     @relation(fields: [roomTypeId], references: [id])
+  branch   HotelBranch  @relation(fields: [branchId], references: [id])
   bookings Booking[]
 
   @@map("rooms")
@@ -150,6 +185,8 @@ model Booking {
   adults          Int           @default(2)
   children        Int           @default(0)
   totalAmount     Decimal       @db.Decimal(12, 2)
+  discountAmount  Decimal?      @db.Decimal(12, 2)
+  couponCode      String?
   status          BookingStatus @default(PENDING_PAYMENT)
   paymentDeadline DateTime
   checkInActual   DateTime?
@@ -200,6 +237,7 @@ model Review {
   roomTypeId String
   rating     Int
   comment    String?
+  images     Json     @default("[]")
   isApproved Boolean  @default(true)
   createdAt  DateTime @default(now())
 
@@ -208,6 +246,22 @@ model Review {
   roomType RoomType @relation(fields: [roomTypeId], references: [id])
 
   @@map("reviews")
+}
+
+model Wishlist {
+  id         String   @id @default(cuid())
+  userId     String?
+  sessionId  String?
+  roomTypeId String
+  createdAt  DateTime @default(now())
+
+  user     User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roomType RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomTypeId])
+  @@unique([sessionId, roomTypeId])
+  @@index([sessionId])
+  @@map("wishlists")
 }
 
 model Payment {
@@ -278,6 +332,91 @@ model Notification {
   @@map("notifications")
 }
 
+model Coupon {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  type        String    @default("percentage")
+  value       Decimal   @db.Decimal(12, 2)
+  minAmount   Decimal?  @db.Decimal(12, 2)
+  maxDiscount Decimal?  @db.Decimal(12, 2)
+  usageLimit  Int       @default(1)
+  usageCount  Int       @default(0)
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  userCoupons UserCoupon[]
+
+  @@map("coupons")
+}
+
+model UserCoupon {
+  id        String    @id @default(cuid())
+  userId    String
+  couponId  String
+  isUsed    Boolean   @default(false)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  coupon Coupon @relation(fields: [couponId], references: [id])
+
+  @@unique([userId, couponId])
+  @@index([userId])
+  @@map("user_coupons")
+}
+
+model FlashSale {
+  id          String    @id @default(cuid())
+  roomTypeId  String?
+  discount    Decimal   @db.Decimal(5, 2)
+  startDate   DateTime
+  endDate     DateTime
+  quantity    Int       @default(10)
+  soldCount   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  roomType RoomType? @relation(fields: [roomTypeId], references: [id])
+
+  @@map("flash_sales")
+}
+
+model Conversation {
+  id         String    @id @default(cuid())
+  customerId String
+  staffId    String?
+  bookingId  String?
+  subject    String?
+  status     String    @default("open")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  customer User    @relation(fields: [customerId], references: [id], name: "customerConversations")
+  staff    User?   @relation(fields: [staffId], references: [id], name: "staffConversations")
+  messages Message[]
+
+  @@index([customerId, status])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
 model OutboxEvent {
   id          String   @id @default(uuid())
   aggregateId String
@@ -290,4 +429,21 @@ model OutboxEvent {
 
   @@index([published, createdAt])
   @@map("outbox_events")
+}
+
+model UserPaymentMethod {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  label     String
+  details   Json     @default("{}")
+  isDefault Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_payment_methods")
 }

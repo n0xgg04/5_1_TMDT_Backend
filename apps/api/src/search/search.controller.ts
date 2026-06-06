@@ -15,15 +15,31 @@ export class SearchController {
   @ApiQuery({ name: "checkOut", required: true, example: "2026-05-03" })
   @ApiQuery({ name: "guests", required: true, example: 2 })
   @ApiQuery({ name: "roomTypeId", required: false })
+  @ApiQuery({ name: "province", required: false })
   @ApiQuery({ name: "minPrice", required: false })
   @ApiQuery({ name: "maxPrice", required: false })
+  @ApiQuery({ name: "starRating", required: false })
+  @ApiQuery({ name: "amenities", required: false })
+  @ApiQuery({
+    name: "sortBy",
+    required: false,
+    enum: ["price_asc", "price_desc", "rating_desc"],
+  })
+  @ApiQuery({ name: "page", required: false })
+  @ApiQuery({ name: "limit", required: false })
   search(
     @Query("checkIn") checkIn: string,
     @Query("checkOut") checkOut: string,
     @Query("guests") guests: string,
     @Query("roomTypeId") roomTypeId?: string,
+    @Query("province") province?: string,
     @Query("minPrice") minPrice?: string,
     @Query("maxPrice") maxPrice?: string,
+    @Query("starRating") starRating?: string,
+    @Query("amenities") amenities?: string,
+    @Query("sortBy") sortBy?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
   ) {
     if (!checkIn || !checkOut || !guests) {
       throw new BadRequestException("checkIn, checkOut và guests là bắt buộc");
@@ -51,8 +67,35 @@ export class SearchController {
       checkOut,
       guests: parseInt(guests),
       roomTypeId,
+      province,
       minPrice: minPrice !== undefined ? parseFloat(minPrice) : undefined,
       maxPrice: maxPrice !== undefined ? parseFloat(maxPrice) : undefined,
+      starRating: starRating !== undefined ? parseInt(starRating) : undefined,
+      amenities: amenities ? amenities.split(",") : undefined,
+      sortBy: sortBy as any,
+      page: page !== undefined ? parseInt(page) : undefined,
+      limit: limit !== undefined ? parseInt(limit) : undefined,
     });
+  }
+
+  @Public()
+  @Get("provinces")
+  @ApiOperation({ summary: "Lấy danh sách tỉnh/thành có chi nhánh" })
+  getProvinces() {
+    return this.searchService.getProvinces();
+  }
+
+  @Public()
+  @Get("featured")
+  @ApiOperation({ summary: "Phòng nổi bật" })
+  getFeatured() {
+    return this.searchService.getFeaturedRooms();
+  }
+
+  @Public()
+  @Get("flash-sales")
+  @ApiOperation({ summary: "Flash sale đang diễn ra" })
+  getFlashSales() {
+    return this.searchService.getFlashSales();
   }
 }

@@ -4,15 +4,27 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import { Button } from "./ui/button";
-import { Hotel, LogOut, Menu, X } from "lucide-react";
-import { useState } from "react";
+import {
+  Hotel,
+  LogOut,
+  Menu,
+  X,
+  User,
+  CreditCard,
+  Ticket,
+  ChevronDown,
+  Heart,
+} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useState, useRef, useEffect } from "react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const customerLinks = [
   { href: "/", label: "Trang chủ" },
   { href: "/rooms", label: "Tìm phòng" },
-  { href: "/my-bookings", label: "Đơn của tôi" },
+  { href: "/my-bookings", label: "Phòng đã đặt" },
+  { href: "/my-coupons", label: "Ưu đãi" },
 ];
 
 export function Navbar() {
@@ -21,17 +33,32 @@ export function Navbar() {
   const user = useAuthStore((s) => s.user);
   const clear = useAuthStore((s) => s.clear);
   const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  // Hide nav on admin/staff layouts (they have own sidebar)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const wishlistQ = useQuery({
+    queryKey: ["wishlist-count"],
+    queryFn: () => api.get("/wishlist").then((r) => (r.data as any[]).length),
+    enabled: !!user,
+  });
+
   if (pathname.startsWith("/admin") || pathname.startsWith("/staff"))
     return null;
 
   const logout = async () => {
     try {
       await api.post("/auth/logout");
-    } catch {
-      /* noop */
-    }
+    } catch {}
     clear();
     router.push("/login");
   };
@@ -69,6 +96,17 @@ export function Navbar() {
         <div className="hidden items-center gap-2 md:flex">
           {user ? (
             <>
+              <Link
+                href="/my-bookings?tab=wishlist"
+                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+              >
+                <Heart className="h-4 w-4" />
+                {wishlistQ.data ? (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
+                    {wishlistQ.data}
+                  </span>
+                ) : null}
+              </Link>
               {user.role === "ADMIN" && (
                 <Link href="/admin/dashboard">
                   <Button variant="outline" size="sm">
@@ -85,17 +123,67 @@ export function Navbar() {
                   </Button>
                 </Link>
               )}
-              <div className="ml-1 flex items-center gap-2 rounded-full bg-slate-100 py-1 pr-3 pl-1">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">
-                  {user.firstName?.[0]?.toUpperCase()}
-                </span>
-                <span className="text-sm font-medium text-slate-700">
-                  {user.firstName} {user.lastName}
-                </span>
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="flex items-center gap-2 rounded-full bg-slate-100 py-1 pr-3 pl-1 transition-colors hover:bg-slate-200"
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">
+                    {user.firstName?.[0]?.toUpperCase()}
+                  </span>
+                  <span className="text-sm font-medium text-slate-700">
+                    {user.firstName} {user.lastName}
+                  </span>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                </button>
+
+                {menuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                    <div className="border-b border-slate-100 px-3 py-2">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {user.firstName} {user.lastName}
+                      </p>
+                      <p className="text-xs text-slate-500">{user.email}</p>
+                    </div>
+                    <Link
+                      href="/profile"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      <User className="h-4 w-4 text-slate-400" />
+                      Thông tin cá nhân
+                    </Link>
+                    <Link
+                      href="/profile?tab=payment"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      <CreditCard className="h-4 w-4 text-slate-400" />
+                      Phương thức thanh toán
+                    </Link>
+                    <Link
+                      href="/my-coupons"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      <Ticket className="h-4 w-4 text-slate-400" />
+                      Ưu đãi của tôi
+                    </Link>
+                    <div className="border-t border-slate-100 mt-1">
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          logout();
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Đăng xuất
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <Button variant="ghost" size="sm" onClick={logout}>
-                <LogOut className="h-4 w-4" />
-              </Button>
             </>
           ) : (
             <>
@@ -134,13 +222,24 @@ export function Navbar() {
             ))}
             <div className="border-t border-slate-100 pt-2">
               {user ? (
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  onClick={logout}
-                >
-                  <LogOut className="h-4 w-4" /> Đăng xuất
-                </Button>
+                <>
+                  <Link
+                    href="/profile"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                  >
+                    <User className="h-4 w-4" /> Thông tin cá nhân
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setOpen(false);
+                      logout();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="h-4 w-4" /> Đăng xuất
+                  </button>
+                </>
               ) : (
                 <div className="flex gap-2">
                   <Link href="/login" className="flex-1">

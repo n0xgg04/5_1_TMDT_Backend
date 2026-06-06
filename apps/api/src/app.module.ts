@@ -19,6 +19,11 @@ import { StaffModule } from "./staff/staff.module";
 import { ReportsModule } from "./reports/reports.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { CronModule } from "./cron/cron.module";
+import { CouponsModule } from "./coupons/coupons.module";
+import { FlashSalesModule } from "./flash-sales/flash-sales.module";
+import { ChatModule } from "./chat/chat.module";
+import { UserPaymentMethodsModule } from "./user-payment-methods/user-payment-methods.module";
+import { WishlistModule } from "./wishlist/wishlist.module";
 
 @Module({
   imports: [
@@ -35,6 +40,11 @@ import { CronModule } from "./cron/cron.module";
     BookingsModule,
     PaymentsModule,
     PaymentMethodsModule,
+    CouponsModule,
+    FlashSalesModule,
+    ChatModule,
+    UserPaymentMethodsModule,
+    WishlistModule,
     ReviewsModule,
     StaffModule,
     ReportsModule,

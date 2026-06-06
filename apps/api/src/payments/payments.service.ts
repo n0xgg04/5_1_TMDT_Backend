@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { EventsService } from "../common/events/events.service";
+import { StripeService } from "./stripe.service";
 import { VNPayGateway } from "./gateway/vnpay.gateway";
 import {
   PaymentMethod,
@@ -19,6 +20,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventsService,
+    private readonly stripe: StripeService,
     private readonly vnpay: VNPayGateway,
   ) {}
 
@@ -176,5 +178,134 @@ export class PaymentsService {
       throw new BadRequestException("Không có quyền xem thông tin này");
     }
     return payment;
+  }
+
+  async initiateStripePayment(
+    bookingId: string,
+    customerId: string,
+    userPaymentMethodId: string,
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+    if (!booking) throw new NotFoundException("Đơn đặt phòng không tồn tại");
+    if (booking.customerId !== customerId) {
+      throw new BadRequestException("Không có quyền thanh toán đơn này");
+    }
+    if (booking.status !== BookingStatus.PENDING_PAYMENT) {
+      throw new BadRequestException("Đơn không ở trạng thái chờ thanh toán");
+    }
+    if (new Date() > booking.paymentDeadline) {
+      throw new BadRequestException("Đơn đã hết hạn thanh toán");
+    }
+
+    const userMethod = await this.prisma.userPaymentMethod.findFirst({
+      where: { id: userPaymentMethodId, userId: customerId },
+    });
+    if (!userMethod) {
+      throw new NotFoundException("Không tìm thấy phương thức thanh toán");
+    }
+
+    const paymentMethodId = (
+      userMethod.details as Record<string, string> | undefined
+    )?.paymentMethodId;
+    if (!paymentMethodId) {
+      throw new BadRequestException("Thẻ chưa được liên kết với Stripe");
+    }
+
+    let payment = await this.prisma.payment.findUnique({
+      where: { bookingId },
+    });
+    if (payment && payment.status === PaymentStatus.COMPLETED) {
+      throw new ConflictException("Đơn đã được thanh toán");
+    }
+
+    const amount = Number(booking.totalAmount);
+
+    const { clientSecret, paymentIntentId } =
+      await this.stripe.createPaymentIntent({
+        amount: amount * 100,
+        currency: "vnd",
+        paymentMethodId,
+        metadata: {
+          bookingId,
+          bookingCode: booking.bookingCode,
+        },
+      });
+
+    if (!payment) {
+      payment = await this.prisma.payment.create({
+        data: {
+          bookingId,
+          customerId,
+          method: PaymentMethod.VISA,
+          paymentType: PaymentType.FULL,
+          amount,
+          status: PaymentStatus.PROCESSING,
+          gatewayTransactionId: paymentIntentId,
+        },
+      });
+    } else {
+      payment = await this.prisma.payment.update({
+        where: { bookingId },
+        data: {
+          status: PaymentStatus.PROCESSING,
+          method: PaymentMethod.VISA,
+          paymentType: PaymentType.FULL,
+          amount,
+          gatewayTransactionId: paymentIntentId,
+        },
+      });
+    }
+
+    await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: BookingStatus.PAYING },
+    });
+
+    return { payment, clientSecret, amount };
+  }
+
+  async confirmStripePayment(paymentIntentId: string) {
+    const paymentIntent =
+      await this.stripe.confirmPaymentIntent(paymentIntentId);
+
+    const payment = await this.prisma.payment.findFirst({
+      where: { gatewayTransactionId: paymentIntentId },
+      include: { booking: true },
+    });
+
+    if (!payment) {
+      throw new NotFoundException("Không tìm thấy giao dịch");
+    }
+
+    const isSuccess = paymentIntent.status === "succeeded";
+
+    await this.prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: isSuccess ? PaymentStatus.COMPLETED : PaymentStatus.FAILED,
+        paidAt: isSuccess ? new Date() : undefined,
+        failureReason: isSuccess
+          ? undefined
+          : `Stripe status: ${paymentIntent.status}`,
+      },
+    });
+
+    if (isSuccess) {
+      await this.events.emit("payment.success", {
+        bookingId: payment.bookingId,
+        amount: payment.amount,
+        gatewayTransactionId: paymentIntentId,
+      });
+    } else {
+      await this.events.emit("payment.failed", {
+        bookingId: payment.bookingId,
+        responseCode: paymentIntent.status,
+        gatewayTransactionId: paymentIntentId,
+      });
+    }
+
+    return { success: isSuccess, status: paymentIntent.status };
   }
 }

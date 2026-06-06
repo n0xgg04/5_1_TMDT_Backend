@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Headers,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { Role } from "@prisma/client";
@@ -19,6 +20,8 @@ import {
   CreatePricingRuleDto,
 } from "./dto/rooms.dto";
 import { Roles } from "../common/decorators/roles.decorator";
+import { Public } from "../common/decorators/public.decorator";
+import { CurrentUser } from "../common/decorators/current-user.decorator";
 
 @ApiTags("Rooms")
 @ApiBearerAuth()
@@ -47,6 +50,24 @@ export class RoomsController {
     return this.roomsService.getRoomType(id);
   }
 
+  @Public()
+  @Get("types/:id/public")
+  @ApiOperation({ summary: "Chi tiết loại phòng (public)" })
+  getRoomTypePublic(
+    @Param("id") id: string,
+    @CurrentUser() user?: { id: string },
+    @Headers("x-session-id") sessionId?: string,
+  ) {
+    return this.roomsService.getRoomTypePublic(id, user?.id, sessionId);
+  }
+
+  @Public()
+  @Get("types/:id/reviews")
+  @ApiOperation({ summary: "Đánh giá phòng" })
+  getRoomTypeReviews(@Param("id") id: string) {
+    return this.roomsService.getRoomTypeReviews(id);
+  }
+
   @Patch("types/:id")
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: "Cập nhật loại phòng (Admin)" })
@@ -59,6 +80,13 @@ export class RoomsController {
   @ApiOperation({ summary: "Xóa loại phòng (Admin)" })
   deleteRoomType(@Param("id") id: string) {
     return this.roomsService.deleteRoomType(id);
+  }
+
+  @Get("branches")
+  @Roles(Role.ADMIN, Role.RECEPTIONIST)
+  @ApiOperation({ summary: "Danh sách chi nhánh" })
+  listBranches() {
+    return this.roomsService.listBranches();
   }
 
   @Get()

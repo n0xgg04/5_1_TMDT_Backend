@@ -13,6 +13,7 @@ import {
   Map,
   CheckSquare,
   ClipboardList,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
@@ -66,6 +67,18 @@ const ITEMS: NavItem[] = [
     label: "Duyệt đặt phòng",
     icon: ClipboardList,
     roles: ["RECEPTIONIST", "ADMIN"],
+  },
+  {
+    href: "/admin/conversations",
+    label: "Hộp thư hỗ trợ",
+    icon: MessageSquare,
+    roles: ["ADMIN"],
+  },
+  {
+    href: "/staff/conversations",
+    label: "Hộp thư hỗ trợ",
+    icon: MessageSquare,
+    roles: ["RECEPTIONIST"],
   },
 ];
 

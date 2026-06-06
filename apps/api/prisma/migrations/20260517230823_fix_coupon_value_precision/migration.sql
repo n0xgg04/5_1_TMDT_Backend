@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "coupons" ALTER COLUMN "value" SET DATA TYPE DECIMAL(12,2);

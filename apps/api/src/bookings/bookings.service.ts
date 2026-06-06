@@ -9,6 +9,8 @@ import { PrismaService } from "../common/prisma/prisma.service";
 import { RedisService } from "../common/redis/redis.service";
 import { EventsService } from "../common/events/events.service";
 import { PricingService } from "../rooms/pricing.service";
+import { CouponsService } from "../coupons/coupons.service";
+import { FlashSalesService } from "../flash-sales/flash-sales.service";
 import {
   CreateBookingDto,
   UploadReceiptDto,
@@ -29,6 +31,8 @@ export class BookingsService {
     private readonly redis: RedisService,
     private readonly events: EventsService,
     private readonly pricingService: PricingService,
+    private readonly couponsService: CouponsService,
+    private readonly flashSalesService: FlashSalesService,
   ) {}
 
   async createBooking(customerId: string, dto: CreateBookingDto) {
@@ -70,11 +74,36 @@ export class BookingsService {
           "Phòng đã được đặt trong khoảng thời gian này",
         );
 
-      const totalAmount = await this.pricingService.calculateTotalPrice(
+      let totalAmount = await this.pricingService.calculateTotalPrice(
         room.roomTypeId,
         checkIn,
         checkOut,
       );
+
+      const flashSaleResult =
+        await this.flashSalesService.calculateFlashSalePrice(
+          room.roomTypeId,
+          Number(totalAmount),
+        );
+      if (flashSaleResult.flashSaleId) {
+        totalAmount = flashSaleResult.price as any;
+      }
+
+      let discountAmount: number | undefined;
+      let appliedCouponId: string | undefined;
+      if (dto.couponCode) {
+        const couponResult = await this.couponsService.applyCoupon({
+          code: dto.couponCode,
+          amount: Number(totalAmount),
+        });
+        discountAmount = couponResult.discount;
+        totalAmount = couponResult.finalAmount as any;
+        await this.couponsService.incrementUsage(dto.couponCode);
+        const coupon = await this.prisma.coupon.findUnique({
+          where: { code: dto.couponCode.toUpperCase() },
+        });
+        if (coupon) appliedCouponId = coupon.id;
+      }
 
       const paymentDeadline = new Date(Date.now() + 15 * 60 * 1000);
 
@@ -89,6 +118,8 @@ export class BookingsService {
           adults: dto.adults ?? 2,
           children: dto.children ?? 0,
           totalAmount,
+          discountAmount,
+          couponCode: dto.couponCode,
           paymentDeadline,
           guestNotes: dto.guestNotes,
           specialRequests: dto.specialRequests,
@@ -96,6 +127,21 @@ export class BookingsService {
         },
         include: { room: { include: { roomType: true } } },
       });
+
+      if (appliedCouponId) {
+        await this.prisma.userCoupon.upsert({
+          where: {
+            userId_couponId: { userId: customerId, couponId: appliedCouponId },
+          },
+          update: { isUsed: true, usedAt: new Date() },
+          create: {
+            userId: customerId,
+            couponId: appliedCouponId,
+            isUsed: true,
+            usedAt: new Date(),
+          },
+        });
+      }
 
       await this.publishOutbox("booking.created", {
         bookingId: booking.id,
@@ -135,7 +181,7 @@ export class BookingsService {
       }),
       this.prisma.booking.count({ where }),
     ]);
-    return { items, total, page, limit };
+    return { data: items, total, page, limit };
   }
 
   async getBookingById(id: string, user: { id: string; role: Role }) {
@@ -379,7 +425,7 @@ export class BookingsService {
         where: { status: BookingStatus.PENDING_APPROVAL },
       }),
     ]);
-    return { items, total, page, limit };
+    return { data: items, total, page, limit };
   }
 
   async approveBooking(

@@ -52,6 +52,21 @@ export class CreateBookingDto {
   @IsOptional()
   @IsString()
   specialRequests?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  paymentMethodId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  payMode?: string;
 }
 
 export class CancelBookingDto {

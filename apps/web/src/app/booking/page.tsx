@@ -11,23 +11,43 @@ import {
   Users,
   CheckCircle2,
   CreditCard,
-  Wallet,
   Banknote,
   Building2,
-  Receipt,
+  Plus,
+  ArrowRight,
+  ShieldCheck,
+  User,
+  Phone,
+  Mail,
+  BedDouble,
   Clock,
-  Baby,
-  MessageSquare,
+  Tag,
+  MapPin,
+  X,
+  Loader2,
+  Ticket,
 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/lib/auth-store";
 import { toast } from "@/lib/toast";
 import { formatCurrency, formatDate, diffNights, cn } from "@/lib/utils";
-import type { PaymentMethodInfo } from "@/lib/types";
+import { loadStripe } from "@stripe/stripe-js";
+import type { UserPaymentMethod, UserCoupon } from "@/lib/types";
+
+interface PricingRule {
+  id: string;
+  roomTypeId: string;
+  type: string;
+  pricePerNight: string | number;
+  startDate: string | null;
+  endDate: string | null;
+  priority: number;
+  isActive: boolean;
+}
 
 interface RoomTypeDetail {
   id: string;
@@ -38,9 +58,52 @@ interface RoomTypeDetail {
   bedType: string;
   images: string[];
   amenities: string[];
+  pricingRules: PricingRule[];
+  rooms?: { branch?: { name: string; city: string } }[];
 }
 
-type Method = "VNPAY" | "MOMO" | "CASH" | "BANK_TRANSFER" | "DEPOSIT";
+function calcTotalFromRules(
+  rules: PricingRule[] | undefined,
+  checkInStr: string,
+  checkOutStr: string,
+): number {
+  if (!rules || rules.length === 0) return 0;
+  const checkIn = new Date(checkInStr);
+  const checkOut = new Date(checkOutStr);
+  const nights = Math.max(
+    1,
+    Math.round(
+      (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
+    ),
+  );
+  let total = 0;
+  for (let i = 0; i < nights; i++) {
+    const date = new Date(checkIn);
+    date.setDate(date.getDate() + i);
+    const applicable = rules
+      .filter((r) => {
+        if (!r.isActive) return false;
+        if (r.startDate === null && r.endDate === null) return true;
+        const s = r.startDate ? new Date(r.startDate) : null;
+        const e = r.endDate ? new Date(r.endDate) : null;
+        return (
+          (s === null || s.getTime() <= date.getTime()) &&
+          (e === null || e.getTime() >= date.getTime())
+        );
+      })
+      .sort((a, b) => b.priority - a.priority);
+    total += Number(applicable[0]?.pricePerNight ?? 0);
+  }
+  return total;
+}
+
+type PayMode = "FULL" | "CASH" | "BANK_TRANSFER";
+
+const SPECIAL_REQUESTS_OPTIONS = [
+  { key: "non_smoking", label: "Phòng không hút thuốc" },
+  { key: "connecting", label: "Phòng liên thông" },
+  { key: "high_floor", label: "Tầng cao" },
+];
 
 export default function BookingPage() {
   return (
@@ -62,15 +125,31 @@ function BookingInner() {
   const checkOut = sp.get("checkOut") ?? "";
   const guests = Number(sp.get("guests") ?? 2);
 
-  const [notes, setNotes] = useState("");
-  const [specialRequests, setSpecialRequests] = useState("");
+  const [contactName, setContactName] = useState(
+    `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim(),
+  );
+  const [contactPhone, setContactPhone] = useState(user?.phone || "");
+  const [contactEmail, setContactEmail] = useState(user?.email || "");
+  const [guestName, setGuestName] = useState(
+    `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim(),
+  );
+  const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
+  const [otherRequests, setOtherRequests] = useState("");
+  const [insurance, setInsurance] = useState(false);
   const [checkInTime, setCheckInTime] = useState("14:00");
   const [checkOutTime, setCheckOutTime] = useState("12:00");
   const [adults, setAdults] = useState(guests);
   const [children, setChildren] = useState(0);
-  const [method, setMethod] = useState<Method>("VNPAY");
-  const [receiptUrl, setReceiptUrl] = useState("");
-  const [bankInfo, setBankInfo] = useState<PaymentMethodInfo | null>(null);
+  const [payMode, setPayMode] = useState<PayMode>("FULL");
+  const [selectedMethodId, setSelectedMethodId] = useState<string>("");
+  const [selectedCoupon, setSelectedCoupon] = useState<UserCoupon | null>(null);
+  const [discount, setDiscount] = useState(0);
+  const [manualCouponCode, setManualCouponCode] = useState("");
+  const [appliedManualCode, setAppliedManualCode] = useState("");
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrCountdown, setQrCountdown] = useState(30);
+  const [qrBookingId, setQrBookingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (hydrated && !user) {
@@ -84,7 +163,9 @@ function BookingInner() {
     queryKey: ["roomType", roomTypeId],
     enabled: Boolean(roomTypeId),
     queryFn: () =>
-      api.get<RoomTypeDetail>(`/rooms/types/${roomTypeId}`).then((r) => r.data),
+      api
+        .get<RoomTypeDetail>(`/rooms/types/${roomTypeId}/public`)
+        .then((r) => r.data),
   });
 
   const priceQ = useQuery({
@@ -101,21 +182,135 @@ function BookingInner() {
         .get("/search", {
           params: { checkIn, checkOut, guests: adults + children, roomTypeId },
         })
-        .then((r) => r.data?.[0]),
+        .then((r) => r.data?.data?.[0]),
   });
 
-  const bankInfoQ = useQuery({
-    queryKey: ["payment-methods"],
-    enabled: method === "BANK_TRANSFER",
+  const userMethodsQ = useQuery({
+    queryKey: ["user-payment-methods"],
+    enabled: Boolean(user && payMode !== "CASH" && payMode !== "BANK_TRANSFER"),
     queryFn: () =>
-      api
-        .get<PaymentMethodInfo[]>("/payment-methods")
-        .then((r) => r.data?.[0] ?? null),
+      api.get<UserPaymentMethod[]>("/user-payment-methods").then((r) => r.data),
+  });
+
+  const myCouponsQ = useQuery({
+    queryKey: ["my-coupons-booking"],
+    enabled: Boolean(user),
+    queryFn: () =>
+      api.get<UserCoupon[]>("/coupons/my-coupons").then((r) => r.data),
   });
 
   useEffect(() => {
-    if (bankInfoQ.data) setBankInfo(bankInfoQ.data);
-  }, [bankInfoQ.data]);
+    if (user) {
+      setContactName(`${user.firstName} ${user.lastName}`);
+      setContactPhone(user.phone ?? "");
+      setContactEmail(user.email ?? "");
+      setGuestName(`${user.firstName} ${user.lastName}`);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!showQrModal || qrCountdown <= 0) return;
+    const timer = setInterval(() => {
+      setQrCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [showQrModal, qrCountdown]);
+
+  const nights = diffNights(checkIn, checkOut);
+  const fallbackTotal = calcTotalFromRules(
+    rt.data?.pricingRules,
+    checkIn,
+    checkOut,
+  );
+  const total = priceQ.data?.totalPrice ?? fallbackTotal;
+  const pricePerNight =
+    priceQ.data?.pricePerNight ?? (nights > 0 ? fallbackTotal / nights : 0);
+  const vat = Math.floor((total - discount) * 0.1);
+  const finalTotal = total - discount + vat + (insurance ? 43500 : 0);
+
+  useEffect(() => {
+    console.log("[Booking Debug]", {
+      priceQData: priceQ.data,
+      rtPricingRules: rt.data?.pricingRules,
+      fallbackTotal,
+      total,
+      pricePerNight,
+      nights,
+      checkIn,
+      checkOut,
+    });
+  }, [
+    priceQ.data,
+    rt.data?.pricingRules,
+    fallbackTotal,
+    total,
+    pricePerNight,
+    nights,
+    checkIn,
+    checkOut,
+  ]);
+
+  const applyCoupon = useMutation({
+    mutationFn: async (coupon: UserCoupon) => {
+      const res = await api
+        .post("/coupons/apply", { code: coupon.coupon.code, amount: total })
+        .then((r) => r.data);
+      setDiscount(res.discount);
+      setSelectedCoupon(coupon);
+      setCouponError(null);
+      toast.success(
+        `Đã áp dụng ${coupon.coupon.code}`,
+        `Giảm ${formatCurrency(res.discount)}`,
+      );
+    },
+    onError: (err) => {
+      setDiscount(0);
+      setSelectedCoupon(null);
+      setCouponError(getApiErrorMessage(err));
+      toast.error("Mã giảm giá không hợp lệ", getApiErrorMessage(err));
+    },
+  });
+
+  const applyManualCoupon = useMutation({
+    mutationFn: async (code: string) => {
+      const res = await api
+        .post("/coupons/apply", {
+          code: code.trim().toUpperCase(),
+          amount: total,
+        })
+        .then((r) => r.data);
+      setDiscount(res.discount);
+      setAppliedManualCode(res.code);
+      setCouponError(null);
+      setManualCouponCode("");
+      toast.success(
+        `Đã áp dụng ${res.code}`,
+        `Giảm ${formatCurrency(res.discount)}`,
+      );
+      return res;
+    },
+    onError: (err) => {
+      setDiscount(0);
+      setSelectedCoupon(null);
+      setAppliedManualCode("");
+      setCouponError(getApiErrorMessage(err));
+      toast.error("Mã giảm giá không hợp lệ", getApiErrorMessage(err));
+    },
+  });
+
+  const clearCoupon = () => {
+    setSelectedCoupon(null);
+    setDiscount(0);
+    setCouponError(null);
+    setManualCouponCode("");
+    setAppliedManualCode("");
+  };
 
   const create = useMutation({
     mutationFn: () =>
@@ -128,48 +323,81 @@ function BookingInner() {
           checkOutTime,
           adults,
           children,
-          guestNotes: notes || undefined,
-          specialRequests: specialRequests || undefined,
+          guestNotes: otherRequests || undefined,
+          specialRequests: selectedRequests.join(", ") || undefined,
+          couponCode:
+            selectedCoupon?.coupon.code || appliedManualCode || undefined,
+          paymentMethodId: selectedMethodId || undefined,
+          payMode,
         })
         .then((r) => r.data),
     onSuccess: async (booking) => {
       toast.success("Tạo đơn thành công", `Mã đơn: ${booking.bookingCode}`);
       try {
-        if (method === "BANK_TRANSFER") {
-          if (!receiptUrl.trim()) {
-            toast.info(
-              "Vui lòng chuyển khoản và upload biên lai",
-              `Số tiền: ${formatCurrency(total)}`,
-            );
-            return;
-          }
-          await api.post(`/bookings/${booking.id}/upload-receipt`, {
-            receiptImageUrl: receiptUrl,
-          });
-          toast.success("Đã upload biên lai", "Đơn đang chờ staff xác nhận");
+        if (payMode === "BANK_TRANSFER") {
+          setQrBookingId(booking.id);
+          setShowQrModal(true);
+          setQrCountdown(30);
+          return;
+        }
+        if (payMode === "CASH") {
+          toast.info(
+            "Đơn đã được tạo",
+            "Vui lòng thanh toán khi nhận phòng. Đơn đang chờ duyệt.",
+          );
           router.push("/my-bookings");
           return;
         }
 
-        const isDeposit = method === "DEPOSIT";
-        const pay = await api
-          .post("/payments/initiate", {
-            bookingId: booking.id,
-            method: isDeposit ? "VNPAY" : method,
-            paymentType: isDeposit ? "DEPOSIT" : "FULL",
-          })
-          .then((r) => r.data);
+        const selectedMethod = userMethodsQ.data?.find(
+          (m) => m.id === selectedMethodId,
+        );
+        const methodType = selectedMethod?.type ?? "VNPAY";
 
-        if (pay.gatewayUrl) {
-          toast.info("Đang chuyển sang cổng thanh toán…");
-          window.location.href = pay.gatewayUrl;
+        if (methodType === "VISA") {
+          const { clientSecret } = await api
+            .post("/payments/stripe/payment-intent", {
+              bookingId: booking.id,
+              paymentMethodId: selectedMethodId,
+            })
+            .then((r) => r.data);
+
+          const stripe = await loadStripe(
+            process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "",
+          );
+          if (!stripe) {
+            throw new Error("Stripe chưa sẵn sàng");
+          }
+
+          const result = await stripe.confirmCardPayment(clientSecret);
+
+          if (result.error) {
+            throw new Error(result.error.message ?? "Thanh toán thất bại");
+          }
+
+          await api.post("/payments/stripe/confirm-payment", {
+            paymentIntentId: result.paymentIntent.id,
+          });
+
+          toast.success(
+            "Thanh toán thành công",
+            "Đơn đặt phòng đã được xác nhận",
+          );
+          router.push("/my-bookings");
           return;
         }
-        if (method === "CASH") {
-          toast.info(
-            "Vui lòng thanh toán tại quầy",
-            "Đơn của bạn đã được tạo và đang chờ xác nhận.",
-          );
+
+        const payRes = await api
+          .post("/payments/initiate", {
+            bookingId: booking.id,
+            method: methodType,
+            paymentType: payMode,
+          })
+          .then((r) => r.data);
+        if (payRes.gatewayUrl) {
+          toast.info("Đang chuyển sang cổng thanh toán…");
+          window.location.href = payRes.gatewayUrl;
+          return;
         }
         router.push("/my-bookings");
       } catch (e) {
@@ -201,230 +429,228 @@ function BookingInner() {
     );
   }
 
-  const nights = diffNights(checkIn, checkOut);
-  const total = priceQ.data?.totalPrice ?? 0;
-  const pricePerNight = priceQ.data?.pricePerNight ?? 0;
-  const depositAmount = Math.floor(total * 0.3);
+  const savedMethods = userMethodsQ.data ?? [];
+  const availableCoupons = (myCouponsQ.data ?? []).filter((c) => !c.isUsed);
+
+  const toggleRequest = (key: string) => {
+    setSelectedRequests((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  };
 
   return (
     <main className="container-page py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">
-          Xác nhận đặt phòng
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Vui lòng kiểm tra lại thông tin trước khi xác nhận
-        </p>
+      <div className="mb-6 flex items-center gap-2 text-sm text-slate-500">
+        <span className="font-medium text-brand-600">1. Review</span>
+        <ArrowRight className="h-3.5 w-3.5" />
+        <span className="font-bold text-slate-900">2. Pay</span>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card>
-            <CardHeader>
-              <CardTitle>Thông tin lưu trú</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {rt.isLoading ? (
-                <Skeleton className="h-32 w-full" />
-              ) : rt.data ? (
-                <div className="flex gap-4">
-                  <img
-                    src={
-                      rt.data.images[0] ||
-                      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&auto=format&fit=crop&q=80"
-                    }
-                    alt={rt.data.name}
-                    className="h-32 w-44 rounded-lg object-cover"
+            <CardContent className="p-5">
+              <h2 className="text-lg font-bold text-slate-900">
+                Thông tin đặt phòng
+              </h2>
+              <p className="text-sm text-slate-500">
+                Vui lòng điền đầy đủ thông tin để nhận xác nhận đặt phòng.
+              </p>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <Input
+                    leftIcon={<User className="h-4 w-4" />}
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    placeholder="Nguyễn Văn A"
                   />
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      {rt.data.name}
-                    </h3>
-                    <p className="text-sm text-slate-500">
-                      {rt.data.bedType} · {rt.data.areaSqm} m² · Tối đa{" "}
-                      {rt.data.maxGuests} khách
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-700">
-                      <Stat
-                        icon={<CalendarDays className="h-4 w-4" />}
-                        label="Nhận phòng"
-                        value={formatDate(checkIn)}
-                      />
-                      <Stat
-                        icon={<CalendarDays className="h-4 w-4" />}
-                        label="Trả phòng"
-                        value={formatDate(checkOut)}
-                      />
-                      <Stat
-                        icon={<Users className="h-4 w-4" />}
-                        label="Khách"
-                        value={`${adults + children} người`}
-                      />
-                    </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Số điện thoại <span className="text-rose-500">*</span>
+                    </label>
+                    <Input
+                      leftIcon={<Phone className="h-4 w-4" />}
+                      value={contactPhone}
+                      onChange={(e) => setContactPhone(e.target.value)}
+                      placeholder="+84"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Email <span className="text-rose-500">*</span>
+                    </label>
+                    <Input
+                      leftIcon={<Mail className="h-4 w-4" />}
+                      type="email"
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      placeholder="email@example.com"
+                    />
                   </div>
                 </div>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Chi tiết đặt phòng</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Giờ nhận phòng
-                  </label>
-                  <Input
-                    type="time"
-                    value={checkInTime}
-                    onChange={(e) => setCheckInTime(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Giờ trả phòng
-                  </label>
-                  <Input
-                    type="time"
-                    value={checkOutTime}
-                    onChange={(e) => setCheckOutTime(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Người lớn
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={adults}
-                    onChange={(e) => setAdults(Number(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Trẻ em
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={children}
-                    onChange={(e) => setChildren(Number(e.target.value))}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Yêu cầu đặc biệt
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Ví dụ: View biển, không hút thuốc, giường extra..."
-                  value={specialRequests}
-                  onChange={(e) => setSpecialRequests(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 p-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Ghi chú
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Ví dụ: Phòng tầng cao, gần thang máy…"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 p-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-                />
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Phương thức thanh toán</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <CardContent className="p-5">
+              <h2 className="text-lg font-bold text-slate-900">Yêu cầu</h2>
+              <p className="text-sm text-slate-500">
+                Điền thông tin khách lưu trú.
+              </p>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Họ và tên khách <span className="text-rose-500">*</span>
+                  </label>
+                  <Input
+                    leftIcon={<User className="h-4 w-4" />}
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    placeholder="Nguyễn Văn A"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Yêu cầu đặc biệt
+                  </label>
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    {SPECIAL_REQUESTS_OPTIONS.map((opt) => (
+                      <label
+                        key={opt.key}
+                        className="flex items-center gap-2 text-sm text-slate-700"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedRequests.includes(opt.key)}
+                          onChange={() => toggleRequest(opt.key)}
+                          className="h-4 w-4 rounded border-slate-300 text-brand-600"
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Yêu cầu khác
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={otherRequests}
+                    onChange={(e) => setOtherRequests(e.target.value)}
+                    placeholder="Các yêu cầu khác..."
+                    className="w-full rounded-lg border border-slate-200 p-3 text-sm outline-none focus:border-brand-500"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-5">
+              <h2 className="text-lg font-bold text-slate-900">
+                Phương thức thanh toán
+              </h2>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <PayOption
-                  active={method === "VNPAY"}
-                  onClick={() => setMethod("VNPAY")}
+                  active={payMode === "FULL"}
+                  onClick={() => setPayMode("FULL")}
                   icon={<CreditCard className="h-5 w-5" />}
-                  title="VNPay"
-                  desc="Thanh toán bằng ATM/Visa"
+                  title="Thanh toán ngay"
+                  desc="Trả toàn bộ"
                 />
                 <PayOption
-                  active={method === "DEPOSIT"}
-                  onClick={() => setMethod("DEPOSIT")}
-                  icon={<Wallet className="h-5 w-5" />}
-                  title="Đặt cọc (30%)"
-                  desc={`${formatCurrency(depositAmount)} để giữ phòng`}
-                />
-                <PayOption
-                  active={method === "BANK_TRANSFER"}
-                  onClick={() => setMethod("BANK_TRANSFER")}
+                  active={payMode === "BANK_TRANSFER"}
+                  onClick={() => setPayMode("BANK_TRANSFER")}
                   icon={<Building2 className="h-5 w-5" />}
                   title="Chuyển khoản"
-                  desc="CK ngân hàng + upload biên lai"
+                  desc="Quét mã QR"
                 />
                 <PayOption
-                  active={method === "CASH"}
-                  onClick={() => setMethod("CASH")}
+                  active={payMode === "CASH"}
+                  onClick={() => setPayMode("CASH")}
                   icon={<Banknote className="h-5 w-5" />}
                   title="Tại quầy"
                   desc="Thanh toán khi nhận phòng"
                 />
               </div>
 
-              {method === "BANK_TRANSFER" && (
-                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                  {bankInfo ? (
-                    <div className="space-y-2 text-sm">
-                      <p className="font-semibold text-amber-900">
-                        Thông tin chuyển khoản
-                      </p>
-                      <p className="text-amber-800">
-                        Ngân hàng: {bankInfo.bankName}
-                      </p>
-                      <p className="text-amber-800">
-                        Số TK: {bankInfo.accountNumber}
-                      </p>
-                      <p className="text-amber-800">
-                        Chủ TK: {bankInfo.accountHolder}
-                      </p>
-                      <p className="text-amber-800">
-                        Số tiền: {formatCurrency(total)}
-                      </p>
-                      <p className="text-amber-800">
-                        Nội dung: Đặt phòng Sapphire Stay
-                      </p>
-                      <Input
-                        className="mt-2"
-                        placeholder="Dán link ảnh biên lai chuyển khoản"
-                        value={receiptUrl}
-                        onChange={(e) => setReceiptUrl(e.target.value)}
-                      />
+              {payMode === "FULL" && (
+                <div className="mt-4 space-y-3">
+                  <p className="text-sm font-medium text-slate-700">
+                    Chọn phương thức
+                  </p>
+                  {savedMethods.length === 0 && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+                      Bạn chưa có phương thức thanh toán.
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => router.push("/profile")}
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Thêm ngay
+                      </Button>
                     </div>
-                  ) : (
-                    <p className="text-sm text-amber-800">
-                      Đang tải thông tin TK ngân hàng…
-                    </p>
                   )}
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {savedMethods.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => setSelectedMethodId(m.id)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-xl border p-3 text-left transition-all",
+                          selectedMethodId === m.id
+                            ? "border-brand-500 bg-brand-50 ring-2 ring-brand-200"
+                            : "border-slate-200 bg-white hover:border-slate-300",
+                        )}
+                      >
+                        <CreditCard className="h-5 w-5 text-slate-400" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-slate-900">
+                            {m.label}
+                          </p>
+                          <p className="text-xs text-slate-500">{m.type}</p>
+                        </div>
+                        {m.isDefault && (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                            Mặc định
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push("/profile")}
+                  >
+                    <Plus className="mr-1 h-4 w-4" /> Thêm phương thức thanh
+                    toán
+                  </Button>
                 </div>
               )}
 
-              {method === "DEPOSIT" && (
-                <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-800">
-                  <p className="font-semibold">
-                    Bạn sẽ thanh toán trước {formatCurrency(depositAmount)}{" "}
-                    (30%) qua VNPay.
+              {payMode === "BANK_TRANSFER" && (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  <p className="font-semibold text-amber-900">
+                    Thanh toán qua chuyển khoản
                   </p>
                   <p className="mt-1">
-                    Số tiền còn lại {formatCurrency(total - depositAmount)} sẽ
-                    thanh toán khi check-in.
+                    Sau khi đặt phòng, bạn sẽ được chuyển đến mã QR để thanh
+                    toán.
+                  </p>
+                </div>
+              )}
+
+              {payMode === "CASH" && (
+                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                  <p className="font-semibold">Thanh toán khi nhận phòng</p>
+                  <p className="mt-1">
+                    Bạn sẽ thanh toán toàn bộ {formatCurrency(finalTotal)} tại
+                    quầy lễ tân. Đơn sẽ được staff duyệt sau khi bạn đến.
                   </p>
                 </div>
               )}
@@ -434,67 +660,283 @@ function BookingInner() {
 
         <div>
           <Card className="sticky top-24">
-            <CardHeader>
-              <CardTitle>Tóm tắt đơn</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Row
-                label={`${formatCurrency(pricePerNight)} × ${nights} đêm`}
-                value={formatCurrency(pricePerNight * nights)}
-              />
-              <Row label="Phí dịch vụ" value="Miễn phí" />
-              {method === "DEPOSIT" && (
-                <Row
-                  label="Đặt cọc (30%)"
-                  value={formatCurrency(depositAmount)}
-                />
-              )}
-              <div className="border-t border-slate-100 pt-3">
-                <Row bold label="Tổng cộng" value={formatCurrency(total)} />
+            <CardContent className="p-5">
+              <h2 className="text-lg font-bold text-slate-900">
+                Hotel Summary
+              </h2>
+              {rt.isLoading ? (
+                <Skeleton className="mt-3 h-24 w-full" />
+              ) : rt.data ? (
+                <div className="mt-3 flex gap-3">
+                  <img
+                    src={
+                      rt.data.images[0] ||
+                      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&auto=format&fit=crop&q=80"
+                    }
+                    alt={rt.data.name}
+                    className="h-20 w-20 rounded-lg object-cover"
+                  />
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      {rt.data.name}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {rt.data.rooms?.[0]?.branch?.city ?? "Việt Nam"}
+                    </p>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                      <BedDouble className="h-3.5 w-3.5" /> {rt.data.bedType}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-4 space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-slate-600">
+                  <CalendarDays className="h-4 w-4 text-slate-400" />
+                  <span>
+                    Nhận: {formatDate(checkIn)} ({checkInTime})
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                  <CalendarDays className="h-4 w-4 text-slate-400" />
+                  <span>
+                    Trả: {formatDate(checkOut)} ({checkOutTime})
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                  <Users className="h-4 w-4 text-slate-400" />
+                  <span>
+                    {adults} người lớn
+                    {children > 0 ? `, ${children} trẻ em` : ""}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                  <Clock className="h-4 w-4 text-slate-400" />
+                  <span>{nights} đêm</span>
+                </div>
+                {selectedRequests.length > 0 && (
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Tag className="h-4 w-4 text-slate-400" />
+                    <span>
+                      {selectedRequests
+                        .map(
+                          (k) =>
+                            SPECIAL_REQUESTS_OPTIONS.find((o) => o.key === k)
+                              ?.label,
+                        )
+                        .join(", ")}
+                    </span>
+                  </div>
+                )}
               </div>
+
+              <div className="mt-4 border-t border-slate-100 pt-4 space-y-2">
+                <Row
+                  label={`Phòng × ${nights} đêm`}
+                  value={formatCurrency(total)}
+                />
+                {discount > 0 && (
+                  <Row
+                    label={`Giảm giá (${selectedCoupon?.coupon.code})`}
+                    value={`-${formatCurrency(discount)}`}
+                  />
+                )}
+                <Row label="Thuế VAT (10%)" value={formatCurrency(vat)} />
+                {insurance && (
+                  <Row label="Bảo hiểm du lịch" value={formatCurrency(43500)} />
+                )}
+                <div className="border-t border-slate-100 pt-2">
+                  <Row
+                    bold
+                    label="Tổng cộng"
+                    value={formatCurrency(finalTotal)}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Áp dụng ưu đãi
+                </label>
+
+                {discount > 0 ? (
+                  <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <Ticket className="h-4 w-4 text-emerald-600" />
+                      <span className="text-sm font-medium text-emerald-800">
+                        {selectedCoupon?.coupon.code ?? appliedManualCode}
+                      </span>
+                      <span className="text-xs text-emerald-600">
+                        -{formatCurrency(discount)}
+                      </span>
+                    </div>
+                    <button
+                      onClick={clearCoupon}
+                      className="rounded p-1 text-emerald-600 hover:bg-emerald-100"
+                      title="Bỏ mã"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nhập mã giảm giá"
+                        value={manualCouponCode}
+                        onChange={(e) => {
+                          setManualCouponCode(e.target.value);
+                          setCouponError(null);
+                        }}
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={
+                          !manualCouponCode.trim() ||
+                          applyManualCoupon.isPending ||
+                          total <= 0
+                        }
+                        onClick={() =>
+                          applyManualCoupon.mutate(manualCouponCode)
+                        }
+                      >
+                        {applyManualCoupon.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Áp dụng"
+                        )}
+                      </Button>
+                    </div>
+                    {couponError && (
+                      <p className="mt-1 text-xs text-rose-500">
+                        {couponError}
+                      </p>
+                    )}
+
+                    {availableCoupons.length > 0 && (
+                      <div className="mt-3">
+                        <p className="mb-1 text-xs text-slate-500">
+                          Hoặc chọn từ mã đã lưu
+                        </p>
+                        <select
+                          value={selectedCoupon?.id ?? ""}
+                          onChange={(e) => {
+                            const c = availableCoupons.find(
+                              (x) => x.id === e.target.value,
+                            );
+                            if (c) applyCoupon.mutate(c);
+                            else clearCoupon();
+                          }}
+                          disabled={applyCoupon.isPending}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 disabled:opacity-50"
+                        >
+                          <option value="">Chọn mã giảm giá</option>
+                          {availableCoupons.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.coupon.code} —{" "}
+                              {c.coupon.type === "percentage"
+                                ? `Giảm ${c.coupon.value}%`
+                                : `Giảm ${formatCurrency(Number(c.coupon.value))}`}
+                              {c.coupon.minAmount
+                                ? ` (tối thiểu ${formatCurrency(Number(c.coupon.minAmount))})`
+                                : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
               <Button
                 size="lg"
-                className="w-full"
+                className="mt-4 w-full"
                 loading={create.isPending}
                 disabled={
                   !user ||
                   priceQ.isLoading ||
-                  (method === "BANK_TRANSFER" &&
-                    !receiptUrl.trim() &&
-                    bankInfo !== null)
+                  !contactName ||
+                  !contactPhone ||
+                  !contactEmail ||
+                  !guestName ||
+                  (payMode === "FULL" && !selectedMethodId)
                 }
                 onClick={() => create.mutate()}
               >
-                <CheckCircle2 className="h-4 w-4" /> Xác nhận đặt phòng
+                <CheckCircle2 className="h-4 w-4" /> Đặt phòng
               </Button>
-              <p className="text-xs text-slate-500">
-                Đơn sẽ được staff xác nhận sau khi thanh toán. Vui lòng kiểm tra
-                email/SMS.
+              <p className="mt-2 text-xs text-slate-500 text-center">
+                Bằng việc tiếp tục, bạn đồng ý với Điều khoản & Chính sách bảo
+                mật.
               </p>
             </CardContent>
           </Card>
         </div>
       </div>
-    </main>
-  );
-}
 
-function Stat({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-lg bg-slate-50 px-3 py-2">
-      <p className="flex items-center gap-1.5 text-xs text-slate-500">
-        {icon} {label}
-      </p>
-      <p className="text-sm font-medium text-slate-900">{value}</p>
-    </div>
+      {showQrModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            {qrCountdown > 0 ? (
+              <>
+                <h3 className="text-center text-lg font-bold text-slate-900">
+                  Quét mã để thanh toán
+                </h3>
+                <p className="mt-1 text-center text-sm text-slate-500">
+                  Số tiền: {formatCurrency(finalTotal)}
+                </p>
+                <div className="mt-4 flex justify-center">
+                  <img
+                    src="https://img.vietqr.io/image/vietinbank-113366668888-compact.jpg"
+                    alt="QR Code"
+                    className="h-48 w-48 rounded-xl border border-slate-200"
+                  />
+                </div>
+                <p className="mt-4 text-center text-sm text-slate-600">
+                  Tự động xác nhận sau{" "}
+                  <span className="font-bold text-brand-700">
+                    {qrCountdown}s
+                  </span>
+                </p>
+                <Button
+                  variant="ghost"
+                  className="mt-3 w-full"
+                  onClick={() => {
+                    setShowQrModal(false);
+                    setQrCountdown(30);
+                  }}
+                >
+                  Hủy
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col items-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                    <CheckCircle2 className="h-8 w-8" />
+                  </div>
+                  <h3 className="mt-4 text-lg font-bold text-slate-900">
+                    Thanh toán thành công
+                  </h3>
+                  <p className="mt-1 text-center text-sm text-slate-500">
+                    Đơn đặt phòng của bạn đã được xác nhận.
+                  </p>
+                </div>
+                <Button
+                  className="mt-6 w-full"
+                  onClick={() => router.push("/my-bookings")}
+                >
+                  Phòng đã đặt
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </main>
   );
 }
 
@@ -546,7 +988,7 @@ function PayOption({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex flex-col gap-2 rounded-xl border p-4 text-left transition-all",
+        "flex flex-col gap-2 rounded-xl border p-3 text-left transition-all",
         active
           ? "border-brand-500 bg-brand-50/50 ring-2 ring-brand-200"
           : "border-slate-200 bg-white hover:border-slate-300",
@@ -554,15 +996,15 @@ function PayOption({
     >
       <span
         className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-lg",
+          "flex h-8 w-8 items-center justify-center rounded-lg",
           active ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600",
         )}
       >
         {icon}
       </span>
       <div>
-        <p className="text-sm font-semibold text-slate-900">{title}</p>
-        <p className="text-xs text-slate-500">{desc}</p>
+        <p className="text-xs font-semibold text-slate-900">{title}</p>
+        <p className="text-[10px] text-slate-500">{desc}</p>
       </div>
     </button>
   );

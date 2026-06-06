@@ -101,6 +101,10 @@ export class CreateRoomDto {
   @IsString()
   roomTypeId!: string;
 
+  @ApiProperty()
+  @IsString()
+  branchId!: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

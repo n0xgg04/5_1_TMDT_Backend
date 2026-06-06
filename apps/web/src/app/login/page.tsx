@@ -51,6 +51,10 @@ function LoginInner() {
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
       });
+      const sessionId = localStorage.getItem("hotel_session_id");
+      if (sessionId) {
+        api.post("/wishlist/sync", { sessionId }).catch(() => {});
+      }
       toast.success("Đăng nhập thành công", `Xin chào ${data.user.firstName}!`);
       const next = params.get("next");
       if (next) router.push(next);
@@ -62,8 +66,14 @@ function LoginInner() {
         router.push("/staff/room-map");
       else router.push("/");
     },
-    onError: (err) =>
-      toast.error("Đăng nhập thất bại", getApiErrorMessage(err)),
+    onError: (err) => {
+      const msg = getApiErrorMessage(err);
+      if (msg.includes("Email") || msg.includes("mật khẩu")) {
+        toast.error(msg, "Vui lòng kiểm tra lại thông tin đăng nhập");
+      } else {
+        toast.error("Đăng nhập thất bại", msg);
+      }
+    },
   });
 
   return (

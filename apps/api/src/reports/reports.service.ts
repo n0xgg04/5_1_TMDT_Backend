@@ -13,6 +13,7 @@ export class ReportsService {
   ) {
     const fromDate = new Date(from);
     const toDate = new Date(to);
+    toDate.setHours(23, 59, 59, 999);
 
     const payments = await this.prisma.payment.findMany({
       where: {
@@ -39,18 +40,32 @@ export class ReportsService {
       byRoomType[typeName].revenue += Number(p.amount);
     }
 
+    const daily: Record<string, number> = {};
+    for (const p of payments) {
+      const d = new Date(p.paidAt!);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      daily[key] = (daily[key] || 0) + Number(p.amount);
+    }
+
+    const data = Object.entries(daily)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, revenue]) => ({ date, revenue }));
+
     return {
       from,
       to,
+      total: totalRevenue,
       totalRevenue,
       totalBookings,
       byRoomType,
+      data,
     };
   }
 
   async getOccupancyReport(from: string, to: string) {
     const fromDate = new Date(from);
     const toDate = new Date(to);
+    toDate.setHours(23, 59, 59, 999);
 
     const totalRooms = await this.prisma.room.count();
 
@@ -92,6 +107,7 @@ export class ReportsService {
   async getBookingStatusSummary(from: string, to: string) {
     const fromDate = new Date(from);
     const toDate = new Date(to);
+    toDate.setHours(23, 59, 59, 999);
 
     const summary = await this.prisma.booking.groupBy({
       by: ["status"],
@@ -99,6 +115,10 @@ export class ReportsService {
       _count: { id: true },
     });
 
-    return summary.map((s) => ({ status: s.status, count: s._count.id }));
+    const result: Record<string, number> = {};
+    for (const s of summary) {
+      result[s.status] = s._count.id;
+    }
+    return result;
   }
 }

@@ -38,9 +38,23 @@ export class ReviewsService {
         roomTypeId: booking.room.roomTypeId,
         rating: dto.rating,
         comment: dto.comment,
+        images: dto.images ?? [],
       },
       include: { booking: true },
     });
+  }
+
+  async findReviewableBooking(customerId: string, roomTypeId: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        customerId,
+        status: BookingStatus.CHECKED_OUT,
+        room: { roomTypeId },
+        review: null,
+      },
+      select: { id: true },
+    });
+    return { canReview: !!booking, bookingId: booking?.id ?? null };
   }
 
   async getReviewsByRoomType(roomTypeId: string, page = 1, limit = 10) {

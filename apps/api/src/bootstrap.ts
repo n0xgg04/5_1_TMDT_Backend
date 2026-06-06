@@ -30,6 +30,12 @@ export async function configureApp(
     origin: corsOrigins,
     credentials: true,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "x-session-id",
+    ],
   });
 
   app.setGlobalPrefix("api");

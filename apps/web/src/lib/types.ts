@@ -42,6 +42,14 @@ export interface RoomType {
   bedType: string;
   amenities: string[];
   images: string[];
+  starRating?: number;
+  policies?: Record<string, string>;
+  popularFacilities?: string[];
+  distanceToCenter?: string;
+  nearbyPoints?: string[];
+  faqs?: { question: string; answer: string }[];
+  totalRooms?: number;
+  numFloors?: number;
   isActive: boolean;
 }
 
@@ -53,6 +61,8 @@ export interface Room {
   notes?: string | null;
   roomType?: RoomType;
   roomTypeId: string;
+  branchId?: string;
+  branch?: HotelBranch;
 }
 
 export interface SearchResult {
@@ -86,6 +96,7 @@ export interface Booking {
   room?: Room & { roomType?: RoomType };
   customer?: AuthUser;
   payment?: Payment;
+  review?: Review | null;
   attachments?: BookingAttachment[];
 }
 
@@ -117,6 +128,78 @@ export interface PaymentMethodInfo {
   branch?: string | null;
   qrImageUrl?: string | null;
   isActive: boolean;
+}
+
+export interface UserPaymentMethod {
+  id: string;
+  userId: string;
+  type: string;
+  label: string;
+  details: Record<string, any>;
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface HotelBranch {
+  id: string;
+  name: string;
+  province: string;
+  city: string;
+  address: string;
+  phone?: string | null;
+  isActive: boolean;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  type: string;
+  value: string | number;
+  minAmount?: string | number | null;
+  maxDiscount?: string | number | null;
+  usageLimit: number;
+  usageCount: number;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+}
+
+export interface UserCoupon {
+  id: string;
+  userId: string;
+  couponId: string;
+  isUsed: boolean;
+  usedAt?: string | null;
+  createdAt: string;
+  coupon: Coupon;
+}
+
+export interface Review {
+  id: string;
+  bookingId: string;
+  customerId: string;
+  roomTypeId: string;
+  rating: number;
+  comment?: string | null;
+  images: string[];
+  isApproved: boolean;
+  createdAt: string;
+  customer?: { firstName: string; lastName: string };
+}
+
+export interface WishlistItem {
+  id: string;
+  roomTypeId: string;
+  roomType: RoomType & {
+    starRating?: number;
+    pricePerNight?: number;
+    branch?: HotelBranch;
+  };
+}
+
+export interface CouponPublic extends Coupon {
+  isClaimed: boolean;
 }
 
 export interface Paginated<T> {
