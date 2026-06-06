@@ -1,17 +1,18 @@
 schema: spec-driven
 
 context: |
-  Project: Sapphire Stay - online hotel booking system.
-  Domain: customer room search/booking/payment, staff room operations and booking approval, admin inventory/users/promotions/reports.
-  Actors: CUSTOMER, RECEPTIONIST, HOUSEKEEPING, ADMIN, external payment gateways, scheduler.
-  Backend: NestJS 10, Prisma 6, PostgreSQL, JWT access/refresh tokens, Upstash Redis REST with in-memory dev fallback, Resend email, VNPay, Stripe.
+  Dự án: Sapphire Stay - hệ thống đặt phòng khách sạn trực tuyến.
+  Miền nghiệp vụ: khách hàng tìm phòng/đặt phòng/thanh toán, staff vận hành phòng và duyệt booking, admin quản lý inventory/users/promotions/reports.
+  Tác nhân: CUSTOMER, RECEPTIONIST, HOUSEKEEPING, ADMIN, cổng thanh toán bên ngoài, scheduler.
+  Backend: NestJS 10, Prisma 6, PostgreSQL, JWT access/refresh token, Upstash Redis REST có fallback in-memory khi dev, Resend email, VNPay, Stripe.
   Frontend: Next.js 16 App Router, React 19, Tailwind CSS, React Query, Zustand, axios.
-  API conventions: REST endpoints live under /api/v1; public endpoints use @Public; protected endpoints use Bearer JWT; anonymous wishlist uses x-session-id.
-  Validation: global ValidationPipe with whitelist, transform, and forbidNonWhitelisted; errors are normalized to statusCode/timestamp/path/message.
-  Booking statuses: PENDING_PAYMENT, PAYING, PENDING_APPROVAL, CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED, REJECTED, EXPIRED.
-  Payment statuses: PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED.
-  Room statuses: AVAILABLE, OCCUPIED, DIRTY, CLEANING, MAINTENANCE, RESERVED.
-  Eventing: in-process domain event bus; payment.success confirms bookings; payment.failed expires bookings; lifecycle events create notification records and optional Resend emails.
+  Quy ước API: REST endpoint nằm dưới /api/v1; endpoint public dùng @Public; endpoint bảo vệ dùng Bearer JWT; wishlist ẩn danh dùng x-session-id.
+  Validation: global ValidationPipe với whitelist, transform và forbidNonWhitelisted; lỗi được chuẩn hóa thành statusCode/timestamp/path/message.
+  Trạng thái booking: PENDING_PAYMENT, PAYING, PENDING_APPROVAL, CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED, REJECTED, EXPIRED.
+  Trạng thái payment: PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED.
+  Trạng thái phòng: AVAILABLE, OCCUPIED, DIRTY, CLEANING, MAINTENANCE, RESERVED.
+  Eventing: event bus in-process; payment.success xác nhận booking; payment.failed làm hết hạn booking; lifecycle event tạo notification và gửi email Resend nếu có cấu hình.
+  Quy tắc tài liệu: luôn viết nội dung OpenSpec bằng tiếng Việt; chỉ giữ các token cú pháp bắt buộc của OpenSpec như Purpose, Requirements, Requirement, Scenario, SHALL.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.

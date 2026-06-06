@@ -1,254 +1,254 @@
-# Identity And Access Specification
+# Đặc Tả Định Danh Và Phân Quyền
 
 ## Purpose
 
-Define customer registration/login, JWT token lifecycle, profile management, password changes, staff account management, account locking, and role-based access.
+Định nghĩa đăng ký, đăng nhập, vòng đời JWT, refresh token, hồ sơ cá nhân, đổi mật khẩu, quản lý nhân viên, khóa tài khoản và phân quyền theo role.
 
 ## Requirements
 
-### Requirement: Customer Registration
+### Requirement: Đăng Ký Khách Hàng
 
-The system SHALL allow a new customer to register with email, strong password, first name, last name, and optional phone.
+Hệ thống PHẢI (SHALL) cho phép khách hàng mới đăng ký bằng email, mật khẩu mạnh, họ, tên và số điện thoại tùy chọn.
 
-#### Scenario: Successful customer registration
+#### Scenario: Đăng ký thành công
 
-- **GIVEN** no user exists with the submitted email
-- **AND** the submitted password has at least 8 characters with lowercase, uppercase, number, and special character
-- **WHEN** the customer submits registration data
-- **THEN** the system SHALL hash the password with bcrypt cost 12
-- **AND** create a user with default role `CUSTOMER`
-- **AND** issue access and refresh tokens
-- **AND** store a bcrypt hash of the refresh token on the user record.
+- **CHO** chưa tồn tại user với email đã gửi
+- **VÀ** mật khẩu có ít nhất 8 ký tự, gồm chữ thường, chữ hoa, số và ký tự đặc biệt
+- **KHI** khách gửi thông tin đăng ký
+- **THÌ** hệ thống PHẢI hash mật khẩu bằng bcrypt cost 12
+- **VÀ** tạo user role mặc định `CUSTOMER`
+- **VÀ** phát hành access token và refresh token
+- **VÀ** lưu bcrypt hash của refresh token vào user.
 
-#### Scenario: Duplicate registration email
+#### Scenario: Email đăng ký bị trùng
 
-- **GIVEN** a user already exists with the submitted email
-- **WHEN** registration is submitted
-- **THEN** the API SHALL reject the request with `Email đã được sử dụng`.
+- **CHO** đã tồn tại user với email đã gửi
+- **KHI** đăng ký
+- **THÌ** API PHẢI từ chối với `Email đã được sử dụng`.
 
-#### Scenario: Weak registration password
+#### Scenario: Mật khẩu đăng ký yếu
 
-- **GIVEN** the password does not match the configured complexity rule
-- **WHEN** registration validation runs
-- **THEN** the API SHALL reject the request with a password complexity validation message.
+- **CHO** mật khẩu không đạt quy tắc độ mạnh
+- **KHI** validation chạy
+- **THÌ** API PHẢI từ chối bằng thông điệp validation về độ mạnh mật khẩu.
 
-### Requirement: Login
+### Requirement: Đăng Nhập
 
-The system SHALL authenticate active users by email and password and issue a new token pair.
+Hệ thống PHẢI (SHALL) xác thực user đang hoạt động bằng email và mật khẩu, sau đó phát hành token pair mới.
 
-#### Scenario: Successful login
+#### Scenario: Đăng nhập thành công
 
-- **GIVEN** an active user exists for the email
-- **AND** bcrypt verifies the submitted password
-- **WHEN** login is submitted
-- **THEN** the API SHALL return the user identity and a new access/refresh token pair
-- **AND** replace the stored refresh token hash.
+- **CHO** tồn tại user active với email đã gửi
+- **VÀ** bcrypt xác minh mật khẩu thành công
+- **KHI** đăng nhập
+- **THÌ** API PHẢI trả user identity và access/refresh token mới
+- **VÀ** thay thế refresh token hash đang lưu.
 
-#### Scenario: Inactive user login
+#### Scenario: Tài khoản bị khóa đăng nhập
 
-- **GIVEN** the user exists but `isActive=false`
-- **WHEN** login is submitted
-- **THEN** the API SHALL reject the request with `Email hoặc mật khẩu không đúng`.
+- **CHO** user tồn tại nhưng `isActive=false`
+- **KHI** đăng nhập
+- **THÌ** API PHẢI từ chối với `Email hoặc mật khẩu không đúng`.
 
-#### Scenario: Invalid credentials
+#### Scenario: Sai thông tin đăng nhập
 
-- **GIVEN** no user exists for the email or the password does not verify
-- **WHEN** login is submitted
-- **THEN** the API SHALL reject the request with `Email hoặc mật khẩu không đúng`.
+- **CHO** không có user theo email hoặc mật khẩu không khớp
+- **KHI** đăng nhập
+- **THÌ** API PHẢI từ chối với `Email hoặc mật khẩu không đúng`.
 
-### Requirement: JWT Token Lifecycle
+### Requirement: Vòng Đời JWT
 
-The system SHALL issue short-lived access tokens and longer-lived refresh tokens signed with independent secrets.
+Hệ thống PHẢI (SHALL) phát hành access token ngắn hạn và refresh token dài hạn, ký bằng secret riêng.
 
-#### Scenario: Token generation
+#### Scenario: Tạo token
 
-- **GIVEN** a user id, email, and role
-- **WHEN** tokens are generated
-- **THEN** the access token SHALL include `sub`, `email`, and `role` and expire in 15 minutes
-- **AND** the refresh token SHALL include the same payload and expire in 7 days.
+- **CHO** user id, email và role
+- **KHI** tạo token
+- **THÌ** access token PHẢI chứa `sub`, `email`, `role` và hết hạn sau 15 phút
+- **VÀ** refresh token PHẢI chứa payload tương tự và hết hạn sau 7 ngày.
 
-#### Scenario: Successful refresh
+#### Scenario: Refresh thành công
 
-- **GIVEN** a syntactically valid refresh token signed with `JWT_REFRESH_SECRET`
-- **AND** the referenced user exists, is active, and has a stored refresh token hash
-- **AND** bcrypt comparison succeeds
-- **WHEN** `/auth/refresh` is called
-- **THEN** the API SHALL issue a new token pair
-- **AND** rotate the stored refresh token hash.
+- **CHO** refresh token hợp lệ, ký bằng `JWT_REFRESH_SECRET`
+- **VÀ** user tham chiếu tồn tại, active và có refresh token hash
+- **VÀ** bcrypt compare thành công
+- **KHI** gọi `/auth/refresh`
+- **THÌ** API PHẢI phát hành token pair mới
+- **VÀ** rotate refresh token hash đã lưu.
 
-#### Scenario: Invalid refresh token
+#### Scenario: Refresh token không hợp lệ
 
-- **GIVEN** the refresh token is expired, signed with the wrong secret, does not match the stored hash, or belongs to an inactive/missing user
-- **WHEN** refresh is requested
-- **THEN** the API SHALL reject the request with `Refresh token không hợp lệ hoặc đã hết hạn`.
+- **CHO** refresh token hết hạn, ký sai secret, không khớp hash hoặc thuộc user inactive/không tồn tại
+- **KHI** refresh
+- **THÌ** API PHẢI từ chối với `Refresh token không hợp lệ hoặc đã hết hạn`.
 
-#### Scenario: Logout
+#### Scenario: Đăng xuất
 
-- **GIVEN** an authenticated user
-- **WHEN** `/auth/logout` is called
-- **THEN** the system SHALL set the user's stored refresh token to null
-- **AND** return `Đăng xuất thành công`.
+- **CHO** user đã đăng nhập
+- **KHI** gọi `/auth/logout`
+- **THÌ** hệ thống PHẢI set refresh token đã lưu thành null
+- **VÀ** trả `Đăng xuất thành công`.
 
-### Requirement: Authenticated Profile
+### Requirement: Hồ Sơ Cá Nhân Qua Auth
 
-The system SHALL allow authenticated users to retrieve and update their own profile.
+Hệ thống PHẢI (SHALL) cho phép user đã đăng nhập xem và cập nhật hồ sơ qua endpoint auth.
 
-#### Scenario: Get current auth profile
+#### Scenario: Lấy hồ sơ hiện tại
 
-- **GIVEN** a valid access token
-- **WHEN** `/auth/me` is called
-- **THEN** the API SHALL return id, email, first name, last name, phone, role, and creation timestamp.
+- **CHO** access token hợp lệ
+- **KHI** gọi `/auth/me`
+- **THÌ** API PHẢI trả id, email, họ, tên, số điện thoại, role và thời điểm tạo.
 
-#### Scenario: Update current auth profile
+#### Scenario: Cập nhật hồ sơ
 
-- **GIVEN** a valid access token
-- **WHEN** `/auth/me` is patched with first name, last name, or phone
-- **THEN** the API SHALL update only the submitted profile fields
-- **AND** return the updated identity.
+- **CHO** access token hợp lệ
+- **KHI** patch `/auth/me` với họ, tên hoặc số điện thoại
+- **THÌ** API PHẢI cập nhật các field đã gửi
+- **VÀ** trả identity mới.
 
-#### Scenario: Change password via auth endpoint
+#### Scenario: Đổi mật khẩu qua auth endpoint
 
-- **GIVEN** a valid access token
-- **AND** the submitted current password verifies
-- **AND** the new password satisfies complexity rules
-- **WHEN** `/auth/change-password` is patched
-- **THEN** the system SHALL hash the new password with bcrypt cost 12
-- **AND** return `Đổi mật khẩu thành công`.
+- **CHO** access token hợp lệ
+- **VÀ** mật khẩu hiện tại khớp
+- **VÀ** mật khẩu mới đạt quy tắc độ mạnh
+- **KHI** patch `/auth/change-password`
+- **THÌ** hệ thống PHẢI hash mật khẩu mới bằng bcrypt cost 12
+- **VÀ** trả `Đổi mật khẩu thành công`.
 
-#### Scenario: Wrong current password
+#### Scenario: Sai mật khẩu hiện tại
 
-- **GIVEN** the submitted current password does not verify
-- **WHEN** password change is requested
-- **THEN** the API SHALL reject the request with `Mật khẩu hiện tại không đúng`.
+- **CHO** mật khẩu hiện tại không khớp
+- **KHI** đổi mật khẩu
+- **THÌ** API PHẢI từ chối với `Mật khẩu hiện tại không đúng`.
 
-### Requirement: User Profile Endpoint
+### Requirement: Hồ Sơ Cá Nhân Qua Users
 
-The system SHALL also expose `/users/me` for authenticated profile retrieval and combined profile/password update.
+Hệ thống PHẢI (SHALL) cung cấp `/users/me` để lấy hồ sơ và cập nhật hồ sơ kèm tùy chọn đổi mật khẩu.
 
-#### Scenario: Get current user profile
+#### Scenario: Lấy hồ sơ user hiện tại
 
-- **GIVEN** an authenticated user
-- **WHEN** `/users/me` is called
-- **THEN** the API SHALL return id, email, first name, last name, phone, role, active state, and creation timestamp.
+- **CHO** user đã đăng nhập
+- **KHI** gọi `/users/me`
+- **THÌ** API PHẢI trả id, email, họ, tên, số điện thoại, role, trạng thái active và thời điểm tạo.
 
-#### Scenario: Update profile without password
+#### Scenario: Cập nhật không đổi mật khẩu
 
-- **GIVEN** an authenticated user
-- **WHEN** `/users/me` is patched without `newPassword`
-- **THEN** the system SHALL update submitted profile fields and leave password unchanged.
+- **CHO** user đã đăng nhập
+- **KHI** patch `/users/me` không có `newPassword`
+- **THÌ** hệ thống PHẢI cập nhật profile đã gửi và giữ nguyên mật khẩu.
 
-#### Scenario: Update profile with password
+#### Scenario: Đổi mật khẩu thiếu mật khẩu hiện tại
 
-- **GIVEN** an authenticated user patches `/users/me` with `newPassword`
-- **WHEN** `currentPassword` is absent
-- **THEN** the API SHALL reject the request with `Vui lòng cung cấp mật khẩu hiện tại`.
+- **CHO** user patch `/users/me` có `newPassword`
+- **KHI** `currentPassword` bị thiếu
+- **THÌ** API PHẢI từ chối với `Vui lòng cung cấp mật khẩu hiện tại`.
 
-#### Scenario: Update profile with verified password
+#### Scenario: Đổi mật khẩu kèm profile thành công
 
-- **GIVEN** an authenticated user patches `/users/me` with `currentPassword` and `newPassword`
-- **AND** the current password verifies
-- **WHEN** validation passes
-- **THEN** the system SHALL hash and store the new password together with submitted profile changes.
+- **CHO** user patch `/users/me` với `currentPassword` và `newPassword`
+- **VÀ** mật khẩu hiện tại khớp
+- **KHI** validation thành công
+- **THÌ** hệ thống PHẢI hash mật khẩu mới và lưu cùng các thay đổi profile.
 
-### Requirement: Admin User Listing
+### Requirement: Admin Liệt Kê User
 
-The system SHALL allow admins to list users with optional role filtering and pagination.
+Hệ thống PHẢI (SHALL) cho phép admin liệt kê user, phân trang và lọc theo role.
 
-#### Scenario: List users as admin
+#### Scenario: Admin xem danh sách user
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/users?page=1&limit=20` is called
-- **THEN** the API SHALL return users ordered by newest first
-- **AND** include id, email, first name, last name, role, active state, and creation timestamp
-- **AND** return pagination metadata `items`, `total`, `page`, and `limit`.
+- **CHO** admin đã đăng nhập
+- **KHI** gọi `/users?page=1&limit=20`
+- **THÌ** API PHẢI trả user mới nhất trước
+- **VÀ** gồm id, email, họ, tên, role, active state, thời điểm tạo
+- **VÀ** trả metadata `items`, `total`, `page`, `limit`.
 
-#### Scenario: Filter users by role
+#### Scenario: Lọc user theo role
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/users?role=RECEPTIONIST` is called
-- **THEN** only users with role `RECEPTIONIST` SHALL be returned.
+- **CHO** admin đã đăng nhập
+- **KHI** gọi `/users?role=RECEPTIONIST`
+- **THÌ** chỉ user role `RECEPTIONIST` được trả về.
 
-#### Scenario: Non-admin lists users
+#### Scenario: User không phải admin liệt kê user
 
-- **GIVEN** an authenticated non-admin
-- **WHEN** `/users` is called
-- **THEN** the API SHALL reject the request through role authorization.
+- **CHO** user không phải admin đã đăng nhập
+- **KHI** gọi `/users`
+- **THÌ** API PHẢI từ chối bằng role guard.
 
-### Requirement: Staff Account Creation
+### Requirement: Tạo Tài Khoản Nhân Viên
 
-The system SHALL allow admins to create staff/admin accounts but not customer accounts through the staff creation endpoint.
+Hệ thống PHẢI (SHALL) cho phép admin tạo tài khoản staff/admin qua endpoint staff, nhưng không tạo customer từ endpoint này.
 
-#### Scenario: Create receptionist
+#### Scenario: Tạo lễ tân
 
-- **GIVEN** an authenticated admin
-- **AND** no user exists with the submitted email
-- **AND** the submitted role is `RECEPTIONIST`, `HOUSEKEEPING`, or `ADMIN`
-- **WHEN** `/users/staff` is posted
-- **THEN** the system SHALL hash the password with bcrypt cost 12
-- **AND** create the account
-- **AND** return identity fields without password hash.
+- **CHO** admin đã đăng nhập
+- **VÀ** email chưa tồn tại
+- **VÀ** role gửi lên là `RECEPTIONIST`, `HOUSEKEEPING` hoặc `ADMIN`
+- **KHI** post `/users/staff`
+- **THÌ** hệ thống PHẢI hash mật khẩu bằng bcrypt cost 12
+- **VÀ** tạo tài khoản
+- **VÀ** trả identity không gồm password hash.
 
-#### Scenario: Duplicate staff email
+#### Scenario: Email nhân viên bị trùng
 
-- **GIVEN** a user already exists with the submitted email
-- **WHEN** an admin creates staff
-- **THEN** the API SHALL reject the request with `Email đã được sử dụng`.
+- **CHO** đã tồn tại user với email đã gửi
+- **KHI** admin tạo staff
+- **THÌ** API PHẢI từ chối với `Email đã được sử dụng`.
 
-#### Scenario: Invalid staff role
+#### Scenario: Role nhân viên không hợp lệ
 
-- **GIVEN** the submitted role is not `RECEPTIONIST`, `HOUSEKEEPING`, or `ADMIN`
-- **WHEN** an admin creates staff
-- **THEN** the API SHALL reject the request with `Vai trò không hợp lệ`.
+- **CHO** role gửi lên không thuộc `RECEPTIONIST`, `HOUSEKEEPING`, `ADMIN`
+- **KHI** admin tạo staff
+- **THÌ** API PHẢI từ chối với `Vai trò không hợp lệ`.
 
-### Requirement: Account Locking
+### Requirement: Khóa Và Mở Khóa Tài Khoản
 
-The system SHALL allow admins to toggle another user's active state and SHALL prevent self-locking.
+Hệ thống PHẢI (SHALL) cho phép admin toggle active state của user khác và không cho tự khóa chính mình.
 
-#### Scenario: Toggle user lock
+#### Scenario: Toggle khóa tài khoản
 
-- **GIVEN** an authenticated admin
-- **AND** the target user exists
-- **WHEN** `/users/:id/toggle-lock` is patched
-- **THEN** the system SHALL invert the target user's `isActive` value
-- **AND** return id, email, and new active state.
+- **CHO** admin đã đăng nhập
+- **VÀ** target user tồn tại
+- **KHI** patch `/users/:id/toggle-lock`
+- **THÌ** hệ thống PHẢI đảo giá trị `isActive`
+- **VÀ** trả id, email và active state mới.
 
-#### Scenario: Admin attempts self-lock
+#### Scenario: Admin tự khóa chính mình
 
-- **GIVEN** an authenticated admin
-- **WHEN** the admin targets their own user id for lock toggle
-- **THEN** the API SHALL reject the request with `Không thể tự khóa tài khoản của mình`.
+- **CHO** admin đã đăng nhập
+- **KHI** admin target chính user id của mình để toggle lock
+- **THÌ** API PHẢI từ chối với `Không thể tự khóa tài khoản của mình`.
 
-#### Scenario: Locked account access
+#### Scenario: Tài khoản bị khóa không thể xác thực
 
-- **GIVEN** an account has `isActive=false`
-- **WHEN** the user attempts login or refresh
-- **THEN** the system SHALL reject authentication.
+- **CHO** account có `isActive=false`
+- **KHI** user đăng nhập hoặc refresh token
+- **THÌ** hệ thống PHẢI từ chối xác thực.
 
-### Requirement: Frontend Auth Persistence
+### Requirement: Frontend Lưu Và Refresh Auth
 
-The web app SHALL persist auth state and refresh expired access tokens.
+Web app PHẢI (SHALL) lưu auth state và tự refresh access token hết hạn.
 
-#### Scenario: Store token pair
+#### Scenario: Lưu token pair
 
-- **GIVEN** login or registration succeeds
-- **WHEN** the web auth store receives user and tokens
-- **THEN** it SHALL store `accessToken`, `refreshToken`, and `hotel-auth` state in local storage.
+- **CHO** login hoặc register thành công
+- **KHI** auth store nhận user và tokens
+- **THÌ** web PHẢI lưu `accessToken`, `refreshToken` và state `hotel-auth` trong local storage.
 
-#### Scenario: Authenticated API request
+#### Scenario: Gửi request đã đăng nhập
 
-- **GIVEN** `accessToken` exists in browser storage
-- **WHEN** the axios API client sends a request
-- **THEN** it SHALL add `Authorization: Bearer <accessToken>`.
+- **CHO** `accessToken` tồn tại trong browser storage
+- **KHI** axios API client gửi request
+- **THÌ** client PHẢI thêm `Authorization: Bearer <accessToken>`.
 
-#### Scenario: Access token expired
+#### Scenario: Access token hết hạn
 
-- **GIVEN** an API request returns 401
-- **AND** `refreshToken` exists
-- **WHEN** the axios response interceptor handles the response
-- **THEN** it SHALL call `/auth/refresh`, save the new token pair, and retry the original request once.
+- **CHO** API trả 401
+- **VÀ** có `refreshToken`
+- **KHI** response interceptor xử lý
+- **THÌ** client PHẢI gọi `/auth/refresh`, lưu token pair mới và retry request gốc đúng một lần.
 
-#### Scenario: Refresh failure
+#### Scenario: Refresh thất bại
 
-- **GIVEN** refresh fails or no refresh token exists
-- **WHEN** the axios response interceptor handles 401
-- **THEN** it SHALL clear local auth state and redirect to `/login`.
+- **CHO** refresh thất bại hoặc không có refresh token
+- **KHI** interceptor xử lý 401
+- **THÌ** client PHẢI xóa auth state local và chuyển hướng đến `/login`.

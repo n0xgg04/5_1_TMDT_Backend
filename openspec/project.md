@@ -1,101 +1,104 @@
-# Sapphire Stay Project Context
+# Bối Cảnh Dự Án Sapphire Stay
 
-## Domain
+## Miền Nghiệp Vụ
 
-Sapphire Stay is an online hotel booking system for customer self-service, hotel staff operations, and admin management. The system supports browsing room types, searching concrete available rooms by date and branch, booking, payment, manual bank-transfer approval, room operations, promotions, wishlist, reviews, customer support chat, notifications, and reports.
+Sapphire Stay là hệ thống đặt phòng khách sạn trực tuyến. Hệ thống phục vụ đầy đủ các luồng khách hàng tự đặt phòng, nhân viên vận hành khách sạn và quản trị viên quản lý dữ liệu kinh doanh.
 
-Primary actors:
+Các nhóm nghiệp vụ chính:
 
-- Customer: registers/logs in, searches rooms, saves room types, books rooms, pays, manages bookings, claims coupons, reviews completed stays, and chats with staff.
-- Receptionist: manages room map/status, checks guests in/out, approves/rejects transfer bookings, manages add-on services, and handles customer conversations.
-- Housekeeping: views room map and updates room cleanliness/maintenance status.
-- Admin: manages users/staff, room types, rooms, pricing rules, bank transfer accounts, coupons, reports, room map, booking approval, and support conversations.
-- External payment gateway: VNPay and Stripe card flows report payment outcome to the API.
-- Scheduler: invokes protected cron endpoints to expire stale unpaid bookings.
+- Khách hàng: đăng ký, đăng nhập, tìm phòng, xem chi tiết loại phòng, lưu wishlist, đặt phòng, thanh toán, hủy đơn, xem lịch sử, nhận ưu đãi, đánh giá sau lưu trú và chat với nhân viên.
+- Lễ tân: xem sơ đồ phòng, cập nhật trạng thái phòng, duyệt booking chuyển khoản, check-in, check-out, ghi nhận dịch vụ phát sinh và xử lý hội thoại hỗ trợ.
+- Buồng phòng: xem sơ đồ phòng và cập nhật trạng thái dọn dẹp/bảo trì.
+- Quản trị viên: quản lý tài khoản, nhân viên, loại phòng, phòng, chi nhánh, quy tắc giá, tài khoản chuyển khoản, coupon, báo cáo và hội thoại hỗ trợ.
+- Cổng thanh toán: VNPay và Stripe/VISA xử lý giao dịch và trả kết quả thanh toán.
+- Bộ lập lịch: gọi endpoint nội bộ để tự động hết hạn booking chưa thanh toán.
 
-## Tech Stack
+## Công Nghệ
 
-- Monorepo: pnpm workspaces and Turborepo.
-- Backend: NestJS 10, TypeScript, Prisma 6, PostgreSQL, JWT/passport, class-validator/class-transformer, global throttling, Swagger in non-production.
+- Monorepo: pnpm workspaces và Turborepo.
+- Backend: NestJS 10, TypeScript, Prisma 6, PostgreSQL, JWT/passport, class-validator/class-transformer, Nest throttler, Swagger ngoài production.
 - Frontend: Next.js 16 App Router, React 19, Tailwind CSS, React Query, Zustand, axios.
-- Data/infra: PostgreSQL, Upstash Redis REST with in-memory dev fallback, Resend email, VNPay, Stripe, Vercel/serverless entrypoint support.
+- Hạ tầng/phụ trợ: PostgreSQL, Upstash Redis REST có fallback in-memory khi dev, Resend email, VNPay, Stripe, Vercel/serverless.
 
-## API Conventions
+## Quy Ước API
 
-- All REST endpoints are served under `/api/v1`.
-- Public endpoints are explicitly marked with `@Public()`.
-- Authenticated endpoints require `Authorization: Bearer <accessToken>`.
-- Anonymous wishlist state is keyed by `x-session-id`; the web client creates and sends this header from `localStorage`.
-- CORS allows configured `CORS_ORIGINS` and headers `Content-Type`, `Authorization`, `X-Requested-With`, and `x-session-id`.
-- Validation uses a global `ValidationPipe` with `whitelist`, `transform`, and `forbidNonWhitelisted`; unknown DTO fields are rejected.
-- Error responses are normalized as `{ statusCode, timestamp, path, message }`.
-- Request throttling is globally enabled at 100 requests per minute.
+- Tất cả REST endpoint backend nằm dưới `/api/v1`.
+- Endpoint public phải được đánh dấu `@Public()`.
+- Endpoint bảo vệ yêu cầu header `Authorization: Bearer <accessToken>`.
+- Wishlist ẩn danh dùng header `x-session-id`; frontend tạo session id và lưu trong `localStorage`.
+- CORS lấy origin từ `CORS_ORIGINS`, mặc định `http://localhost:3001`.
+- CORS cho phép các header `Content-Type`, `Authorization`, `X-Requested-With`, `x-session-id`.
+- Validation toàn cục dùng `ValidationPipe` với `whitelist`, `transform`, `forbidNonWhitelisted`; field lạ trong DTO bị từ chối.
+- Response lỗi được chuẩn hóa thành `{ statusCode, timestamp, path, message }`.
+- Throttling toàn cục giới hạn 100 request mỗi 60 giây.
 
-## Core Data Model
+## Mô Hình Dữ Liệu Chính
 
-- `User`: account identity with role `CUSTOMER`, `RECEPTIONIST`, `HOUSEKEEPING`, or `ADMIN`, active/locked state, hashed password, and hashed refresh token.
-- `HotelBranch`: active hotel location containing rooms.
-- `RoomType`: commercial room category with capacity, amenities, images, policies, facilities, FAQ, star rating, and active state.
-- `Room`: concrete physical room with unique `roomNumber`, floor, branch, room type, and operational status.
-- `PricingRule`: active/default/seasonal/holiday price rules selected by date and priority.
-- `Booking`: customer reservation for one room over a date range with lifecycle status, payment deadline, discount fields, approval fields, actual check-in/out timestamps, attachments, payment, add-ons, and optional review.
-- `Payment`: one payment record per booking, with method, type, amount, gateway data, receipt image, paid/failure/refund fields, and status.
-- `Coupon` and `UserCoupon`: public/admin promotional codes and user claiming/usage state.
-- `FlashSale`: active percentage discount for a room type with quantity and sold count.
-- `Wishlist`: saved room types by authenticated user or anonymous session.
-- `Conversation` and `Message`: customer support chat state.
-- `Notification`: persisted email send attempts and delivery/failure metadata.
-- `OutboxEvent`: persisted domain event audit/replay table for booking-created events.
+- `User`: tài khoản, role, trạng thái khóa/mở, password hash và refresh token hash.
+- `HotelBranch`: chi nhánh khách sạn đang hoạt động.
+- `RoomType`: loại phòng thương mại, sức chứa, tiện nghi, ảnh, chính sách, FAQ, sao và trạng thái hoạt động.
+- `Room`: phòng vật lý cụ thể, số phòng duy nhất, tầng, chi nhánh, loại phòng và trạng thái vận hành.
+- `PricingRule`: quy tắc giá theo ngày, loại giá và độ ưu tiên.
+- `Booking`: đơn đặt một phòng trong một khoảng ngày, có deadline thanh toán, trạng thái vòng đời, giảm giá, thông tin duyệt, thời gian check-in/out thực tế, biên lai, payment, addon và review.
+- `Payment`: một bản ghi thanh toán cho mỗi booking, gồm phương thức, loại thanh toán, số tiền, gateway, biên lai, thời gian thanh toán, lỗi và hoàn tiền.
+- `Coupon` và `UserCoupon`: mã khuyến mãi và trạng thái claim/sử dụng của từng người dùng.
+- `FlashSale`: giảm giá phần trăm theo loại phòng trong khung thời gian và số lượng.
+- `Wishlist`: loại phòng đã lưu theo user hoặc session ẩn danh.
+- `Conversation` và `Message`: hội thoại hỗ trợ khách hàng.
+- `Notification`: log gửi email và trạng thái gửi/thất bại.
+- `OutboxEvent`: bảng lưu audit/replay cho event tạo booking.
 
-## Booking And Payment State Model
+## Trạng Thái Nghiệp Vụ
 
-Booking statuses:
+Trạng thái booking:
 
-- `PENDING_PAYMENT`: booking created and waiting for payment initiation or bank-transfer receipt.
-- `PAYING`: online payment has been initiated and is waiting for gateway result.
-- `PENDING_APPROVAL`: customer uploaded transfer receipt and staff must approve or reject.
-- `CONFIRMED`: payment success or staff approval confirmed the booking.
-- `CHECKED_IN`: receptionist/admin checked the customer in; the room becomes occupied.
-- `CHECKED_OUT`: receptionist/admin checked the customer out; the room becomes dirty.
-- `CANCELLED`: customer cancelled a cancellable booking.
-- `REJECTED`: staff rejected a receipt-based booking.
-- `EXPIRED`: unpaid booking expired.
+- `PENDING_PAYMENT`: booking đã tạo và đang chờ khách thanh toán hoặc upload biên lai chuyển khoản.
+- `PAYING`: đã khởi tạo thanh toán online và đang chờ gateway trả kết quả.
+- `PENDING_APPROVAL`: khách đã upload biên lai, staff cần duyệt hoặc từ chối.
+- `CONFIRMED`: booking đã được xác nhận qua thanh toán thành công hoặc staff duyệt.
+- `CHECKED_IN`: khách đã nhận phòng, phòng chuyển sang đang ở.
+- `CHECKED_OUT`: khách đã trả phòng, phòng chuyển sang bẩn.
+- `CANCELLED`: khách đã hủy booking trong trạng thái cho phép.
+- `REJECTED`: staff từ chối booking chờ duyệt.
+- `EXPIRED`: booking chưa thanh toán bị hết hạn.
 
-Payment statuses:
+Trạng thái payment:
 
-- `PENDING`: bank-transfer receipt is uploaded and waiting for review.
-- `PROCESSING`: online payment has been initiated.
-- `COMPLETED`: gateway/card payment succeeded or equivalent successful state.
-- `FAILED`: gateway/card payment failed.
-- `REFUNDED`: payment was refunded after a rejected approved/completed payment path.
+- `PENDING`: biên lai chuyển khoản đã upload và đang chờ duyệt.
+- `PROCESSING`: thanh toán online đã khởi tạo.
+- `COMPLETED`: gateway hoặc thẻ xác nhận thanh toán thành công.
+- `FAILED`: gateway hoặc thẻ báo thất bại.
+- `REFUNDED`: payment được đánh dấu hoàn tiền khi booking bị từ chối trong nhánh cần hoàn.
 
-Room statuses:
+Trạng thái phòng:
 
 - `AVAILABLE`, `OCCUPIED`, `DIRTY`, `CLEANING`, `MAINTENANCE`, `RESERVED`.
 
-## Eventing And Side Effects
+## Event Và Side Effect
 
-- The system uses an in-process domain event bus rather than a long-lived broker consumer.
-- `booking.created` is persisted to `outbox_events` and emitted through the in-process bus.
-- `payment.success` confirms a pending/paying booking and emits `booking.confirmed`.
-- `payment.failed` expires a pending/paying booking.
-- `booking.confirmed`, `booking.cancelled`, `booking.expired`, and `checkout.completed` create notification records and optionally send email through Resend.
-- Event handlers isolate errors so one failed handler does not block sibling handlers.
+- Hệ thống dùng event bus in-process thay cho consumer broker dài hạn.
+- `booking.created` được lưu vào `outbox_events` rồi emit trong process.
+- `payment.success` xác nhận booking nếu booking đang `PENDING_PAYMENT` hoặc `PAYING`.
+- `payment.failed` hết hạn booking nếu booking đang `PENDING_PAYMENT` hoặc `PAYING`.
+- `booking.confirmed`, `booking.cancelled`, `booking.expired`, `checkout.completed` tạo notification và gửi email qua Resend nếu cấu hình có API key.
+- Lỗi ở một event handler chỉ được log, không làm dừng các handler còn lại.
 
-## Development Commands
+## Lệnh Phát Triển
 
-- Install dependencies: `pnpm install`.
-- Start infrastructure: `docker compose up -d postgres redis rabbitmq`.
+- Cài dependency: `pnpm install`.
+- Chạy hạ tầng local: `docker compose up -d postgres redis rabbitmq`.
 - Generate Prisma client: `pnpm --filter @hotel/api db:generate`.
-- Run migrations locally: `pnpm --filter @hotel/api db:migrate`.
-- Seed data: `pnpm --filter @hotel/api db:seed`.
-- Start API: `pnpm --filter @hotel/api dev`.
-- Start web: `pnpm --filter @hotel/web dev`.
-- Build all: `pnpm build`.
+- Chạy migration local: `pnpm --filter @hotel/api db:migrate`.
+- Seed dữ liệu mẫu: `pnpm --filter @hotel/api db:seed`.
+- Chạy API: `pnpm --filter @hotel/api dev`.
+- Chạy web: `pnpm --filter @hotel/web dev`.
+- Build toàn bộ: `pnpm build`.
 
-## Documentation Rules
+## Quy Tắc Viết Tài Liệu
 
-- Specs document current implemented behavior from the codebase unless explicitly marked as a known gap or future change.
-- Requirements are grouped by business capability, not by Nest module name, when a user-facing flow crosses multiple modules.
-- Each behavior with state transitions, authorization, validation, or money movement should include scenarios.
-- When implementation behavior differs from common hotel-system expectations, specs should describe the current behavior clearly instead of silently assuming a different policy.
+- Tài liệu OpenSpec phải dùng tiếng Việt cho phần mô tả, tên requirement, tên scenario và nội dung scenario.
+- Giữ nguyên các token cú pháp OpenSpec bắt buộc như `Requirement` và `Scenario` để CLI validate được.
+- Spec mô tả hành vi đã triển khai trong code hiện tại, trừ khi ghi rõ là khoảng trống hoặc thay đổi tương lai.
+- Requirement được nhóm theo capability nghiệp vụ, không nhất thiết theo tên Nest module.
+- Hành vi có chuyển trạng thái, phân quyền, validation hoặc ảnh hưởng tiền phải có scenario.
+- Nếu hành vi hiện tại khác kỳ vọng phổ biến của hệ thống khách sạn, tài liệu phải mô tả đúng hành vi hiện tại thay vì tự giả định chính sách khác.

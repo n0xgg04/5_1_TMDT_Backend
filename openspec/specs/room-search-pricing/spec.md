@@ -1,359 +1,359 @@
-# Room Inventory, Search, And Pricing Specification
+# Đặc Tả Phòng, Tìm Kiếm Và Giá
 
 ## Purpose
 
-Define hotel branch, room type, room inventory, room status, pricing rule, public search, featured room, flash-sale discovery, and public room detail behavior.
+Định nghĩa quản lý loại phòng, phòng vật lý, chi nhánh, trạng thái phòng, quy tắc giá, tìm kiếm phòng trống, phòng nổi bật, flash sale public và chi tiết loại phòng public.
 
 ## Requirements
 
-### Requirement: Room Type Management
+### Requirement: Quản Lý Loại Phòng
 
-The system SHALL allow admins to create, update, soft-delete, and list room types; staff may read room type data.
+Hệ thống PHẢI (SHALL) cho phép admin tạo, cập nhật, vô hiệu hóa mềm và liệt kê loại phòng; receptionist được đọc loại phòng.
 
-#### Scenario: Create room type
+#### Scenario: Tạo loại phòng
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/rooms/types` is posted with name, max guests, area, bed type, and optional description/amenities/images
-- **THEN** the system SHALL create a room type with active state enabled by default.
+- **CHO** admin đã đăng nhập
+- **KHI** post `/rooms/types` với tên, sức chứa, diện tích, loại giường và tùy chọn mô tả/tiện nghi/ảnh
+- **THÌ** hệ thống PHẢI tạo loại phòng ở trạng thái active mặc định.
 
-#### Scenario: Update room type
+#### Scenario: Cập nhật loại phòng
 
-- **GIVEN** an authenticated admin
-- **AND** the room type exists
-- **WHEN** `/rooms/types/:id` is patched
-- **THEN** the system SHALL update submitted fields, including optional `isActive`.
+- **CHO** admin đã đăng nhập
+- **VÀ** loại phòng tồn tại
+- **KHI** patch `/rooms/types/:id`
+- **THÌ** hệ thống PHẢI cập nhật các field đã gửi, bao gồm `isActive` nếu có.
 
-#### Scenario: Missing room type
+#### Scenario: Loại phòng không tồn tại
 
-- **GIVEN** the target room type id does not exist
-- **WHEN** details, update, or delete is requested
-- **THEN** the API SHALL reject the request with `Loại phòng không tồn tại`.
+- **CHO** id loại phòng không tồn tại
+- **KHI** xem chi tiết, cập nhật hoặc xóa
+- **THÌ** API PHẢI từ chối với `Loại phòng không tồn tại`.
 
-#### Scenario: List active room types by default
+#### Scenario: Liệt kê loại phòng active mặc định
 
-- **GIVEN** an admin or receptionist
-- **WHEN** `/rooms/types` is called without `includeInactive=true`
-- **THEN** the API SHALL return only active room types
-- **AND** include active pricing rules ordered by priority descending
-- **AND** include a room count.
+- **CHO** admin hoặc receptionist
+- **KHI** gọi `/rooms/types` không có `includeInactive=true`
+- **THÌ** API PHẢI trả chỉ loại phòng active
+- **VÀ** include pricing rule active sắp xếp priority giảm dần
+- **VÀ** include số lượng phòng.
 
-#### Scenario: Include inactive room types
+#### Scenario: Liệt kê gồm inactive
 
-- **GIVEN** an admin or receptionist
-- **WHEN** `/rooms/types?includeInactive=true` is called
-- **THEN** the API SHALL include active and inactive room types.
+- **CHO** admin hoặc receptionist
+- **KHI** gọi `/rooms/types?includeInactive=true`
+- **THÌ** API PHẢI trả cả loại phòng active và inactive.
 
-#### Scenario: Soft-delete room type with no active bookings
+#### Scenario: Vô hiệu hóa loại phòng không có booking active
 
-- **GIVEN** an authenticated admin
-- **AND** the room type has no bookings in `PENDING_PAYMENT`, `PAYING`, `CONFIRMED`, or `CHECKED_IN`
-- **WHEN** `/rooms/types/:id` is deleted
-- **THEN** the system SHALL set `isActive=false`
-- **AND** return `Đã vô hiệu hóa loại phòng`.
+- **CHO** admin đã đăng nhập
+- **VÀ** loại phòng không có booking ở `PENDING_PAYMENT`, `PAYING`, `CONFIRMED`, `CHECKED_IN`
+- **KHI** delete `/rooms/types/:id`
+- **THÌ** hệ thống PHẢI set `isActive=false`
+- **VÀ** trả `Đã vô hiệu hóa loại phòng`.
 
-#### Scenario: Prevent deleting room type with active bookings
+#### Scenario: Chặn xóa loại phòng có booking active
 
-- **GIVEN** the room type has at least one active booking in `PENDING_PAYMENT`, `PAYING`, `CONFIRMED`, or `CHECKED_IN`
-- **WHEN** an admin deletes the room type
-- **THEN** the API SHALL reject the request with `Không thể xóa loại phòng đang có đơn đặt phòng hoạt động`.
+- **CHO** loại phòng có ít nhất một booking ở `PENDING_PAYMENT`, `PAYING`, `CONFIRMED`, `CHECKED_IN`
+- **KHI** admin xóa loại phòng
+- **THÌ** API PHẢI từ chối với `Không thể xóa loại phòng đang có đơn đặt phòng hoạt động`.
 
-### Requirement: Room Inventory Management
+### Requirement: Quản Lý Phòng Vật Lý
 
-The system SHALL allow admins to create/delete rooms and allow admin/receptionist/housekeeping roles to list or update room status/notes.
+Hệ thống PHẢI (SHALL) cho phép admin tạo/xóa phòng; admin, receptionist và housekeeping được liệt kê hoặc cập nhật trạng thái/ghi chú phòng.
 
-#### Scenario: Create room
+#### Scenario: Tạo phòng
 
-- **GIVEN** an authenticated admin
-- **AND** no room exists with the submitted `roomNumber`
-- **AND** the submitted room type exists
-- **WHEN** `/rooms` is posted with room number, floor, room type id, branch id, and optional notes
-- **THEN** the system SHALL create the room
-- **AND** return room data including room type and branch.
+- **CHO** admin đã đăng nhập
+- **VÀ** chưa có phòng với `roomNumber` đã gửi
+- **VÀ** loại phòng tồn tại
+- **KHI** post `/rooms` với số phòng, tầng, loại phòng, chi nhánh và ghi chú tùy chọn
+- **THÌ** hệ thống PHẢI tạo phòng
+- **VÀ** trả phòng kèm loại phòng và chi nhánh.
 
-#### Scenario: Duplicate room number
+#### Scenario: Trùng số phòng
 
-- **GIVEN** a room already exists with the submitted room number
-- **WHEN** an admin creates a room
-- **THEN** the API SHALL reject the request with `Số phòng đã tồn tại`.
+- **CHO** đã tồn tại phòng với room number đã gửi
+- **KHI** admin tạo phòng
+- **THÌ** API PHẢI từ chối với `Số phòng đã tồn tại`.
 
-#### Scenario: List rooms
+#### Scenario: Liệt kê phòng
 
-- **GIVEN** an admin, receptionist, or housekeeping user
-- **WHEN** `/rooms` is called with optional `roomTypeId` or `floor`
-- **THEN** the API SHALL return matching rooms including room type and branch
-- **AND** order by floor ascending then room number ascending.
+- **CHO** admin, receptionist hoặc housekeeping
+- **KHI** gọi `/rooms` với tùy chọn `roomTypeId` hoặc `floor`
+- **THÌ** API PHẢI trả phòng phù hợp, include loại phòng và chi nhánh
+- **VÀ** sắp xếp theo tầng tăng dần rồi số phòng tăng dần.
 
-#### Scenario: Update room operational fields
+#### Scenario: Cập nhật trạng thái hoặc ghi chú phòng
 
-- **GIVEN** an admin, receptionist, or housekeeping user
-- **AND** the room exists
-- **WHEN** `/rooms/:id` is patched with `status` and/or `notes`
-- **THEN** the system SHALL update the submitted fields and return room data including room type and branch.
+- **CHO** admin, receptionist hoặc housekeeping
+- **VÀ** phòng tồn tại
+- **KHI** patch `/rooms/:id` với `status` hoặc `notes`
+- **THÌ** hệ thống PHẢI cập nhật field đã gửi và trả phòng kèm loại phòng/chi nhánh.
 
-#### Scenario: Delete free room
+#### Scenario: Xóa phòng không có khách/đặt giữ
 
-- **GIVEN** an authenticated admin
-- **AND** the room has no bookings with status `CONFIRMED` or `CHECKED_IN`
-- **WHEN** `/rooms/:id` is deleted
-- **THEN** the system SHALL physically delete the room
-- **AND** return `Đã xóa phòng`.
+- **CHO** admin đã đăng nhập
+- **VÀ** phòng không có booking `CONFIRMED` hoặc `CHECKED_IN`
+- **KHI** delete `/rooms/:id`
+- **THÌ** hệ thống PHẢI xóa vật lý phòng
+- **VÀ** trả `Đã xóa phòng`.
 
-#### Scenario: Prevent deleting occupied/reserved room
+#### Scenario: Chặn xóa phòng đang có khách hoặc đã xác nhận
 
-- **GIVEN** the room has a `CONFIRMED` or `CHECKED_IN` booking
-- **WHEN** an admin deletes the room
-- **THEN** the API SHALL reject the request with `Phòng đang có khách, không thể xóa`.
+- **CHO** phòng có booking `CONFIRMED` hoặc `CHECKED_IN`
+- **KHI** admin xóa phòng
+- **THÌ** API PHẢI từ chối với `Phòng đang có khách, không thể xóa`.
 
-### Requirement: Hotel Branch Listing
+### Requirement: Liệt Kê Chi Nhánh
 
-The system SHALL expose active hotel branches to admin and receptionist roles.
+Hệ thống PHẢI (SHALL) cho admin và receptionist xem danh sách chi nhánh active.
 
-#### Scenario: List branches
+#### Scenario: Danh sách chi nhánh
 
-- **GIVEN** an admin or receptionist
-- **WHEN** `/rooms/branches` is called
-- **THEN** the API SHALL return active hotel branches ordered by province ascending.
+- **CHO** admin hoặc receptionist
+- **KHI** gọi `/rooms/branches`
+- **THÌ** API PHẢI trả các chi nhánh active, sắp xếp theo tỉnh/thành tăng dần.
 
-### Requirement: Pricing Rules
+### Requirement: Quy Tắc Giá
 
-The system SHALL price each room type by active date-matching pricing rules ordered by priority descending.
+Hệ thống PHẢI (SHALL) tính giá loại phòng bằng pricing rule active khớp ngày và có priority cao nhất.
 
-#### Scenario: Create pricing rule
+#### Scenario: Tạo quy tắc giá
 
-- **GIVEN** an authenticated admin
-- **AND** the room type exists
-- **WHEN** `/rooms/pricing` is posted with room type, pricing type, price, optional start/end dates, and optional priority
-- **THEN** the system SHALL create an active pricing rule
-- **AND** store absent start/end dates as null
-- **AND** default absent priority to 0.
+- **CHO** admin đã đăng nhập
+- **VÀ** loại phòng tồn tại
+- **KHI** post `/rooms/pricing` với loại phòng, pricing type, giá, ngày bắt đầu/kết thúc tùy chọn và priority tùy chọn
+- **THÌ** hệ thống PHẢI tạo pricing rule active
+- **VÀ** lưu ngày thiếu là null
+- **VÀ** default priority thiếu thành 0.
 
-#### Scenario: Disable pricing rule
+#### Scenario: Vô hiệu hóa quy tắc giá
 
-- **GIVEN** an authenticated admin
-- **AND** the pricing rule exists
-- **WHEN** `/rooms/pricing/:id` is deleted
-- **THEN** the system SHALL set `isActive=false`
-- **AND** return `Đã vô hiệu hóa quy tắc giá`.
+- **CHO** admin đã đăng nhập
+- **VÀ** pricing rule tồn tại
+- **KHI** delete `/rooms/pricing/:id`
+- **THÌ** hệ thống PHẢI set `isActive=false`
+- **VÀ** trả `Đã vô hiệu hóa quy tắc giá`.
 
-#### Scenario: Price for a date
+#### Scenario: Chọn giá cho một ngày
 
-- **GIVEN** a room type has one or more active rules where either both dates are null or the date falls between start and end
-- **WHEN** pricing service requests price for that date
-- **THEN** the rule with highest priority SHALL be selected
-- **AND** its `pricePerNight` SHALL be returned as a number.
+- **CHO** loại phòng có rule active mà ngày phù hợp hoặc rule default có start/end null
+- **KHI** pricing service lấy giá cho ngày đó
+- **THÌ** rule có priority cao nhất PHẢI được chọn
+- **VÀ** trả `pricePerNight` dạng number.
 
-#### Scenario: Missing price rule
+#### Scenario: Không có quy tắc giá
 
-- **GIVEN** no active pricing rule applies to the date
-- **WHEN** price calculation is requested
-- **THEN** the pricing service SHALL throw an error indicating no pricing rule was found for that date.
+- **CHO** không có pricing rule active phù hợp
+- **KHI** tính giá
+- **THÌ** pricing service PHẢI throw lỗi không tìm thấy quy tắc giá cho ngày đó.
 
-#### Scenario: Total price across nights
+#### Scenario: Tổng tiền nhiều đêm
 
-- **GIVEN** check-in and check-out dates
-- **WHEN** total price is calculated
-- **THEN** the system SHALL calculate at least one night
-- **AND** sum the selected per-night price for each night from check-in up to but not including check-out.
+- **CHO** ngày check-in và check-out
+- **KHI** tính tổng tiền
+- **THÌ** hệ thống PHẢI tính tối thiểu 1 đêm
+- **VÀ** cộng giá từng đêm từ check-in đến trước check-out.
 
-### Requirement: Public Room Search
+### Requirement: Tìm Kiếm Phòng Public
 
-The system SHALL allow anonymous users to search available concrete rooms by date range, guest count, optional branch province, room type, price, amenities, star rating, sort, and pagination.
+Hệ thống PHẢI (SHALL) cho user ẩn danh tìm phòng vật lý còn trống theo ngày, số khách, tỉnh/thành, loại phòng, khoảng giá, tiện nghi, sao, sort và phân trang.
 
-#### Scenario: Missing required search parameters
+#### Scenario: Thiếu tham số bắt buộc
 
-- **GIVEN** `checkIn`, `checkOut`, or `guests` is absent
-- **WHEN** `/search` is called
-- **THEN** the API SHALL reject the request with `checkIn, checkOut và guests là bắt buộc`.
+- **CHO** thiếu `checkIn`, `checkOut` hoặc `guests`
+- **KHI** gọi `/search`
+- **THÌ** API PHẢI từ chối với `checkIn, checkOut và guests là bắt buộc`.
 
-#### Scenario: Invalid search dates
+#### Scenario: Ngày không hợp lệ
 
-- **GIVEN** either date cannot be parsed
-- **WHEN** `/search` is called
-- **THEN** the API SHALL reject the request with `Ngày không hợp lệ`.
+- **CHO** một trong hai ngày không parse được
+- **KHI** gọi `/search`
+- **THÌ** API PHẢI từ chối với `Ngày không hợp lệ`.
 
-#### Scenario: Past check-in
+#### Scenario: Check-in trong quá khứ
 
-- **GIVEN** check-in is before the current local date at midnight
-- **WHEN** `/search` is called
-- **THEN** the API SHALL reject the request with `Ngày nhận phòng không thể trong quá khứ`.
+- **CHO** ngày check-in trước ngày hiện tại tại mốc 00:00
+- **KHI** gọi `/search`
+- **THÌ** API PHẢI từ chối với `Ngày nhận phòng không thể trong quá khứ`.
 
-#### Scenario: Check-out not after check-in
+#### Scenario: Check-out không sau check-in
 
-- **GIVEN** check-out is equal to or before check-in
-- **WHEN** `/search` is called
-- **THEN** the API SHALL reject the request with `Ngày trả phòng phải sau ngày nhận phòng`.
+- **CHO** check-out bằng hoặc trước check-in
+- **KHI** gọi `/search`
+- **THÌ** API PHẢI từ chối với `Ngày trả phòng phải sau ngày nhận phòng`.
 
-#### Scenario: Exclude booking conflicts
+#### Scenario: Loại trừ booking trùng lịch
 
-- **GIVEN** a room has a booking in `PENDING_PAYMENT`, `PAYING`, `CONFIRMED`, or `CHECKED_IN`
-- **AND** the existing booking overlaps the requested range using `checkIn < requestedCheckOut` and `checkOut > requestedCheckIn`
-- **WHEN** search runs
-- **THEN** that room SHALL be excluded from results.
+- **CHO** phòng có booking ở `PENDING_PAYMENT`, `PAYING`, `CONFIRMED`, `CHECKED_IN`
+- **VÀ** booking đó overlap khoảng ngày yêu cầu theo điều kiện `checkIn < requestedCheckOut` và `checkOut > requestedCheckIn`
+- **KHI** search chạy
+- **THÌ** phòng đó PHẢI bị loại khỏi kết quả.
 
-#### Scenario: Include operationally searchable room statuses
+#### Scenario: Trạng thái phòng được search
 
-- **GIVEN** a room has no conflicting active booking
-- **AND** its status is `AVAILABLE` or `DIRTY`
-- **WHEN** search runs
-- **THEN** the room MAY be included if all other filters pass.
+- **CHO** phòng không có booking conflict
+- **VÀ** status là `AVAILABLE` hoặc `DIRTY`
+- **KHI** search chạy
+- **THÌ** phòng CÓ THỂ xuất hiện nếu các filter khác đạt.
 
-#### Scenario: Exclude unavailable operational statuses
+#### Scenario: Trạng thái phòng bị loại khỏi search
 
-- **GIVEN** a room status is `OCCUPIED`, `CLEANING`, `MAINTENANCE`, or `RESERVED`
-- **WHEN** search runs
-- **THEN** the room SHALL be excluded from public search results.
+- **CHO** phòng có status `OCCUPIED`, `CLEANING`, `MAINTENANCE` hoặc `RESERVED`
+- **KHI** search chạy
+- **THÌ** phòng PHẢI bị loại khỏi kết quả public.
 
-#### Scenario: Guest capacity filter
+#### Scenario: Lọc sức chứa
 
-- **GIVEN** a room type has `maxGuests` lower than requested guests
-- **WHEN** search runs
-- **THEN** rooms for that room type SHALL be excluded.
+- **CHO** loại phòng có `maxGuests` nhỏ hơn số khách yêu cầu
+- **KHI** search chạy
+- **THÌ** các phòng thuộc loại đó PHẢI bị loại.
 
-#### Scenario: Province filter
+#### Scenario: Lọc tỉnh/thành
 
-- **GIVEN** a province filter is submitted
-- **WHEN** search runs
-- **THEN** only rooms whose branch province equals the filter case-insensitively SHALL be considered.
+- **CHO** có filter province
+- **KHI** search chạy
+- **THÌ** chỉ phòng thuộc chi nhánh có province bằng filter, không phân biệt hoa thường, được xét.
 
-#### Scenario: Amenities filter
+#### Scenario: Lọc tiện nghi
 
-- **GIVEN** an amenities query value such as `WiFi,TV`
-- **WHEN** search runs
-- **THEN** the room type amenities SHALL include every requested token case-insensitively by substring match.
+- **CHO** query amenities như `WiFi,TV`
+- **KHI** search chạy
+- **THÌ** amenities của loại phòng PHẢI chứa tất cả token yêu cầu theo substring không phân biệt hoa thường.
 
-#### Scenario: Star rating filter
+#### Scenario: Lọc số sao
 
-- **GIVEN** `starRating` is submitted
-- **WHEN** search runs
-- **THEN** only room types whose `starRating` equals that value SHALL be included.
+- **CHO** gửi `starRating`
+- **KHI** search chạy
+- **THÌ** chỉ loại phòng có `starRating` bằng giá trị đó được trả về.
 
-#### Scenario: Price range filter
+#### Scenario: Lọc khoảng giá
 
-- **GIVEN** `minPrice` or `maxPrice` is submitted
-- **WHEN** search calculates `pricePerNight`
-- **THEN** results outside the per-night range SHALL be excluded.
+- **CHO** gửi `minPrice` hoặc `maxPrice`
+- **KHI** search tính `pricePerNight`
+- **THÌ** kết quả nằm ngoài khoảng giá mỗi đêm PHẢI bị loại.
 
-#### Scenario: Pricing unavailable for room type
+#### Scenario: Không tính được giá cho loại phòng
 
-- **GIVEN** a room type has no applicable active pricing rule
-- **WHEN** search attempts to price it
-- **THEN** results for that room type SHALL be skipped.
+- **CHO** loại phòng không có pricing rule active phù hợp
+- **KHI** search cố tính giá
+- **THÌ** kết quả thuộc loại phòng đó PHẢI bị bỏ qua.
 
-#### Scenario: Search result shape
+#### Scenario: Shape kết quả search
 
-- **GIVEN** a room passes all filters
-- **WHEN** it is returned by search
-- **THEN** the result SHALL include room id/number/floor, room type summary, branch summary, `pricePerNight`, `totalPrice`, and `nights`.
+- **CHO** phòng đạt mọi filter
+- **KHI** search trả kết quả
+- **THÌ** item PHẢI gồm room id/số phòng/tầng, room type summary, branch summary, `pricePerNight`, `totalPrice`, `nights`.
 
-#### Scenario: Sort by price ascending
+#### Scenario: Sort giá tăng dần
 
-- **GIVEN** `sortBy=price_asc`
-- **WHEN** results are sorted
-- **THEN** lower `pricePerNight` results SHALL appear first.
+- **CHO** `sortBy=price_asc`
+- **KHI** sort kết quả
+- **THÌ** phòng có `pricePerNight` thấp hơn PHẢI đứng trước.
 
-#### Scenario: Sort by price descending
+#### Scenario: Sort giá giảm dần
 
-- **GIVEN** `sortBy=price_desc`
-- **WHEN** results are sorted
-- **THEN** higher `pricePerNight` results SHALL appear first.
+- **CHO** `sortBy=price_desc`
+- **KHI** sort kết quả
+- **THÌ** phòng có `pricePerNight` cao hơn PHẢI đứng trước.
 
-#### Scenario: Sort by rating descending
+#### Scenario: Sort sao giảm dần
 
-- **GIVEN** `sortBy=rating_desc`
-- **WHEN** results are sorted
-- **THEN** higher room type star ratings SHALL appear first.
+- **CHO** `sortBy=rating_desc`
+- **KHI** sort kết quả
+- **THÌ** loại phòng có star rating cao hơn PHẢI đứng trước.
 
-#### Scenario: Pagination
+#### Scenario: Phân trang search
 
-- **GIVEN** result count exceeds the requested page size
-- **WHEN** search returns
-- **THEN** it SHALL return `data`, `total`, `page`, and `limit`
-- **AND** slice data by `(page - 1) * limit` through `page * limit`.
+- **CHO** số kết quả lớn hơn page size
+- **KHI** search trả response
+- **THÌ** response PHẢI gồm `data`, `total`, `page`, `limit`
+- **VÀ** data được cắt theo `(page - 1) * limit` đến `page * limit`.
 
-#### Scenario: Search cache
+#### Scenario: Cache search 60 giây
 
-- **GIVEN** identical search parameters are submitted within 60 seconds
-- **WHEN** Redis contains `search:<params>`
-- **THEN** the cached JSON response SHALL be returned.
+- **CHO** cùng bộ tham số search được gọi lại trong 60 giây
+- **KHI** Redis có key `search:<params>`
+- **THÌ** API PHẢI trả JSON response từ cache.
 
-### Requirement: Province Discovery
+### Requirement: Danh Sách Tỉnh/Thành
 
-The system SHALL expose a public list of active branch provinces.
+Hệ thống PHẢI (SHALL) public danh sách tỉnh/thành có chi nhánh active.
 
-#### Scenario: Get provinces
+#### Scenario: Lấy danh sách tỉnh/thành
 
-- **GIVEN** active hotel branches exist
-- **WHEN** `/search/provinces` is called
-- **THEN** the API SHALL return distinct province names ordered ascending.
+- **CHO** có chi nhánh active
+- **KHI** gọi `/search/provinces`
+- **THÌ** API PHẢI trả province distinct, sắp xếp tăng dần.
 
-### Requirement: Featured Rooms
+### Requirement: Phòng Nổi Bật
 
-The system SHALL expose public featured room type summaries for the home page.
+Hệ thống PHẢI (SHALL) public các loại phòng nổi bật cho trang chủ.
 
-#### Scenario: Get featured rooms
+#### Scenario: Lấy phòng nổi bật
 
-- **GIVEN** active room types exist
-- **WHEN** `/search/featured` is called
-- **THEN** up to 6 active room types SHALL be returned
-- **AND** each item SHALL include id, name, description, images, area, bed type, max guests, first active pricing rule price, and first room branch.
+- **CHO** có loại phòng active
+- **KHI** gọi `/search/featured`
+- **THÌ** API PHẢI trả tối đa 6 loại phòng active
+- **VÀ** mỗi item gồm id, tên, mô tả, ảnh, diện tích, loại giường, sức chứa, giá từ pricing rule active đầu tiên và chi nhánh của phòng đầu tiên.
 
-### Requirement: Public Flash Sale Discovery
+### Requirement: Flash Sale Public
 
-The system SHALL expose currently active flash sale summaries to public users.
+Hệ thống PHẢI (SHALL) public flash sale đang diễn ra.
 
-#### Scenario: Get flash sales from search endpoint
+#### Scenario: Flash sale từ endpoint search
 
-- **GIVEN** a flash sale is active and current time is between start and end
-- **WHEN** `/search/flash-sales` is called
-- **THEN** up to 4 flash sale summaries SHALL be returned with room type information, discount, dates, quantity, and sold count.
+- **CHO** flash sale active và thời gian hiện tại nằm trong start/end
+- **KHI** gọi `/search/flash-sales`
+- **THÌ** API PHẢI trả tối đa 4 flash sale summary với thông tin loại phòng, discount, ngày, quantity và sold count.
 
-#### Scenario: Get flash sales from flash-sales endpoint
+#### Scenario: Flash sale từ endpoint chuyên biệt
 
-- **GIVEN** a flash sale is active, current, and has `quantity > soldCount`
-- **WHEN** `/flash-sales` is called
-- **THEN** it SHALL be returned with its room type.
+- **CHO** flash sale active, đang diễn ra và `quantity > soldCount`
+- **KHI** gọi `/flash-sales`
+- **THÌ** API PHẢI trả flash sale kèm room type.
 
-### Requirement: Public Room Type Detail
+### Requirement: Chi Tiết Loại Phòng Public
 
-The system SHALL expose detailed public room type content, reviews, similar room types, and saved-state metadata.
+Hệ thống PHẢI (SHALL) public chi tiết loại phòng, review, phòng tương tự và trạng thái đã lưu.
 
-#### Scenario: Get public room type detail
+#### Scenario: Lấy chi tiết loại phòng public
 
-- **GIVEN** an active room type exists
-- **WHEN** `/rooms/types/:id/public` is called
-- **THEN** the API SHALL return the room type, active pricing rules, rooms with branches, room count, latest approved reviews, average rating, similar rooms, and `isSaved`.
+- **CHO** loại phòng active tồn tại
+- **KHI** gọi `/rooms/types/:id/public`
+- **THÌ** API PHẢI trả loại phòng, pricing rule active, rooms kèm branch, room count, review approved mới nhất, average rating, similar rooms và `isSaved`.
 
-#### Scenario: Public detail for inactive or missing room type
+#### Scenario: Loại phòng inactive hoặc không tồn tại
 
-- **GIVEN** the room type is missing or inactive
-- **WHEN** public detail is requested
-- **THEN** the API SHALL reject the request with `Loại phòng không tồn tại`.
+- **CHO** loại phòng không tồn tại hoặc inactive
+- **KHI** xem chi tiết public
+- **THÌ** API PHẢI từ chối với `Loại phòng không tồn tại`.
 
-#### Scenario: Saved state for authenticated user
+#### Scenario: Trạng thái đã lưu cho user đăng nhập
 
-- **GIVEN** a user is authenticated
-- **WHEN** public room type detail is requested
-- **THEN** `isSaved` SHALL be true only if a wishlist row exists for that user and room type.
+- **CHO** user đã đăng nhập
+- **KHI** xem chi tiết public
+- **THÌ** `isSaved` PHẢI true chỉ khi có wishlist row cho user và loại phòng đó.
 
-#### Scenario: Saved state for anonymous session
+#### Scenario: Trạng thái đã lưu cho session ẩn danh
 
-- **GIVEN** no user is authenticated
-- **AND** `x-session-id` is provided
-- **WHEN** public room type detail is requested
-- **THEN** `isSaved` SHALL be true only if a wishlist row exists for that session and room type.
+- **CHO** chưa đăng nhập
+- **VÀ** có `x-session-id`
+- **KHI** xem chi tiết public
+- **THÌ** `isSaved` PHẢI true chỉ khi có wishlist row cho session và loại phòng đó.
 
-#### Scenario: Similar rooms
+#### Scenario: Phòng tương tự
 
-- **GIVEN** other active room types exist
-- **WHEN** public room type detail is requested
-- **THEN** up to 3 similar room type summaries SHALL be selected by same star rating or same branch province when available.
+- **CHO** có loại phòng active khác
+- **KHI** xem chi tiết public
+- **THÌ** API PHẢI chọn tối đa 3 loại phòng tương tự theo cùng star rating hoặc cùng province của chi nhánh khi có dữ liệu.
 
-### Requirement: Public Room Type Reviews
+### Requirement: Review Loại Phòng Public
 
-The system SHALL expose approved reviews for a room type.
+Hệ thống PHẢI (SHALL) public review approved của loại phòng.
 
-#### Scenario: Get room type reviews
+#### Scenario: Lấy review theo loại phòng
 
-- **GIVEN** the room type exists
-- **WHEN** `/rooms/types/:id/reviews` is called
-- **THEN** the API SHALL return approved reviews ordered newest first and average rating.
+- **CHO** loại phòng tồn tại
+- **KHI** gọi `/rooms/types/:id/reviews`
+- **THÌ** API PHẢI trả review approved mới nhất trước và average rating.

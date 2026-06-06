@@ -1,207 +1,207 @@
-# Platform And API Foundation Specification
+# Đặc Tả Nền Tảng API
 
 ## Purpose
 
-Define the cross-cutting API, security, validation, Redis, eventing, notification, and cron behavior shared by all Sapphire Stay capabilities.
+Định nghĩa các hành vi nền tảng dùng chung: version API, validation, error envelope, public/protected route, phân quyền, throttling, CORS, Redis, event bus, notification và cron.
 
 ## Requirements
 
-### Requirement: Versioned REST API
+### Requirement: API REST Có Version
 
-The system SHALL expose backend REST endpoints under the global prefix `/api` and URI version `/v1`.
+Hệ thống PHẢI (SHALL) phục vụ endpoint backend dưới prefix toàn cục `/api` và version URI `/v1`.
 
-#### Scenario: Versioned endpoint URL
+#### Scenario: URL endpoint có version
 
-- **GIVEN** a controller path `auth`
-- **WHEN** the app is configured
-- **THEN** the runtime route SHALL be served under `/api/v1/auth`.
+- **CHO** controller có path `auth`
+- **KHI** ứng dụng được cấu hình
+- **THÌ** route runtime PHẢI nằm dưới `/api/v1/auth`.
 
-#### Scenario: Swagger availability
+#### Scenario: Swagger ở môi trường không production
 
-- **GIVEN** the API runs outside production mode
-- **WHEN** the Nest app boots
-- **THEN** Swagger UI SHALL be available at `/api/docs`.
+- **CHO** API chạy ngoài production
+- **KHI** Nest app khởi động
+- **THÌ** Swagger UI PHẢI có tại `/api/docs`.
 
-#### Scenario: Swagger disabled in production
+#### Scenario: Tắt Swagger ở production
 
-- **GIVEN** `NODE_ENV=production`
-- **WHEN** the Nest app boots
-- **THEN** Swagger UI SHALL not be mounted to reduce serverless bundle/runtime overhead.
+- **CHO** `NODE_ENV=production`
+- **KHI** Nest app khởi động
+- **THÌ** Swagger UI KHÔNG được mount để giảm chi phí bundle/runtime serverless.
 
-### Requirement: Global Validation And Error Envelope
+### Requirement: Validation Và Error Envelope Toàn Cục
 
-The system SHALL validate DTO input globally, reject unknown fields, transform query/body values where class-transformer can do so, and return normalized error JSON.
+Hệ thống PHẢI (SHALL) validate DTO toàn cục, loại bỏ/từ chối field không khai báo, transform dữ liệu khi class-transformer hỗ trợ và trả lỗi theo JSON thống nhất.
 
-#### Scenario: Unknown DTO field
+#### Scenario: Request có field lạ
 
-- **GIVEN** a request body includes a property that is not declared in the target DTO
-- **WHEN** the request reaches a DTO-validated endpoint
-- **THEN** the API SHALL reject the request because `forbidNonWhitelisted` is enabled.
+- **CHO** body chứa thuộc tính không có trong DTO đích
+- **KHI** request vào endpoint có DTO validation
+- **THÌ** API PHẢI từ chối request do `forbidNonWhitelisted` đang bật.
 
-#### Scenario: Validation error response
+#### Scenario: Response lỗi validation
 
-- **GIVEN** a request fails validation or throws an HTTP exception
-- **WHEN** the global exception filter handles it
-- **THEN** the response SHALL contain `statusCode`, `timestamp`, `path`, and `message`.
+- **CHO** request lỗi validation hoặc ném HTTP exception
+- **KHI** global exception filter xử lý
+- **THÌ** response PHẢI gồm `statusCode`, `timestamp`, `path`, `message`.
 
-#### Scenario: Unexpected server error
+#### Scenario: Lỗi server không dự kiến
 
-- **GIVEN** an unhandled non-HTTP exception occurs
-- **WHEN** the global exception filter handles it
-- **THEN** the response status SHALL be 500 and `message` SHALL be `Internal server error`.
+- **CHO** xảy ra exception không phải HTTP exception
+- **KHI** global exception filter xử lý
+- **THÌ** response PHẢI có status 500 và `message` là `Internal server error`.
 
-### Requirement: Public And Authenticated Routes
+### Requirement: Route Public Và Route Cần Đăng Nhập
 
-The system SHALL require JWT authentication for all routes unless a route is explicitly marked public.
+Hệ thống PHẢI (SHALL) yêu cầu JWT cho mọi route trừ khi route được đánh dấu public.
 
-#### Scenario: Public endpoint
+#### Scenario: Endpoint public
 
-- **GIVEN** a handler has the public metadata marker
-- **WHEN** a request omits `Authorization`
-- **THEN** the JWT guard SHALL allow the request to continue.
+- **CHO** handler có metadata public
+- **KHI** request không gửi `Authorization`
+- **THÌ** JWT guard PHẢI cho phép request đi tiếp.
 
-#### Scenario: Protected endpoint without token
+#### Scenario: Endpoint bảo vệ thiếu token
 
-- **GIVEN** a handler is not public
-- **WHEN** a request omits a valid bearer token
-- **THEN** the API SHALL reject it with `Vui lòng đăng nhập`.
+- **CHO** handler không public
+- **KHI** request không có bearer token hợp lệ
+- **THÌ** API PHẢI từ chối với `Vui lòng đăng nhập`.
 
-#### Scenario: Role protected endpoint
+#### Scenario: Endpoint yêu cầu role
 
-- **GIVEN** a route declares required roles
-- **WHEN** an authenticated user has a role outside that set
-- **THEN** the roles guard SHALL reject the request with `Bạn không có quyền thực hiện hành động này`.
+- **CHO** route khai báo role được phép
+- **KHI** user đã đăng nhập nhưng role không nằm trong danh sách đó
+- **THÌ** roles guard PHẢI từ chối với `Bạn không có quyền thực hiện hành động này`.
 
-### Requirement: Request Throttling
+### Requirement: Giới Hạn Tần Suất Request
 
-The system SHALL apply a global throttling policy of 100 requests per 60 seconds.
+Hệ thống PHẢI (SHALL) áp dụng throttling toàn cục 100 request trong 60 giây.
 
-#### Scenario: Request volume exceeds limit
+#### Scenario: Vượt giới hạn request
 
-- **GIVEN** a client sends more than 100 requests within one throttling window
-- **WHEN** throttling evaluates the request
-- **THEN** the API SHALL reject excess requests according to Nest throttler behavior.
+- **CHO** client gửi hơn 100 request trong một cửa sổ throttling
+- **KHI** throttler đánh giá request
+- **THÌ** API PHẢI từ chối các request vượt ngưỡng theo hành vi Nest throttler.
 
-### Requirement: CORS Policy
+### Requirement: Chính Sách CORS
 
-The API SHALL allow CORS origins from `CORS_ORIGINS` and default to `http://localhost:3001`.
+API PHẢI (SHALL) cho phép origin từ `CORS_ORIGINS`, mặc định là `http://localhost:3001`.
 
-#### Scenario: Web app credentials
+#### Scenario: Frontend gửi credential/header tùy chỉnh
 
-- **GIVEN** the frontend calls the API from an allowed origin
-- **WHEN** it sends credentials, authorization, or session headers
-- **THEN** the API SHALL allow credentials and the headers `Content-Type`, `Authorization`, `X-Requested-With`, and `x-session-id`.
+- **CHO** frontend gọi API từ origin hợp lệ
+- **KHI** request gửi credential, authorization hoặc session header
+- **THÌ** API PHẢI cho phép credential và các header `Content-Type`, `Authorization`, `X-Requested-With`, `x-session-id`.
 
 ### Requirement: Redis Adapter
 
-The system SHALL use Upstash Redis REST when configured and an in-memory fallback when Upstash credentials are absent.
+Hệ thống PHẢI (SHALL) dùng Upstash Redis REST khi có cấu hình và fallback in-memory khi thiếu credential.
 
-#### Scenario: Upstash configured
+#### Scenario: Có cấu hình Upstash
 
-- **GIVEN** `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set
-- **WHEN** `RedisService` initializes
-- **THEN** it SHALL use the Upstash Redis adapter.
+- **CHO** `UPSTASH_REDIS_REST_URL` và `UPSTASH_REDIS_REST_TOKEN` được cấu hình
+- **KHI** `RedisService` khởi tạo
+- **THÌ** service PHẢI dùng Upstash adapter.
 
-#### Scenario: Local fallback
+#### Scenario: Fallback local
 
-- **GIVEN** Upstash credentials are absent
-- **WHEN** `RedisService` initializes
-- **THEN** it SHALL use in-memory storage and log a development warning.
+- **CHO** thiếu credential Upstash
+- **KHI** `RedisService` khởi tạo
+- **THÌ** service PHẢI dùng in-memory storage và log cảnh báo dành cho dev.
 
 #### Scenario: Distributed lock
 
-- **GIVEN** a lock key already exists and has not expired
-- **WHEN** another caller invokes `setNx` with the same key
-- **THEN** Redis SHALL return `false`.
+- **CHO** lock key đã tồn tại và chưa hết hạn
+- **KHI** caller khác gọi `setNx` với cùng key
+- **THÌ** Redis PHẢI trả `false`.
 
-#### Scenario: TTL expiry
+#### Scenario: Key hết TTL
 
-- **GIVEN** a cached or lock key has a configured TTL
-- **WHEN** the TTL elapses
-- **THEN** subsequent `get`/`setNx` calls SHALL treat the key as absent.
+- **CHO** key cache hoặc lock có TTL
+- **KHI** TTL đã hết
+- **THÌ** các lần `get` hoặc `setNx` sau đó PHẢI coi key như không tồn tại.
 
 ### Requirement: Domain Event Bus
 
-The system SHALL dispatch booking/payment domain events through an in-process event bus with isolated handler failures.
+Hệ thống PHẢI (SHALL) dispatch event booking/payment qua event bus in-process và cô lập lỗi giữa các handler.
 
-#### Scenario: Event has no handlers
+#### Scenario: Event không có handler
 
-- **GIVEN** an event is emitted with no registered handlers
-- **WHEN** `EventsService.emit` runs
-- **THEN** it SHALL log debug information and complete without throwing.
+- **CHO** event được emit nhưng không có handler đăng ký
+- **KHI** `EventsService.emit` chạy
+- **THÌ** service PHẢI log debug và hoàn tất mà không throw.
 
-#### Scenario: Handler failure isolation
+#### Scenario: Một handler bị lỗi
 
-- **GIVEN** an event has multiple handlers
-- **WHEN** one handler throws
-- **THEN** the failure SHALL be logged and later handlers SHALL still run.
+- **CHO** event có nhiều handler
+- **KHI** một handler throw lỗi
+- **THÌ** lỗi PHẢI được log và các handler sau vẫn PHẢI chạy.
 
-#### Scenario: Payment success saga
+#### Scenario: Saga thanh toán thành công
 
-- **GIVEN** a `payment.success` event with a booking id
-- **WHEN** booking event handlers receive it
-- **THEN** the booking service SHALL confirm the booking if its status is `PENDING_PAYMENT` or `PAYING`.
+- **CHO** event `payment.success` có booking id
+- **KHI** booking event handler nhận event
+- **THÌ** booking service PHẢI xác nhận booking nếu status là `PENDING_PAYMENT` hoặc `PAYING`.
 
-#### Scenario: Payment failure saga
+#### Scenario: Saga thanh toán thất bại
 
-- **GIVEN** a `payment.failed` event with a booking id
-- **WHEN** booking event handlers receive it
-- **THEN** the booking service SHALL expire the booking if its status is `PENDING_PAYMENT` or `PAYING`.
+- **CHO** event `payment.failed` có booking id
+- **KHI** booking event handler nhận event
+- **THÌ** booking service PHẢI expire booking nếu status là `PENDING_PAYMENT` hoặc `PAYING`.
 
-### Requirement: Notification Persistence And Email Delivery
+### Requirement: Notification Và Email
 
-The system SHALL persist notification attempts and send email through Resend when configured.
+Hệ thống PHẢI (SHALL) lưu notification attempt và gửi email qua Resend khi có cấu hình.
 
-#### Scenario: Notification type supported
+#### Scenario: Notification type được hỗ trợ
 
-- **GIVEN** a notification type among `booking.confirmed`, `booking.cancelled`, `booking.expired`, or `checkout.completed`
-- **WHEN** the notification service sends it
-- **THEN** it SHALL load the booking and customer, build localized template data, and create a `notifications` row.
+- **CHO** type thuộc `booking.confirmed`, `booking.cancelled`, `booking.expired`, `checkout.completed`
+- **KHI** notification service gửi thông báo
+- **THÌ** service PHẢI load booking/customer, dựng template data tiếng Việt và tạo bản ghi `notifications`.
 
-#### Scenario: Resend not configured
+#### Scenario: Chưa cấu hình Resend
 
-- **GIVEN** `RESEND_API_KEY` is absent
-- **WHEN** a notification is sent
-- **THEN** the notification row SHALL be persisted and email delivery SHALL be skipped without failing the business transaction.
+- **CHO** thiếu `RESEND_API_KEY`
+- **KHI** gửi notification
+- **THÌ** bản ghi notification vẫn PHẢI được lưu và email được bỏ qua, không làm fail transaction nghiệp vụ.
 
-#### Scenario: Email send success
+#### Scenario: Gửi email thành công
 
-- **GIVEN** Resend is configured
-- **WHEN** the email provider accepts the message
-- **THEN** the notification row SHALL be updated with `sentAt` and `failed=false`.
+- **CHO** Resend đã cấu hình
+- **KHI** provider nhận email
+- **THÌ** notification PHẢI được cập nhật `sentAt` và `failed=false`.
 
-#### Scenario: Email send failure
+#### Scenario: Gửi email thất bại
 
-- **GIVEN** Resend is configured
-- **WHEN** the provider call fails
-- **THEN** the notification row SHALL be updated with `failed=true`, `failReason`, and incremented `retries`.
+- **CHO** Resend đã cấu hình
+- **KHI** provider trả lỗi
+- **THÌ** notification PHẢI được cập nhật `failed=true`, `failReason` và tăng `retries`.
 
-### Requirement: Cron Booking Expiration Endpoint
+### Requirement: Cron Hết Hạn Booking
 
-The system SHALL expose a public-but-secret-protected cron endpoint to expire stale unpaid bookings.
+Hệ thống PHẢI (SHALL) có endpoint cron public nhưng bảo vệ bằng bearer secret để expire booking chưa thanh toán.
 
-#### Scenario: Missing cron secret configuration
+#### Scenario: Thiếu cấu hình cron secret
 
-- **GIVEN** `CRON_SECRET` is not configured
-- **WHEN** `/api/v1/internal/cron/expire-bookings` is called
-- **THEN** the endpoint SHALL reject the request as unauthorized.
+- **CHO** `CRON_SECRET` chưa cấu hình
+- **KHI** gọi `/api/v1/internal/cron/expire-bookings`
+- **THÌ** endpoint PHẢI trả unauthorized.
 
-#### Scenario: Invalid cron bearer
+#### Scenario: Sai bearer secret
 
-- **GIVEN** `CRON_SECRET` is configured
-- **WHEN** the request `Authorization` header is not exactly `Bearer <CRON_SECRET>`
-- **THEN** the endpoint SHALL reject the request as unauthorized.
+- **CHO** `CRON_SECRET` đã cấu hình
+- **KHI** header `Authorization` không đúng chính xác `Bearer <CRON_SECRET>`
+- **THÌ** endpoint PHẢI trả unauthorized.
 
-#### Scenario: Overlapping cron invocation
+#### Scenario: Cron chạy chồng
 
-- **GIVEN** another expiration run holds the `cron:booking:expire` lock
-- **WHEN** the cron endpoint is called
-- **THEN** it SHALL return `{ skipped: true }`.
+- **CHO** tiến trình khác đang giữ lock `cron:booking:expire`
+- **KHI** endpoint cron được gọi
+- **THÌ** endpoint PHẢI trả `{ skipped: true }`.
 
-#### Scenario: Expire stale bookings
+#### Scenario: Xử lý booking quá hạn
 
-- **GIVEN** the cron lock is acquired
-- **WHEN** there are bookings with status `PENDING_PAYMENT` and `paymentDeadline` before now
-- **THEN** each booking SHALL be passed to `expireBooking`
-- **AND** the endpoint SHALL return the number processed
-- **AND** the lock SHALL be released after processing.
+- **CHO** cron lấy được lock
+- **KHI** tồn tại booking `PENDING_PAYMENT` có `paymentDeadline` trước thời điểm hiện tại
+- **THÌ** từng booking PHẢI được truyền vào `expireBooking`
+- **VÀ** endpoint PHẢI trả số lượng đã xử lý
+- **VÀ** lock PHẢI được giải phóng sau khi xử lý.

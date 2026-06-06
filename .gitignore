@@ -11,6 +11,7 @@ coverage/
 **/*.md
 !/AGENTS.md
 !/CLAUDE.md
+!/general-docs/**/*.md
 !openspec/project.md
 !openspec/**/*.md
 .opencode

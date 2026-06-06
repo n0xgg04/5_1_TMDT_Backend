@@ -1,199 +1,199 @@
-# Promotions Specification
+# Đặc Tả Khuyến Mãi
 
 ## Purpose
 
-Define coupon creation, public coupon discovery, claiming, application, usage tracking, user coupon state, and flash sale behavior.
+Định nghĩa tạo coupon, public coupon, claim coupon, áp dụng coupon, usage tracking, user coupon state và flash sale.
 
 ## Requirements
 
-### Requirement: Coupon Administration
+### Requirement: Quản Trị Coupon
 
-The system SHALL allow admins to create coupons and list all coupons.
+Hệ thống PHẢI (SHALL) cho admin tạo coupon và xem tất cả coupon.
 
-#### Scenario: Create percentage coupon
+#### Scenario: Tạo coupon phần trăm
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/coupons/admin` is posted with code, value, date range, and optional limits
-- **THEN** the system SHALL store the code upper-cased
-- **AND** default type to `percentage` when absent
-- **AND** default usage limit to 1 when absent
-- **AND** store absent min amount and max discount as null.
+- **CHO** admin đã đăng nhập
+- **KHI** post `/coupons/admin` với code, value, khoảng ngày và giới hạn tùy chọn
+- **THÌ** hệ thống PHẢI lưu code dạng uppercase
+- **VÀ** default type là `percentage` khi thiếu
+- **VÀ** default usage limit là 1 khi thiếu
+- **VÀ** lưu min amount và max discount thiếu thành null.
 
-#### Scenario: Create fixed coupon
+#### Scenario: Tạo coupon fixed
 
-- **GIVEN** an authenticated admin
-- **WHEN** a coupon is created with type `fixed`
-- **THEN** the discount value SHALL be interpreted as a fixed currency amount during application.
+- **CHO** admin đã đăng nhập
+- **KHI** tạo coupon type `fixed`
+- **THÌ** value PHẢI được hiểu là số tiền giảm cố định khi apply.
 
-#### Scenario: Admin lists coupons
+#### Scenario: Admin liệt kê coupon
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/coupons/admin` is called
-- **THEN** all coupons SHALL be returned ordered newest first.
+- **CHO** admin đã đăng nhập
+- **KHI** gọi `/coupons/admin`
+- **THÌ** tất cả coupon PHẢI được trả về, mới nhất trước.
 
-#### Scenario: Non-admin manages coupons
+#### Scenario: User không phải admin quản lý coupon
 
-- **GIVEN** an authenticated non-admin
-- **WHEN** they call admin coupon endpoints
-- **THEN** the API SHALL reject the request through role authorization.
+- **CHO** user không phải admin đã đăng nhập
+- **KHI** gọi endpoint coupon admin
+- **THÌ** API PHẢI từ chối bằng role guard.
 
-### Requirement: Active Coupon Discovery
+### Requirement: Public Coupon Active
 
-The system SHALL expose active coupons to public and authenticated users.
+Hệ thống PHẢI (SHALL) public coupon đang hoạt động cho user ẩn danh và user đã đăng nhập.
 
-#### Scenario: Public active coupons
+#### Scenario: Coupon active public
 
-- **GIVEN** coupons exist with `isActive=true`, current time between start/end, and usage count below usage limit
-- **WHEN** `/coupons` is called
-- **THEN** only those coupons SHALL be returned ordered newest first.
+- **CHO** coupon `isActive=true`, thời điểm hiện tại trong start/end và usage count dưới usage limit
+- **KHI** gọi `/coupons`
+- **THÌ** chỉ các coupon đó PHẢI được trả về, mới nhất trước.
 
-#### Scenario: Public coupon claim state for anonymous user
+#### Scenario: Public coupon cho anonymous
 
-- **GIVEN** no user is authenticated
-- **WHEN** `/coupons/public` is called
-- **THEN** active current coupons SHALL be returned with `isClaimed=false`.
+- **CHO** user chưa đăng nhập
+- **KHI** gọi `/coupons/public`
+- **THÌ** coupon active/current PHẢI được trả về với `isClaimed=false`.
 
-#### Scenario: Public coupon claim state for authenticated user
+#### Scenario: Public coupon cho user đã đăng nhập
 
-- **GIVEN** a user is authenticated
-- **AND** the user has claimed some coupons
-- **WHEN** `/coupons/public` is called
-- **THEN** active current coupons SHALL be returned
-- **AND** each coupon SHALL include `isClaimed=true` only when a `UserCoupon` row exists for that user and coupon.
+- **CHO** user đã đăng nhập
+- **VÀ** user đã claim một số coupon
+- **KHI** gọi `/coupons/public`
+- **THÌ** coupon active/current PHẢI được trả về
+- **VÀ** từng coupon có `isClaimed=true` chỉ khi có `UserCoupon` của user đó.
 
-### Requirement: Coupon Claiming
+### Requirement: Claim Coupon
 
-The system SHALL allow authenticated users to save coupons to their account.
+Hệ thống PHẢI (SHALL) cho user đã đăng nhập lưu coupon vào tài khoản.
 
-#### Scenario: Claim new coupon
+#### Scenario: Claim coupon mới
 
-- **GIVEN** an authenticated user
-- **AND** no `UserCoupon` exists for the user and coupon id
-- **WHEN** `/coupons/:id/claim` is posted
-- **THEN** the system SHALL create a `UserCoupon` row and include coupon data in the response.
+- **CHO** user đã đăng nhập
+- **VÀ** chưa có `UserCoupon` cho user và coupon id
+- **KHI** post `/coupons/:id/claim`
+- **THÌ** hệ thống PHẢI tạo `UserCoupon` và include coupon trong response.
 
-#### Scenario: Claim existing coupon
+#### Scenario: Claim coupon đã tồn tại
 
-- **GIVEN** a `UserCoupon` already exists for the user and coupon id
-- **WHEN** the user claims the same coupon again
-- **THEN** the existing row SHALL be returned without creating a duplicate.
+- **CHO** đã có `UserCoupon` cho user và coupon id
+- **KHI** user claim lại coupon đó
+- **THÌ** hệ thống PHẢI trả row hiện có và không tạo duplicate.
 
-#### Scenario: List my coupons
+#### Scenario: Xem coupon của tôi
 
-- **GIVEN** an authenticated user
-- **WHEN** `/coupons/my-coupons` is called
-- **THEN** the API SHALL return the user's coupon rows with coupon data ordered newest first.
+- **CHO** user đã đăng nhập
+- **KHI** gọi `/coupons/my-coupons`
+- **THÌ** API PHẢI trả user coupon kèm coupon, mới nhất trước.
 
-### Requirement: Coupon Application
+### Requirement: Áp Dụng Coupon
 
-The system SHALL validate and calculate coupon discounts without requiring authentication on the standalone apply endpoint.
+Hệ thống PHẢI (SHALL) validate và tính discount coupon; endpoint apply độc lập không yêu cầu đăng nhập.
 
-#### Scenario: Apply valid percentage coupon
+#### Scenario: Apply coupon phần trăm hợp lệ
 
-- **GIVEN** a coupon exists, is active, current, under usage limit, and satisfies minimum amount
-- **AND** coupon type is `percentage`
-- **WHEN** `/coupons/apply` is posted with code and amount
-- **THEN** discount SHALL be `amount * value / 100`
-- **AND** discount SHALL be capped at `maxDiscount` when configured
-- **AND** discount SHALL never exceed the amount
-- **AND** response SHALL include code, type, value, discount, and final amount.
+- **CHO** coupon tồn tại, active, đang trong thời gian hiệu lực, chưa hết lượt và đạt min amount
+- **VÀ** type là `percentage`
+- **KHI** post `/coupons/apply` với code và amount
+- **THÌ** discount PHẢI bằng `amount * value / 100`
+- **VÀ** bị chặn bởi `maxDiscount` nếu có
+- **VÀ** không vượt quá amount
+- **VÀ** response gồm code, type, value, discount, final amount.
 
-#### Scenario: Apply valid fixed coupon
+#### Scenario: Apply coupon fixed hợp lệ
 
-- **GIVEN** a valid coupon type is not `percentage`
-- **WHEN** it is applied
-- **THEN** discount SHALL be the coupon value capped at the order amount.
+- **CHO** coupon hợp lệ có type khác `percentage`
+- **KHI** apply
+- **THÌ** discount PHẢI bằng coupon value nhưng không vượt quá amount.
 
-#### Scenario: Apply missing coupon
+#### Scenario: Coupon không tồn tại
 
-- **GIVEN** no coupon exists with the submitted code after upper-casing
-- **WHEN** coupon application is requested
-- **THEN** the API SHALL reject the request with `Mã giảm giá không tồn tại`.
+- **CHO** không có coupon theo code sau khi uppercase
+- **KHI** apply coupon
+- **THÌ** API PHẢI từ chối với `Mã giảm giá không tồn tại`.
 
-#### Scenario: Apply inactive coupon
+#### Scenario: Coupon inactive
 
-- **GIVEN** the coupon exists but `isActive=false`
-- **WHEN** coupon application is requested
-- **THEN** the API SHALL reject the request with `Mã giảm giá không còn hiệu lực`.
+- **CHO** coupon tồn tại nhưng `isActive=false`
+- **KHI** apply coupon
+- **THÌ** API PHẢI từ chối với `Mã giảm giá không còn hiệu lực`.
 
-#### Scenario: Apply out-of-window coupon
+#### Scenario: Coupon ngoài thời gian hiệu lực
 
-- **GIVEN** current time is before start date or after end date
-- **WHEN** coupon application is requested
-- **THEN** the API SHALL reject the request with `Mã giảm giá đã hết hạn hoặc chưa bắt đầu`.
+- **CHO** hiện tại trước start date hoặc sau end date
+- **KHI** apply coupon
+- **THÌ** API PHẢI từ chối với `Mã giảm giá đã hết hạn hoặc chưa bắt đầu`.
 
-#### Scenario: Apply exhausted coupon
+#### Scenario: Coupon hết lượt
 
-- **GIVEN** `usageCount >= usageLimit`
-- **WHEN** coupon application is requested
-- **THEN** the API SHALL reject the request with `Mã giảm giá đã hết lượt sử dụng`.
+- **CHO** `usageCount >= usageLimit`
+- **KHI** apply coupon
+- **THÌ** API PHẢI từ chối với `Mã giảm giá đã hết lượt sử dụng`.
 
-#### Scenario: Apply below minimum amount
+#### Scenario: Chưa đạt giá trị đơn tối thiểu
 
-- **GIVEN** coupon `minAmount` is set and submitted amount is lower
-- **WHEN** coupon application is requested
-- **THEN** the API SHALL reject the request with a message stating the minimum order amount required.
+- **CHO** coupon có `minAmount` và amount gửi lên thấp hơn
+- **KHI** apply coupon
+- **THÌ** API PHẢI từ chối bằng message nêu số tiền đơn tối thiểu.
 
-### Requirement: Coupon Usage In Booking
+### Requirement: Sử Dụng Coupon Trong Booking
 
-The booking flow SHALL consume coupons during booking creation after flash sale calculation.
+Luồng tạo booking PHẢI (SHALL) consume coupon sau khi đã tính flash sale.
 
-#### Scenario: Booking with coupon increments usage
+#### Scenario: Booking dùng coupon tăng usage
 
-- **GIVEN** a customer creates a booking with a valid coupon code
-- **WHEN** booking creation succeeds
-- **THEN** the coupon usage count SHALL be incremented
-- **AND** a user coupon record SHALL be upserted as used with `usedAt` set.
+- **CHO** customer tạo booking với coupon hợp lệ
+- **KHI** tạo booking thành công
+- **THÌ** usage count của coupon PHẢI tăng
+- **VÀ** user coupon PHẢI được upsert thành đã dùng với `usedAt`.
 
-#### Scenario: Booking coupon code normalization
+#### Scenario: Chuẩn hóa code khi booking
 
-- **GIVEN** a customer submits a lower-case coupon code
-- **WHEN** the coupon is applied
-- **THEN** lookup SHALL use the upper-cased code.
+- **CHO** customer gửi coupon code chữ thường
+- **KHI** apply coupon
+- **THÌ** lookup PHẢI dùng code uppercase.
 
-### Requirement: Flash Sale Discovery
+### Requirement: Public Flash Sale
 
-The system SHALL expose active flash sales with remaining quantity.
+Hệ thống PHẢI (SHALL) public flash sale active còn số lượng.
 
-#### Scenario: Active flash sale list
+#### Scenario: Danh sách flash sale active
 
-- **GIVEN** a flash sale is active, current, and `quantity > soldCount`
-- **WHEN** `/flash-sales` is called
-- **THEN** it SHALL be returned with related room type.
+- **CHO** flash sale active, đang trong thời gian hiệu lực và `quantity > soldCount`
+- **KHI** gọi `/flash-sales`
+- **THÌ** flash sale PHẢI được trả về cùng room type.
 
-#### Scenario: Flash sale not current
+#### Scenario: Flash sale chưa đến hoặc đã hết hạn
 
-- **GIVEN** current time is outside a flash sale start/end range
-- **WHEN** `/flash-sales` is called
-- **THEN** the flash sale SHALL be excluded.
+- **CHO** thời điểm hiện tại nằm ngoài start/end
+- **KHI** gọi `/flash-sales`
+- **THÌ** flash sale PHẢI bị loại.
 
-#### Scenario: Flash sale sold out
+#### Scenario: Flash sale đã bán hết
 
-- **GIVEN** `soldCount >= quantity`
-- **WHEN** `/flash-sales` is called
-- **THEN** the flash sale SHALL be excluded.
+- **CHO** `soldCount >= quantity`
+- **KHI** gọi `/flash-sales`
+- **THÌ** flash sale PHẢI bị loại.
 
-### Requirement: Flash Sale Price Calculation
+### Requirement: Tính Giá Flash Sale
 
-The booking flow SHALL reduce base price by an active flash sale percentage for the selected room type.
+Luồng booking PHẢI (SHALL) giảm giá gốc theo phần trăm flash sale active của loại phòng đã chọn.
 
-#### Scenario: Calculate flash sale price
+#### Scenario: Tính giá flash sale
 
-- **GIVEN** an active current flash sale exists for the room type
-- **WHEN** booking creation calculates flash sale price
-- **THEN** discount SHALL be `basePrice * discount / 100`
-- **AND** price SHALL be `max(0, basePrice - discount)`
-- **AND** the result SHALL include flash sale id and discount value.
+- **CHO** có flash sale active/current cho room type
+- **KHI** tính giá flash sale
+- **THÌ** discount PHẢI bằng `basePrice * discount / 100`
+- **VÀ** giá sau giảm PHẢI là `max(0, basePrice - discount)`
+- **VÀ** kết quả gồm flash sale id và discount value.
 
-#### Scenario: No flash sale price
+#### Scenario: Không có flash sale
 
-- **GIVEN** no active current flash sale exists for the room type
-- **WHEN** flash sale price is calculated
-- **THEN** base price SHALL be returned unchanged
-- **AND** flash sale id SHALL be null.
+- **CHO** không có flash sale active/current cho room type
+- **KHI** tính giá flash sale
+- **THÌ** base price PHẢI giữ nguyên
+- **VÀ** flash sale id là null.
 
-#### Scenario: Increment flash sale sold count
+#### Scenario: Tăng sold count flash sale
 
-- **GIVEN** a flash sale id
-- **WHEN** sold count increment is invoked
-- **THEN** the flash sale `soldCount` SHALL increase by 1.
+- **CHO** có flash sale id
+- **KHI** gọi tăng sold count
+- **THÌ** `soldCount` của flash sale PHẢI tăng 1.

@@ -1,175 +1,175 @@
-# Admin Reporting And Management Specification
+# Đặc Tả Quản Trị Và Báo Cáo
 
 ## Purpose
 
-Define admin dashboard/reporting behavior and summarize admin-only management capabilities across users, inventory, bank transfer accounts, coupons, and reports.
+Định nghĩa báo cáo admin và tổng hợp các quyền quản trị: user/staff, inventory, tài khoản chuyển khoản, coupon, hội thoại và duyệt booking.
 
 ## Requirements
 
-### Requirement: Admin Revenue Report
+### Requirement: Báo Cáo Doanh Thu Admin
 
-The system SHALL allow admins to report completed payment revenue over a date range.
+Hệ thống PHẢI (SHALL) cho admin xem doanh thu từ payment completed trong khoảng ngày.
 
-#### Scenario: Revenue report by date range
+#### Scenario: Báo cáo doanh thu theo khoảng ngày
 
-- **GIVEN** an authenticated admin
-- **AND** completed payments exist with `paidAt` within the inclusive date range
-- **WHEN** `/reports/revenue?from=<date>&to=<date>` is called
-- **THEN** the API SHALL sum payment amounts as `total` and `totalRevenue`
-- **AND** count completed payments as `totalBookings`
-- **AND** group revenue/count by room type name
-- **AND** return daily revenue points ordered by date.
+- **CHO** admin đã đăng nhập
+- **VÀ** tồn tại payment `COMPLETED` có `paidAt` trong khoảng ngày
+- **KHI** gọi `/reports/revenue?from=<date>&to=<date>`
+- **THÌ** API PHẢI cộng payment amount thành `total` và `totalRevenue`
+- **VÀ** đếm payment completed thành `totalBookings`
+- **VÀ** group revenue/count theo tên room type
+- **VÀ** trả daily revenue points theo ngày tăng dần.
 
-#### Scenario: Revenue report date inclusivity
+#### Scenario: Ngày kết thúc inclusive
 
-- **GIVEN** `to` is submitted as a date
-- **WHEN** revenue report is calculated
-- **THEN** the end date SHALL be adjusted to 23:59:59.999 for inclusive filtering.
+- **CHO** query `to` là một ngày
+- **KHI** tính revenue report
+- **THÌ** ngày kết thúc PHẢI được chỉnh về 23:59:59.999 để filter inclusive.
 
-#### Scenario: Revenue groupBy parameter
+#### Scenario: Tham số groupBy hiện tại
 
-- **GIVEN** `groupBy` is submitted as `day`, `week`, or `month`
-- **WHEN** revenue report is calculated
-- **THEN** the current implementation SHALL still return daily `data` points.
+- **CHO** gửi `groupBy=day`, `week` hoặc `month`
+- **KHI** tính revenue report
+- **THÌ** implementation hiện tại vẫn PHẢI trả `data` theo từng ngày.
 
-#### Scenario: Non-admin revenue report
+#### Scenario: Non-admin xem revenue
 
-- **GIVEN** an authenticated non-admin
-- **WHEN** `/reports/revenue` is called
-- **THEN** the API SHALL reject the request through role authorization.
+- **CHO** user không phải admin đã đăng nhập
+- **KHI** gọi `/reports/revenue`
+- **THÌ** API PHẢI từ chối bằng role guard.
 
-### Requirement: Admin Occupancy Report
+### Requirement: Báo Cáo Tỷ Lệ Lấp Phòng
 
-The system SHALL allow admins to compute an occupancy percentage over a date range.
+Hệ thống PHẢI (SHALL) cho admin tính occupancy theo khoảng ngày.
 
-#### Scenario: Occupancy report
+#### Scenario: Báo cáo occupancy
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/reports/occupancy?from=<date>&to=<date>` is called
-- **THEN** the API SHALL count all rooms
-- **AND** count bookings in `CHECKED_IN` or `CHECKED_OUT` whose check-in/check-out are within the range
-- **AND** calculate days as ceiling of date difference
-- **AND** calculate total room nights as total rooms times days
-- **AND** calculate occupancy rate as occupied booking count divided by total room nights times 100
-- **AND** round occupancy rate to two decimals.
+- **CHO** admin đã đăng nhập
+- **KHI** gọi `/reports/occupancy?from=<date>&to=<date>`
+- **THÌ** API PHẢI đếm tổng số phòng
+- **VÀ** đếm booking ở `CHECKED_IN` hoặc `CHECKED_OUT` có check-in/check-out nằm trong range
+- **VÀ** tính số ngày bằng ceiling của chênh lệch ngày
+- **VÀ** tính total room nights bằng total rooms nhân số ngày
+- **VÀ** tính occupancy rate bằng occupied booking count chia total room nights nhân 100
+- **VÀ** làm tròn occupancy rate đến 2 chữ số thập phân.
 
-#### Scenario: Zero room nights
+#### Scenario: Không có room night
 
-- **GIVEN** total room nights is zero
-- **WHEN** occupancy report is calculated
-- **THEN** occupancy rate SHALL be 0.
+- **CHO** total room nights bằng 0
+- **KHI** tính occupancy
+- **THÌ** occupancy rate PHẢI bằng 0.
 
-### Requirement: Admin Booking Status Summary
+### Requirement: Tổng Hợp Trạng Thái Booking
 
-The system SHALL allow admins to summarize bookings by status over creation date range.
+Hệ thống PHẢI (SHALL) cho admin tổng hợp booking theo status trong khoảng ngày tạo.
 
-#### Scenario: Booking status summary
+#### Scenario: Summary status booking
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/reports/bookings/summary?from=<date>&to=<date>` is called
-- **THEN** the API SHALL group bookings by status where `createdAt` is within the inclusive range
-- **AND** return a map from status to count.
+- **CHO** admin đã đăng nhập
+- **KHI** gọi `/reports/bookings/summary?from=<date>&to=<date>`
+- **THÌ** API PHẢI group booking theo status với `createdAt` trong range inclusive
+- **VÀ** trả map từ status sang số lượng.
 
-### Requirement: Admin Staff Management
+### Requirement: Admin Quản Lý Nhân Viên
 
-The system SHALL allow admins to manage staff accounts.
+Hệ thống PHẢI (SHALL) cho admin quản lý tài khoản staff.
 
-#### Scenario: Admin creates staff account
+#### Scenario: Admin tạo staff
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/users/staff` is posted with valid staff role
-- **THEN** the system SHALL create an active account for receptionist, housekeeping, or admin use.
+- **CHO** admin đã đăng nhập
+- **KHI** post `/users/staff` với role staff hợp lệ
+- **THÌ** hệ thống PHẢI tạo account active cho receptionist, housekeeping hoặc admin.
 
-#### Scenario: Admin locks account
+#### Scenario: Admin khóa tài khoản
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/users/:id/toggle-lock` is patched for another user
-- **THEN** the user's active state SHALL be toggled.
+- **CHO** admin đã đăng nhập
+- **KHI** patch `/users/:id/toggle-lock` cho user khác
+- **THÌ** active state của user PHẢI được toggle.
 
-### Requirement: Admin Inventory Management
+### Requirement: Admin Quản Lý Inventory
 
-The system SHALL allow admins to manage commercial room types, concrete rooms, and pricing rules.
+Hệ thống PHẢI (SHALL) cho admin quản lý loại phòng, phòng vật lý và pricing rule.
 
-#### Scenario: Admin manages room type
+#### Scenario: Admin quản lý loại phòng
 
-- **GIVEN** an authenticated admin
-- **WHEN** they call room type create/update/delete endpoints
-- **THEN** the operation SHALL be allowed subject to room type business constraints.
+- **CHO** admin đã đăng nhập
+- **KHI** gọi endpoint tạo/cập nhật/xóa loại phòng
+- **THÌ** thao tác PHẢI được cho phép nếu thỏa các ràng buộc nghiệp vụ của loại phòng.
 
-#### Scenario: Admin manages concrete room
+#### Scenario: Admin quản lý phòng vật lý
 
-- **GIVEN** an authenticated admin
-- **WHEN** they call room create/update/delete endpoints
-- **THEN** the operation SHALL be allowed subject to room business constraints.
+- **CHO** admin đã đăng nhập
+- **KHI** gọi endpoint tạo/cập nhật/xóa phòng
+- **THÌ** thao tác PHẢI được cho phép nếu thỏa các ràng buộc nghiệp vụ của phòng.
 
-#### Scenario: Admin manages pricing rule
+#### Scenario: Admin quản lý quy tắc giá
 
-- **GIVEN** an authenticated admin
-- **WHEN** they call pricing create/delete endpoints
-- **THEN** the operation SHALL be allowed subject to pricing rule existence constraints.
+- **CHO** admin đã đăng nhập
+- **KHI** gọi endpoint tạo/xóa pricing rule
+- **THÌ** thao tác PHẢI được cho phép nếu thỏa ràng buộc tồn tại của pricing rule.
 
-### Requirement: Admin Payment Method Management
+### Requirement: Admin Quản Lý Tài Khoản Chuyển Khoản
 
-The system SHALL allow admins to manage bank transfer account records used in manual transfer payment.
+Hệ thống PHẢI (SHALL) cho admin quản lý tài khoản ngân hàng dùng cho payment chuyển khoản.
 
-#### Scenario: Admin creates payment method info
+#### Scenario: Admin tạo payment method info
 
-- **GIVEN** an authenticated admin
-- **WHEN** bank account data is posted
-- **THEN** the system SHALL store the account for public bank-transfer display when active.
+- **CHO** admin đã đăng nhập
+- **KHI** post thông tin tài khoản ngân hàng
+- **THÌ** hệ thống PHẢI lưu tài khoản để public trong luồng chuyển khoản khi active.
 
-#### Scenario: Admin views inactive payment method info
+#### Scenario: Admin xem tài khoản inactive
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/payment-methods/admin` is called
-- **THEN** inactive records SHALL be included.
+- **CHO** admin đã đăng nhập
+- **KHI** gọi `/payment-methods/admin`
+- **THÌ** response PHẢI bao gồm cả bản ghi inactive.
 
-### Requirement: Admin Coupon Management
+### Requirement: Admin Quản Lý Coupon
 
-The system SHALL allow admins to create and list coupon records used by customer promotion flows.
+Hệ thống PHẢI (SHALL) cho admin tạo và xem coupon dùng trong luồng khuyến mãi.
 
-#### Scenario: Admin creates coupon
+#### Scenario: Admin tạo coupon
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/coupons/admin` is posted
-- **THEN** the coupon SHALL be stored with code normalization and default values.
+- **CHO** admin đã đăng nhập
+- **KHI** post `/coupons/admin`
+- **THÌ** coupon PHẢI được lưu với code chuẩn hóa và default value theo service.
 
-#### Scenario: Admin lists all coupons
+#### Scenario: Admin xem toàn bộ coupon
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/coupons/admin` is called
-- **THEN** all coupon records SHALL be returned regardless of active/current status.
+- **CHO** admin đã đăng nhập
+- **KHI** gọi `/coupons/admin`
+- **THÌ** mọi coupon PHẢI được trả về, không phụ thuộc active/current status.
 
-### Requirement: Admin Conversation Handling
+### Requirement: Admin Xử Lý Hội Thoại
 
-The system SHALL allow admins to participate in the same support workflow as receptionists.
+Hệ thống PHẢI (SHALL) cho admin tham gia workflow hỗ trợ giống receptionist.
 
-#### Scenario: Admin lists conversations
+#### Scenario: Admin xem danh sách hội thoại
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/chat/staff/conversations` is called
-- **THEN** the admin SHALL see the staff conversation queue.
+- **CHO** admin đã đăng nhập
+- **KHI** gọi `/chat/staff/conversations`
+- **THÌ** admin PHẢI xem được queue hội thoại staff.
 
-#### Scenario: Admin resolves conversation
+#### Scenario: Admin resolve hội thoại
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/chat/staff/conversations/:id/resolve` is posted
-- **THEN** the conversation SHALL be marked resolved.
+- **CHO** admin đã đăng nhập
+- **KHI** post `/chat/staff/conversations/:id/resolve`
+- **THÌ** conversation PHẢI được đánh dấu `resolved`.
 
-### Requirement: Admin Booking Approval
+### Requirement: Admin Duyệt Booking
 
-The system SHALL allow admins to approve and reject receipt-based bookings.
+Hệ thống PHẢI (SHALL) cho admin duyệt hoặc từ chối booking chuyển khoản đang chờ.
 
-#### Scenario: Admin approves pending transfer booking
+#### Scenario: Admin duyệt booking chuyển khoản
 
-- **GIVEN** an authenticated admin
-- **AND** a booking is `PENDING_APPROVAL`
-- **WHEN** `/bookings/:id/approve` is posted
-- **THEN** the booking SHALL be confirmed and marked with the admin's user id as approver.
+- **CHO** admin đã đăng nhập
+- **VÀ** booking ở `PENDING_APPROVAL`
+- **KHI** post `/bookings/:id/approve`
+- **THÌ** booking PHẢI được confirmed và lưu id admin là người duyệt.
 
-#### Scenario: Admin rejects pending transfer booking
+#### Scenario: Admin từ chối booking chuyển khoản
 
-- **GIVEN** an authenticated admin
-- **AND** a booking is `PENDING_APPROVAL`
-- **WHEN** `/bookings/:id/reject` is posted with a reason
-- **THEN** the booking SHALL be rejected with the reason recorded.
+- **CHO** admin đã đăng nhập
+- **VÀ** booking ở `PENDING_APPROVAL`
+- **KHI** post `/bookings/:id/reject` với reason
+- **THÌ** booking PHẢI bị rejected và reason được lưu.

@@ -1,224 +1,224 @@
-# Customer Engagement Specification
+# Đặc Tả Tương Tác Khách Hàng
 
 ## Purpose
 
-Define wishlist, reviews, customer support chat, public review display, and customer-facing engagement behavior.
+Định nghĩa wishlist, review, public review, chat hỗ trợ khách hàng và session id phía frontend.
 
 ## Requirements
 
-### Requirement: Anonymous And Authenticated Wishlist
+### Requirement: Wishlist Cho User Và Session Ẩn Danh
 
-The system SHALL support saved room types for both authenticated users and anonymous browser sessions.
+Hệ thống PHẢI (SHALL) hỗ trợ lưu loại phòng yêu thích cho cả user đã đăng nhập và session browser ẩn danh.
 
-#### Scenario: Save room type as authenticated user
+#### Scenario: User đăng nhập lưu loại phòng
 
-- **GIVEN** an authenticated user
-- **AND** the room type exists
-- **WHEN** `/wishlist` is posted with `roomTypeId`
-- **THEN** the system SHALL upsert a wishlist row by `(userId, roomTypeId)`
-- **AND** avoid creating duplicates.
+- **CHO** user đã đăng nhập
+- **VÀ** loại phòng tồn tại
+- **KHI** post `/wishlist` với `roomTypeId`
+- **THÌ** hệ thống PHẢI upsert wishlist theo `(userId, roomTypeId)`
+- **VÀ** không tạo duplicate.
 
-#### Scenario: Save room type as anonymous session
+#### Scenario: Session ẩn danh lưu loại phòng
 
-- **GIVEN** no authenticated user
-- **AND** `x-session-id` is present
-- **AND** the room type exists
-- **WHEN** `/wishlist` is posted with `roomTypeId`
-- **THEN** the system SHALL upsert a wishlist row by `(sessionId, roomTypeId)`.
+- **CHO** chưa đăng nhập
+- **VÀ** có header `x-session-id`
+- **VÀ** loại phòng tồn tại
+- **KHI** post `/wishlist` với `roomTypeId`
+- **THÌ** hệ thống PHẢI upsert wishlist theo `(sessionId, roomTypeId)`.
 
-#### Scenario: Save without user or session
+#### Scenario: Lưu wishlist thiếu user và session
 
-- **GIVEN** no authenticated user and no `x-session-id`
-- **WHEN** a wishlist save is requested
-- **THEN** the API SHALL reject the request with `Thiếu userId hoặc sessionId`.
+- **CHO** không có user đăng nhập và không có `x-session-id`
+- **KHI** lưu wishlist
+- **THÌ** API PHẢI từ chối với `Thiếu userId hoặc sessionId`.
 
-#### Scenario: Save missing room type
+#### Scenario: Lưu loại phòng không tồn tại
 
-- **GIVEN** the room type id does not exist
-- **WHEN** wishlist save is requested
-- **THEN** the API SHALL reject the request with `Loại phòng không tồn tại`.
+- **CHO** room type id không tồn tại
+- **KHI** lưu wishlist
+- **THÌ** API PHẢI từ chối với `Loại phòng không tồn tại`.
 
-#### Scenario: Remove saved room type for user
+#### Scenario: User xóa loại phòng đã lưu
 
-- **GIVEN** an authenticated user
-- **WHEN** `/wishlist/:roomTypeId` is deleted
-- **THEN** all wishlist rows matching that user and room type SHALL be deleted
-- **AND** the API SHALL return `Đã xóa`.
+- **CHO** user đã đăng nhập
+- **KHI** delete `/wishlist/:roomTypeId`
+- **THÌ** mọi wishlist row khớp user và room type PHẢI bị xóa
+- **VÀ** API trả `Đã xóa`.
 
-#### Scenario: Remove saved room type for session
+#### Scenario: Session xóa loại phòng đã lưu
 
-- **GIVEN** no authenticated user
-- **AND** `x-session-id` is present
-- **WHEN** `/wishlist/:roomTypeId` is deleted
-- **THEN** all wishlist rows matching that session and room type SHALL be deleted
-- **AND** the API SHALL return `Đã xóa`.
+- **CHO** chưa đăng nhập
+- **VÀ** có `x-session-id`
+- **KHI** delete `/wishlist/:roomTypeId`
+- **THÌ** mọi wishlist row khớp session và room type PHẢI bị xóa
+- **VÀ** API trả `Đã xóa`.
 
-### Requirement: Wishlist Listing
+### Requirement: Liệt Kê Wishlist
 
-The system SHALL return saved room type cards for the current user or session.
+Hệ thống PHẢI (SHALL) trả card loại phòng đã lưu cho user hoặc session hiện tại.
 
-#### Scenario: List authenticated wishlist
+#### Scenario: Liệt kê wishlist của user
 
-- **GIVEN** an authenticated user
-- **WHEN** `/wishlist` is called
-- **THEN** wishlist rows for that user SHALL be returned ordered newest first.
+- **CHO** user đã đăng nhập
+- **KHI** gọi `/wishlist`
+- **THÌ** wishlist rows của user PHẢI được trả về, mới nhất trước.
 
-#### Scenario: List anonymous wishlist
+#### Scenario: Liệt kê wishlist của session
 
-- **GIVEN** no authenticated user
-- **AND** `x-session-id` is present
-- **WHEN** `/wishlist` is called
-- **THEN** wishlist rows for that session SHALL be returned ordered newest first.
+- **CHO** chưa đăng nhập
+- **VÀ** có `x-session-id`
+- **KHI** gọi `/wishlist`
+- **THÌ** wishlist rows của session PHẢI được trả về, mới nhất trước.
 
-#### Scenario: Wishlist item shape
+#### Scenario: Shape item wishlist
 
-- **GIVEN** a saved room type exists
-- **WHEN** wishlist is listed
-- **THEN** each item SHALL include wishlist id, room type id, room type name, images, star rating, max guests, bed type, amenities, first active pricing rule price, and first room branch.
+- **CHO** có loại phòng đã lưu
+- **KHI** liệt kê wishlist
+- **THÌ** mỗi item PHẢI gồm wishlist id, room type id, tên loại phòng, ảnh, sao, sức chứa, loại giường, tiện nghi, giá từ pricing rule active đầu tiên và chi nhánh của phòng đầu tiên.
 
-### Requirement: Wishlist Sync After Login
+### Requirement: Đồng Bộ Wishlist Sau Login
 
-The system SHALL merge anonymous session wishlist items into the authenticated user's wishlist.
+Hệ thống PHẢI (SHALL) merge wishlist ẩn danh của session vào wishlist của user sau khi đăng nhập.
 
-#### Scenario: Sync session wishlist
+#### Scenario: Sync wishlist session
 
-- **GIVEN** a user has logged in
-- **AND** browser storage has a `hotel_session_id`
-- **WHEN** `/wishlist/sync` is posted with the session id
-- **THEN** every session wishlist item SHALL be upserted into the user's wishlist
-- **AND** all rows for that session id SHALL be deleted
-- **AND** the API SHALL return `Đã đồng bộ`.
+- **CHO** user đã đăng nhập
+- **VÀ** browser có `hotel_session_id`
+- **KHI** post `/wishlist/sync` với session id
+- **THÌ** từng wishlist item của session PHẢI được upsert vào wishlist của user
+- **VÀ** mọi row của session id đó PHẢI bị xóa
+- **VÀ** API trả `Đã đồng bộ`.
 
-#### Scenario: Duplicate during sync
+#### Scenario: Trùng item khi sync
 
-- **GIVEN** both the user and session saved the same room type
-- **WHEN** wishlist sync runs
-- **THEN** only one user wishlist row SHALL remain because sync uses upsert.
+- **CHO** user và session đều đã lưu cùng một room type
+- **KHI** sync wishlist
+- **THÌ** chỉ còn một wishlist row của user nhờ upsert.
 
-### Requirement: Review Creation
+### Requirement: Tạo Review
 
-The system SHALL allow customers to review a room type only through their own checked-out booking and only once per booking.
+Hệ thống PHẢI (SHALL) cho customer review loại phòng chỉ thông qua booking của chính họ đã checkout và chỉ một lần cho mỗi booking.
 
-#### Scenario: Create review
+#### Scenario: Tạo review hợp lệ
 
-- **GIVEN** an authenticated customer owns a booking
-- **AND** the booking status is `CHECKED_OUT`
-- **AND** no review exists for that booking
-- **WHEN** `/reviews` is posted with booking id, rating, optional comment, and optional images
-- **THEN** the system SHALL create a review
-- **AND** set `roomTypeId` from the booking room
-- **AND** default images to an empty array
-- **AND** include booking in the response.
+- **CHO** customer đã đăng nhập sở hữu booking
+- **VÀ** booking status `CHECKED_OUT`
+- **VÀ** booking chưa có review
+- **KHI** post `/reviews` với booking id, rating, comment tùy chọn và images tùy chọn
+- **THÌ** hệ thống PHẢI tạo review
+- **VÀ** set `roomTypeId` từ room của booking
+- **VÀ** default images thành mảng rỗng
+- **VÀ** include booking trong response.
 
-#### Scenario: Review missing booking
+#### Scenario: Booking review không tồn tại
 
-- **GIVEN** the booking id does not exist
-- **WHEN** review creation is requested
-- **THEN** the API SHALL reject the request with `Đơn đặt phòng không tồn tại`.
+- **CHO** booking id không tồn tại
+- **KHI** tạo review
+- **THÌ** API PHẢI từ chối với `Đơn đặt phòng không tồn tại`.
 
-#### Scenario: Review another customer's booking
+#### Scenario: Review booking của người khác
 
-- **GIVEN** the authenticated user does not own the booking
-- **WHEN** review creation is requested
-- **THEN** the API SHALL reject the request with `Không có quyền đánh giá đơn này`.
+- **CHO** user không sở hữu booking
+- **KHI** tạo review
+- **THÌ** API PHẢI từ chối với `Không có quyền đánh giá đơn này`.
 
-#### Scenario: Review before checkout
+#### Scenario: Review trước checkout
 
-- **GIVEN** the booking status is not `CHECKED_OUT`
-- **WHEN** review creation is requested
-- **THEN** the API SHALL reject the request with `Chỉ có thể đánh giá sau khi trả phòng`.
+- **CHO** booking không ở `CHECKED_OUT`
+- **KHI** tạo review
+- **THÌ** API PHẢI từ chối với `Chỉ có thể đánh giá sau khi trả phòng`.
 
-#### Scenario: Duplicate review
+#### Scenario: Review trùng booking
 
-- **GIVEN** a review already exists for the booking
-- **WHEN** another review is posted for the same booking
-- **THEN** the API SHALL reject the request with `Đơn này đã được đánh giá`.
+- **CHO** booking đã có review
+- **KHI** post review khác cho cùng booking
+- **THÌ** API PHẢI từ chối với `Đơn này đã được đánh giá`.
 
-#### Scenario: Rating bounds
+#### Scenario: Rating ngoài giới hạn
 
-- **GIVEN** rating is below 1 or above 5
-- **WHEN** review DTO validation runs
-- **THEN** the API SHALL reject the request.
+- **CHO** rating nhỏ hơn 1 hoặc lớn hơn 5
+- **KHI** validation DTO chạy
+- **THÌ** API PHẢI từ chối request.
 
-### Requirement: Review Eligibility
+### Requirement: Kiểm Tra Quyền Review
 
-The system SHALL allow a customer to check whether they can review a room type.
+Hệ thống PHẢI (SHALL) cho customer kiểm tra họ có thể review một loại phòng hay không.
 
-#### Scenario: Can review room type
+#### Scenario: Có thể review loại phòng
 
-- **GIVEN** an authenticated customer has a `CHECKED_OUT` booking for a room in the room type
-- **AND** that booking has no review
-- **WHEN** `/reviews/can-review/:roomTypeId` is called
-- **THEN** the API SHALL return `{ canReview: true, bookingId: <id> }`.
+- **CHO** customer đã đăng nhập có booking `CHECKED_OUT` cho phòng thuộc loại phòng đó
+- **VÀ** booking chưa có review
+- **KHI** gọi `/reviews/can-review/:roomTypeId`
+- **THÌ** API PHẢI trả `{ canReview: true, bookingId: <id> }`.
 
-#### Scenario: Cannot review room type
+#### Scenario: Không thể review loại phòng
 
-- **GIVEN** no matching checked-out unreviewed booking exists
-- **WHEN** review eligibility is checked
-- **THEN** the API SHALL return `{ canReview: false, bookingId: null }`.
+- **CHO** không có booking checked-out chưa review phù hợp
+- **KHI** kiểm tra quyền review
+- **THÌ** API PHẢI trả `{ canReview: false, bookingId: null }`.
 
-### Requirement: Public Review Display
+### Requirement: Hiển Thị Review Public
 
-The system SHALL expose approved room type reviews publicly.
+Hệ thống PHẢI (SHALL) public review approved của loại phòng.
 
-#### Scenario: List room type reviews
+#### Scenario: Liệt kê review theo loại phòng
 
-- **GIVEN** approved reviews exist for a room type
-- **WHEN** `/reviews/room-type/:roomTypeId?page=1&limit=10` is called
-- **THEN** the API SHALL return approved reviews ordered newest first
-- **AND** include customer first and last name
-- **AND** return `items`, `total`, `page`, `limit`, and `avgRating`.
+- **CHO** có review approved cho room type
+- **KHI** gọi `/reviews/room-type/:roomTypeId?page=1&limit=10`
+- **THÌ** API PHẢI trả review approved, mới nhất trước
+- **VÀ** include họ/tên customer
+- **VÀ** trả `items`, `total`, `page`, `limit`, `avgRating`.
 
-#### Scenario: No approved reviews
+#### Scenario: Không có review approved
 
-- **GIVEN** no approved reviews exist for the room type
-- **WHEN** reviews are listed
-- **THEN** `avgRating` SHALL be 0.
+- **CHO** room type không có review approved
+- **KHI** liệt kê review
+- **THÌ** `avgRating` PHẢI bằng 0.
 
-### Requirement: Customer Conversation
+### Requirement: Chat Hỗ Trợ Khách Hàng
 
-The system SHALL allow authenticated customers to open/reuse a support conversation and send messages.
+Hệ thống PHẢI (SHALL) cho customer đã đăng nhập mở hoặc dùng lại conversation hỗ trợ và gửi message.
 
-#### Scenario: Get existing open conversation
+#### Scenario: Lấy conversation open hiện có
 
-- **GIVEN** an authenticated customer already has an open conversation
-- **WHEN** `/chat/conversation` is called
-- **THEN** the existing open conversation SHALL be returned with messages ordered oldest first.
+- **CHO** customer đã đăng nhập đã có conversation open
+- **KHI** gọi `/chat/conversation`
+- **THÌ** conversation open hiện có PHẢI được trả về kèm messages theo thời gian tăng dần.
 
-#### Scenario: Create new conversation
+#### Scenario: Tạo conversation mới
 
-- **GIVEN** an authenticated customer has no open conversation
-- **WHEN** `/chat/conversation` is called with optional subject
-- **THEN** the system SHALL create a conversation with status `open`
-- **AND** return it with messages.
+- **CHO** customer đã đăng nhập chưa có conversation open
+- **KHI** gọi `/chat/conversation` với subject tùy chọn
+- **THÌ** hệ thống PHẢI tạo conversation status `open`
+- **VÀ** trả conversation kèm messages.
 
-#### Scenario: Send message
+#### Scenario: Gửi message
 
-- **GIVEN** an authenticated user
-- **AND** the conversation exists
-- **WHEN** `/chat/conversation/:id/messages` is posted with content
-- **THEN** the system SHALL create a message with conversation id, sender id, content, `isRead=false`, and creation timestamp
-- **AND** include the conversation in the response.
+- **CHO** user đã đăng nhập
+- **VÀ** conversation tồn tại
+- **KHI** post `/chat/conversation/:id/messages` với content
+- **THÌ** hệ thống PHẢI tạo message có conversation id, sender id, content, `isRead=false` và createdAt
+- **VÀ** include conversation trong response.
 
-#### Scenario: Send message to missing conversation
+#### Scenario: Gửi message vào conversation không tồn tại
 
-- **GIVEN** the conversation id does not exist
-- **WHEN** a message is posted
-- **THEN** the API SHALL reject the request with `Conversation not found`.
+- **CHO** conversation id không tồn tại
+- **KHI** post message
+- **THÌ** API PHẢI từ chối với `Conversation not found`.
 
-### Requirement: Frontend Session Id
+### Requirement: Session Id Frontend
 
-The web app SHALL create a stable anonymous session id for wishlist behavior.
+Web app PHẢI (SHALL) tạo session id ổn định cho các hành vi ẩn danh như wishlist.
 
-#### Scenario: Session id initialization
+#### Scenario: Khởi tạo session id
 
-- **GIVEN** the web app runs in a browser
-- **AND** `hotel_session_id` is absent from local storage
-- **WHEN** the API client initializes
-- **THEN** it SHALL store a session id using current timestamp and random suffix.
+- **CHO** web app chạy trong browser
+- **VÀ** local storage chưa có `hotel_session_id`
+- **KHI** API client khởi tạo
+- **THÌ** client PHẢI lưu session id gồm timestamp hiện tại và random suffix.
 
-#### Scenario: Session id header
+#### Scenario: Gửi header session id
 
-- **GIVEN** `hotel_session_id` exists in local storage
-- **WHEN** the web API client sends a request
-- **THEN** it SHALL include header `x-session-id` with that value.
+- **CHO** local storage có `hotel_session_id`
+- **KHI** web API client gửi request
+- **THÌ** client PHẢI thêm header `x-session-id` với giá trị đó.

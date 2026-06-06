@@ -1,372 +1,372 @@
-# Booking Lifecycle Specification
+# Đặc Tả Vòng Đời Booking
 
 ## Purpose
 
-Define booking creation, concurrency control, discount application, booking history/detail access, cancellation, expiration, receipt approval, check-in, check-out, add-ons, events, and booking status transitions.
+Định nghĩa tạo booking, chống đặt trùng, áp dụng khuyến mãi, lịch sử/chi tiết booking, hủy, hết hạn, upload biên lai, duyệt/từ chối, check-in, check-out, dịch vụ phát sinh, event và chuyển trạng thái.
 
 ## Requirements
 
-### Requirement: Customer Booking Creation
+### Requirement: Khách Hàng Tạo Booking
 
-The system SHALL allow authenticated customers to create bookings for concrete rooms over valid date ranges.
+Hệ thống PHẢI (SHALL) cho khách hàng đã đăng nhập tạo booking cho một phòng vật lý trong khoảng ngày hợp lệ.
 
-#### Scenario: Create booking with valid data
+#### Scenario: Tạo booking hợp lệ
 
-- **GIVEN** an authenticated customer
-- **AND** `checkOut` is after `checkIn`
-- **AND** the target room exists
-- **AND** the target room type is active
-- **AND** there is no overlapping active booking for the same room
-- **WHEN** `/bookings` is posted
-- **THEN** the system SHALL calculate total price
-- **AND** apply flash sale discount when applicable
-- **AND** apply coupon discount when a valid coupon code is supplied
-- **AND** create a booking with status `PENDING_PAYMENT`
-- **AND** set `paymentDeadline` to 15 minutes after creation time
-- **AND** default `checkInTime` to `14:00`, `checkOutTime` to `12:00`, adults to 2, and children to 0 when absent
-- **AND** persist a `booking.created` outbox event
-- **AND** emit `booking.created`.
+- **CHO** customer đã đăng nhập
+- **VÀ** `checkOut` sau `checkIn`
+- **VÀ** phòng tồn tại
+- **VÀ** loại phòng đang active
+- **VÀ** không có booking active overlap cùng phòng
+- **KHI** post `/bookings`
+- **THÌ** hệ thống PHẢI tính tổng tiền
+- **VÀ** áp dụng flash sale nếu có
+- **VÀ** áp dụng coupon nếu gửi coupon hợp lệ
+- **VÀ** tạo booking status `PENDING_PAYMENT`
+- **VÀ** set `paymentDeadline` sau thời điểm tạo 15 phút
+- **VÀ** default `checkInTime=14:00`, `checkOutTime=12:00`, adults = 2, children = 0 khi thiếu
+- **VÀ** lưu outbox event `booking.created`
+- **VÀ** emit `booking.created`.
 
-#### Scenario: Invalid booking date range
+#### Scenario: Khoảng ngày không hợp lệ
 
-- **GIVEN** `checkOut` is equal to or before `checkIn`
-- **WHEN** a customer creates a booking
-- **THEN** the API SHALL reject the request with `Ngày trả phòng phải sau ngày nhận phòng`.
+- **CHO** `checkOut` bằng hoặc trước `checkIn`
+- **KHI** customer tạo booking
+- **THÌ** API PHẢI từ chối với `Ngày trả phòng phải sau ngày nhận phòng`.
 
-#### Scenario: Room creation lock unavailable
+#### Scenario: Không lấy được lock tạo booking
 
-- **GIVEN** another request holds the Redis lock `booking:lock:<roomId>:<checkIn>:<checkOut>`
-- **WHEN** a customer attempts to create a booking for the same room/range
-- **THEN** the API SHALL reject the request with `Phòng này đang được đặt bởi người khác, vui lòng thử lại`.
+- **CHO** request khác đang giữ Redis lock `booking:lock:<roomId>:<checkIn>:<checkOut>`
+- **KHI** customer tạo booking cùng phòng/khoảng ngày
+- **THÌ** API PHẢI từ chối với `Phòng này đang được đặt bởi người khác, vui lòng thử lại`.
 
-#### Scenario: Room missing
+#### Scenario: Phòng không tồn tại
 
-- **GIVEN** the submitted room id does not exist
-- **WHEN** a customer creates a booking
-- **THEN** the API SHALL reject the request with `Phòng không tồn tại`.
+- **CHO** room id gửi lên không tồn tại
+- **KHI** customer tạo booking
+- **THÌ** API PHẢI từ chối với `Phòng không tồn tại`.
 
-#### Scenario: Inactive room type
+#### Scenario: Loại phòng không active
 
-- **GIVEN** the target room's room type is inactive
-- **WHEN** a customer creates a booking
-- **THEN** the API SHALL reject the request with `Loại phòng không còn hoạt động`.
+- **CHO** loại phòng của phòng đã chọn inactive
+- **KHI** customer tạo booking
+- **THÌ** API PHẢI từ chối với `Loại phòng không còn hoạt động`.
 
-#### Scenario: Overlapping active booking
+#### Scenario: Booking active overlap
 
-- **GIVEN** the room already has a booking in `PENDING_PAYMENT`, `PAYING`, `CONFIRMED`, or `CHECKED_IN`
-- **AND** the existing booking overlaps the requested date range
-- **WHEN** a customer creates a booking
-- **THEN** the API SHALL reject the request with `Phòng đã được đặt trong khoảng thời gian này`.
+- **CHO** phòng đã có booking ở `PENDING_PAYMENT`, `PAYING`, `CONFIRMED` hoặc `CHECKED_IN`
+- **VÀ** booking đó overlap khoảng ngày yêu cầu
+- **KHI** customer tạo booking
+- **THÌ** API PHẢI từ chối với `Phòng đã được đặt trong khoảng thời gian này`.
 
-#### Scenario: Lock release after booking attempt
+#### Scenario: Luôn giải phóng lock
 
-- **GIVEN** a booking creation request acquired a Redis lock
-- **WHEN** the request succeeds or fails
-- **THEN** the system SHALL delete the lock key in a finally block.
+- **CHO** request tạo booking đã lấy Redis lock
+- **KHI** request thành công hoặc thất bại
+- **THÌ** hệ thống PHẢI xóa lock key trong finally block.
 
-### Requirement: Booking Discount Order
+### Requirement: Thứ Tự Áp Dụng Khuyến Mãi Booking
 
-The system SHALL apply promotions in the implemented order: base pricing, flash sale, then coupon.
+Hệ thống PHẢI (SHALL) áp dụng khuyến mãi theo thứ tự đang triển khai: giá gốc, flash sale, rồi coupon.
 
-#### Scenario: Flash sale applies
+#### Scenario: Flash sale áp dụng trước
 
-- **GIVEN** an active flash sale exists for the room type and current time is within its window
-- **WHEN** booking total is calculated
-- **THEN** the system SHALL reduce the base total by the flash sale percentage
-- **AND** use the discounted amount as the next amount for coupon calculation.
+- **CHO** có flash sale active cho loại phòng và thời gian hiện tại nằm trong khung sale
+- **KHI** tính tổng booking
+- **THÌ** hệ thống PHẢI giảm tổng gốc theo phần trăm flash sale
+- **VÀ** dùng số tiền sau flash sale làm đầu vào tính coupon.
 
-#### Scenario: Coupon applies after flash sale
+#### Scenario: Coupon áp dụng sau flash sale
 
-- **GIVEN** a valid coupon code is submitted
-- **WHEN** the booking is created
-- **THEN** the system SHALL validate the coupon against the current amount
-- **AND** store `discountAmount`
-- **AND** store the submitted `couponCode`
-- **AND** increment coupon usage
-- **AND** mark or create the corresponding `UserCoupon` as used for the customer.
+- **CHO** request có coupon code hợp lệ
+- **KHI** booking tạo thành công
+- **THÌ** hệ thống PHẢI validate coupon theo số tiền hiện tại
+- **VÀ** lưu `discountAmount`
+- **VÀ** lưu `couponCode`
+- **VÀ** tăng usage của coupon
+- **VÀ** upsert `UserCoupon` tương ứng thành đã dùng với `usedAt`.
 
-#### Scenario: No coupon submitted
+#### Scenario: Không gửi coupon
 
-- **GIVEN** no coupon code is provided
-- **WHEN** booking is created
-- **THEN** coupon usage and user coupon state SHALL not be changed.
+- **CHO** request không có coupon code
+- **KHI** booking được tạo
+- **THÌ** hệ thống KHÔNG được thay đổi usage coupon hoặc user coupon state.
 
-### Requirement: Booking History
+### Requirement: Lịch Sử Booking
 
-The system SHALL allow customers to list their own bookings with pagination and optional status filtering.
+Hệ thống PHẢI (SHALL) cho khách hàng xem booking của chính mình, phân trang và lọc theo status.
 
-#### Scenario: Get my bookings
+#### Scenario: Xem booking của tôi
 
-- **GIVEN** an authenticated customer
-- **WHEN** `/bookings/my?page=1&limit=10` is called
-- **THEN** the API SHALL return the customer's bookings ordered newest first
-- **AND** include room, room type, add-ons, payment, and review
-- **AND** return `data`, `total`, `page`, and `limit`.
+- **CHO** customer đã đăng nhập
+- **KHI** gọi `/bookings/my?page=1&limit=10`
+- **THÌ** API PHẢI trả booking của customer, mới nhất trước
+- **VÀ** include room, room type, add-ons, payment, review
+- **VÀ** trả `data`, `total`, `page`, `limit`.
 
-#### Scenario: Filter my bookings by status
+#### Scenario: Lọc booking của tôi theo status
 
-- **GIVEN** an authenticated customer
-- **WHEN** `/bookings/my?status=CONFIRMED` is called
-- **THEN** only the customer's confirmed bookings SHALL be returned.
+- **CHO** customer đã đăng nhập
+- **KHI** gọi `/bookings/my?status=CONFIRMED`
+- **THÌ** chỉ booking confirmed của customer được trả về.
 
-### Requirement: Booking Detail Authorization
+### Requirement: Phân Quyền Xem Chi Tiết Booking
 
-The system SHALL restrict booking detail visibility to the owning customer, admins, and receptionists.
+Hệ thống PHẢI (SHALL) chỉ cho chủ booking, admin và receptionist xem chi tiết booking.
 
-#### Scenario: Owner views booking
+#### Scenario: Chủ booking xem chi tiết
 
-- **GIVEN** an authenticated customer owns a booking
-- **WHEN** `/bookings/:id` is called
-- **THEN** the API SHALL return booking detail with room, room type, add-ons, payment, and review.
+- **CHO** customer sở hữu booking
+- **KHI** gọi `/bookings/:id`
+- **THÌ** API PHẢI trả booking kèm room, room type, add-ons, payment, review.
 
-#### Scenario: Admin or receptionist views booking
+#### Scenario: Admin hoặc receptionist xem booking
 
-- **GIVEN** an authenticated admin or receptionist
-- **WHEN** `/bookings/:id` is called
-- **THEN** the API SHALL return the booking even when they are not the customer.
+- **CHO** admin hoặc receptionist đã đăng nhập
+- **KHI** gọi `/bookings/:id`
+- **THÌ** API PHẢI trả booking dù user không phải customer sở hữu.
 
-#### Scenario: Unauthorized user views booking
+#### Scenario: User không có quyền xem booking
 
-- **GIVEN** an authenticated user is not the owner and is not admin/receptionist
-- **WHEN** `/bookings/:id` is called
-- **THEN** the API SHALL reject the request with `Không có quyền xem đơn này`.
+- **CHO** user không phải chủ booking và không phải admin/receptionist
+- **KHI** gọi `/bookings/:id`
+- **THÌ** API PHẢI từ chối với `Không có quyền xem đơn này`.
 
-### Requirement: Customer Cancellation
+### Requirement: Khách Hàng Hủy Booking
 
-The system SHALL allow a customer to cancel their own booking only in cancellable states.
+Hệ thống PHẢI (SHALL) cho customer hủy booking của chính mình trong các trạng thái cho phép.
 
-#### Scenario: Cancel pending or confirmed booking
+#### Scenario: Hủy booking chờ hoặc đã xác nhận
 
-- **GIVEN** an authenticated customer owns a booking in `PENDING_PAYMENT`, `PAYING`, or `CONFIRMED`
-- **WHEN** `/bookings/:id/cancel` is posted
-- **THEN** the system SHALL set booking status to `CANCELLED`
-- **AND** emit `booking.cancelled` with reason or `Customer cancelled`.
+- **CHO** customer sở hữu booking ở `PENDING_PAYMENT`, `PAYING` hoặc `CONFIRMED`
+- **KHI** post `/bookings/:id/cancel`
+- **THÌ** hệ thống PHẢI set status `CANCELLED`
+- **VÀ** emit `booking.cancelled` với reason đã gửi hoặc `Customer cancelled`.
 
-#### Scenario: Cancel another customer's booking
+#### Scenario: Hủy booking của người khác
 
-- **GIVEN** a customer does not own the booking
-- **WHEN** they request cancellation
-- **THEN** the API SHALL reject the request with `Không có quyền hủy đơn này`.
+- **CHO** customer không sở hữu booking
+- **KHI** yêu cầu hủy
+- **THÌ** API PHẢI từ chối với `Không có quyền hủy đơn này`.
 
-#### Scenario: Cancel non-cancellable booking
+#### Scenario: Hủy booking ở trạng thái không cho phép
 
-- **GIVEN** a booking status is not `PENDING_PAYMENT`, `PAYING`, or `CONFIRMED`
-- **WHEN** cancellation is requested
-- **THEN** the API SHALL reject the request with `Không thể hủy đơn ở trạng thái này`.
+- **CHO** booking không ở `PENDING_PAYMENT`, `PAYING`, `CONFIRMED`
+- **KHI** yêu cầu hủy
+- **THÌ** API PHẢI từ chối với `Không thể hủy đơn ở trạng thái này`.
 
-### Requirement: Payment-Driven Confirmation And Expiration
+### Requirement: Xác Nhận Và Hết Hạn Theo Payment Event
 
-The system SHALL transition bookings based on payment success/failure domain events.
+Hệ thống PHẢI (SHALL) chuyển trạng thái booking dựa trên domain event thanh toán thành công/thất bại.
 
-#### Scenario: Confirm pending booking after payment success
+#### Scenario: Xác nhận booking sau payment success
 
-- **GIVEN** a booking status is `PENDING_PAYMENT` or `PAYING`
-- **WHEN** `confirmBooking` runs
-- **THEN** the system SHALL set status to `CONFIRMED`
-- **AND** emit `booking.confirmed`.
+- **CHO** booking ở `PENDING_PAYMENT` hoặc `PAYING`
+- **KHI** `confirmBooking` chạy
+- **THÌ** hệ thống PHẢI set status `CONFIRMED`
+- **VÀ** emit `booking.confirmed`.
 
-#### Scenario: Idempotent confirm for already terminal booking
+#### Scenario: Confirm idempotent
 
-- **GIVEN** a booking status is not `PENDING_PAYMENT` or `PAYING`
-- **WHEN** `confirmBooking` runs
-- **THEN** the booking SHALL be returned unchanged.
+- **CHO** booking không ở `PENDING_PAYMENT` hoặc `PAYING`
+- **KHI** `confirmBooking` chạy
+- **THÌ** booking PHẢI được trả về nguyên trạng.
 
-#### Scenario: Expire unpaid booking
+#### Scenario: Expire booking chưa thanh toán
 
-- **GIVEN** a booking status is `PENDING_PAYMENT` or `PAYING`
-- **WHEN** `expireBooking` runs
-- **THEN** the system SHALL set status to `EXPIRED`
-- **AND** emit `booking.expired`.
+- **CHO** booking ở `PENDING_PAYMENT` hoặc `PAYING`
+- **KHI** `expireBooking` chạy
+- **THÌ** hệ thống PHẢI set status `EXPIRED`
+- **VÀ** emit `booking.expired`.
 
-#### Scenario: Idempotent expire for non-payable booking
+#### Scenario: Expire idempotent
 
-- **GIVEN** a booking status is not `PENDING_PAYMENT` or `PAYING`
-- **WHEN** `expireBooking` runs
-- **THEN** no status change SHALL be made.
+- **CHO** booking không ở `PENDING_PAYMENT` hoặc `PAYING`
+- **KHI** `expireBooking` chạy
+- **THÌ** hệ thống KHÔNG được đổi trạng thái.
 
-#### Scenario: Find expired bookings
+#### Scenario: Tìm booking quá hạn
 
-- **GIVEN** bookings exist with `paymentDeadline` before now
-- **WHEN** the expiration job queries stale bookings
-- **THEN** only bookings currently in `PENDING_PAYMENT` SHALL be returned.
+- **CHO** có booking `paymentDeadline` trước hiện tại
+- **KHI** cron query booking quá hạn
+- **THÌ** chỉ booking đang `PENDING_PAYMENT` được trả về.
 
-### Requirement: Bank Transfer Receipt Approval
+### Requirement: Biên Lai Chuyển Khoản Và Duyệt Booking
 
-The system SHALL support receipt upload by customers and approval/rejection by receptionist/admin.
+Hệ thống PHẢI (SHALL) hỗ trợ customer upload biên lai và receptionist/admin duyệt hoặc từ chối.
 
-#### Scenario: Upload receipt
+#### Scenario: Upload biên lai
 
-- **GIVEN** an authenticated customer owns a booking in `PENDING_PAYMENT`
-- **WHEN** `/bookings/:id/upload-receipt` is posted with `receiptImageUrl`
-- **THEN** existing payment rows for that booking SHALL be updated with receipt image and `PENDING` status
-- **AND** a booking attachment of type `receipt` SHALL be created
-- **AND** the booking status SHALL become `PENDING_APPROVAL`
-- **AND** the API SHALL return `Đã upload biên lai, chờ staff xác nhận`.
+- **CHO** customer sở hữu booking ở `PENDING_PAYMENT`
+- **KHI** post `/bookings/:id/upload-receipt` với `receiptImageUrl`
+- **THÌ** payment hiện có của booking PHẢI được update receipt image và status `PENDING`
+- **VÀ** tạo booking attachment type `receipt`
+- **VÀ** booking status thành `PENDING_APPROVAL`
+- **VÀ** API trả `Đã upload biên lai, chờ staff xác nhận`.
 
-#### Scenario: Upload receipt for another customer
+#### Scenario: Upload biên lai cho booking của người khác
 
-- **GIVEN** a customer does not own the booking
-- **WHEN** they upload a receipt
-- **THEN** the API SHALL reject the request with `Không có quyền thao tác`.
+- **CHO** customer không sở hữu booking
+- **KHI** upload biên lai
+- **THÌ** API PHẢI từ chối với `Không có quyền thao tác`.
 
-#### Scenario: Upload receipt for non-pending booking
+#### Scenario: Upload biên lai khi booking không chờ thanh toán
 
-- **GIVEN** the booking is not in `PENDING_PAYMENT`
-- **WHEN** receipt upload is requested
-- **THEN** the API SHALL reject the request with `Đơn không ở trạng thái chờ thanh toán`.
+- **CHO** booking không ở `PENDING_PAYMENT`
+- **KHI** upload biên lai
+- **THÌ** API PHẢI từ chối với `Đơn không ở trạng thái chờ thanh toán`.
 
-#### Scenario: List pending approvals
+#### Scenario: Staff xem booking chờ duyệt
 
-- **GIVEN** an authenticated receptionist or admin
-- **WHEN** `/bookings/staff/pending` is called
-- **THEN** the API SHALL return `PENDING_APPROVAL` bookings ordered oldest first
-- **AND** include room, room type, customer summary, payment, and attachments
-- **AND** return pagination metadata.
+- **CHO** receptionist hoặc admin đã đăng nhập
+- **KHI** gọi `/bookings/staff/pending`
+- **THÌ** API PHẢI trả booking `PENDING_APPROVAL`, cũ nhất trước
+- **VÀ** include room, room type, customer summary, payment, attachments
+- **VÀ** trả metadata phân trang.
 
-#### Scenario: Approve receipt booking
+#### Scenario: Duyệt booking chuyển khoản
 
-- **GIVEN** an authenticated receptionist or admin
-- **AND** the booking is in `PENDING_APPROVAL`
-- **AND** no other `CONFIRMED` or `CHECKED_IN` booking conflicts with the same room/date range
-- **WHEN** `/bookings/:id/approve` is posted
-- **THEN** the system SHALL set booking status to `CONFIRMED`
-- **AND** store `approvedById` and `approvedAt`
-- **AND** set room status to `RESERVED`
-- **AND** emit `booking.approved`.
+- **CHO** receptionist hoặc admin đã đăng nhập
+- **VÀ** booking ở `PENDING_APPROVAL`
+- **VÀ** không có booking `CONFIRMED` hoặc `CHECKED_IN` khác conflict cùng phòng/ngày
+- **KHI** post `/bookings/:id/approve`
+- **THÌ** hệ thống PHẢI set booking status `CONFIRMED`
+- **VÀ** lưu `approvedById`, `approvedAt`
+- **VÀ** set room status `RESERVED`
+- **VÀ** emit `booking.approved`.
 
-#### Scenario: Approve booking with conflict
+#### Scenario: Duyệt booking bị conflict
 
-- **GIVEN** another `CONFIRMED` or `CHECKED_IN` booking overlaps the same room/date range
-- **WHEN** staff approves the pending approval
-- **THEN** the API SHALL reject the request with `Phòng đã có đơn confirmed trong khoảng này`.
+- **CHO** có booking `CONFIRMED` hoặc `CHECKED_IN` khác overlap cùng phòng/ngày
+- **KHI** staff duyệt booking pending approval
+- **THÌ** API PHẢI từ chối với `Phòng đã có đơn confirmed trong khoảng này`.
 
-#### Scenario: Reject receipt booking
+#### Scenario: Từ chối booking chuyển khoản
 
-- **GIVEN** an authenticated receptionist or admin
-- **AND** the booking is in `PENDING_APPROVAL`
-- **WHEN** `/bookings/:id/reject` is posted with a reason
-- **THEN** the system SHALL set booking status to `REJECTED`
-- **AND** store `approvedById` and `rejectedReason`
-- **AND** emit `booking.rejected`
-- **AND** return `Đã từ chối booking`.
+- **CHO** receptionist hoặc admin đã đăng nhập
+- **VÀ** booking ở `PENDING_APPROVAL`
+- **KHI** post `/bookings/:id/reject` với reason
+- **THÌ** hệ thống PHẢI set booking status `REJECTED`
+- **VÀ** lưu `approvedById`, `rejectedReason`
+- **VÀ** emit `booking.rejected`
+- **VÀ** trả `Đã từ chối booking`.
 
-#### Scenario: Reject booking with completed payment row
+#### Scenario: Từ chối booking có payment completed
 
-- **GIVEN** the rejected booking has payment status `COMPLETED`
-- **WHEN** staff rejects it
-- **THEN** the system SHALL set the payment status to `REFUNDED` and set `refundedAt`.
+- **CHO** booking bị từ chối có payment status `COMPLETED`
+- **KHI** staff từ chối booking
+- **THÌ** payment PHẢI chuyển status `REFUNDED` và set `refundedAt`.
 
 ### Requirement: Check-In
 
-The system SHALL allow receptionist/admin to check in confirmed bookings and occupy the room.
+Hệ thống PHẢI (SHALL) cho receptionist/admin check-in booking đã xác nhận và chuyển phòng sang đang ở.
 
-#### Scenario: Check in confirmed booking
+#### Scenario: Check-in booking confirmed
 
-- **GIVEN** an authenticated receptionist or admin
-- **AND** the booking status is `CONFIRMED`
-- **WHEN** `/bookings/:id/checkin` is posted
-- **THEN** the booking status SHALL become `CHECKED_IN`
-- **AND** `checkInActual` SHALL be set to now
-- **AND** the room status SHALL become `OCCUPIED`
-- **AND** booking and room update SHALL occur in one transaction.
+- **CHO** receptionist hoặc admin đã đăng nhập
+- **VÀ** booking status `CONFIRMED`
+- **KHI** post `/bookings/:id/checkin`
+- **THÌ** booking PHẢI thành `CHECKED_IN`
+- **VÀ** `checkInActual` được set thời điểm hiện tại
+- **VÀ** room status thành `OCCUPIED`
+- **VÀ** update booking/room PHẢI nằm trong cùng transaction.
 
-#### Scenario: Check in non-confirmed booking
+#### Scenario: Check-in booking chưa confirmed
 
-- **GIVEN** the booking status is not `CONFIRMED`
-- **WHEN** check-in is requested
-- **THEN** the API SHALL reject the request with `Đơn phải ở trạng thái CONFIRMED để check-in`.
+- **CHO** booking không ở `CONFIRMED`
+- **KHI** check-in
+- **THÌ** API PHẢI từ chối với `Đơn phải ở trạng thái CONFIRMED để check-in`.
 
 ### Requirement: Check-Out
 
-The system SHALL allow receptionist/admin to check out checked-in bookings, include add-on totals, and dirty the room.
+Hệ thống PHẢI (SHALL) cho receptionist/admin check-out booking đang ở, cộng addon và chuyển phòng sang bẩn.
 
-#### Scenario: Check out checked-in booking
+#### Scenario: Check-out booking checked-in
 
-- **GIVEN** an authenticated receptionist or admin
-- **AND** the booking status is `CHECKED_IN`
-- **WHEN** `/bookings/:id/checkout` is posted
-- **THEN** the booking status SHALL become `CHECKED_OUT`
-- **AND** `checkOutActual` SHALL be set to now
-- **AND** the booking total amount SHALL be set to current total plus the sum of add-on total prices
-- **AND** the room status SHALL become `DIRTY`
-- **AND** `checkout.completed` SHALL be emitted with final amount.
+- **CHO** receptionist hoặc admin đã đăng nhập
+- **VÀ** booking status `CHECKED_IN`
+- **KHI** post `/bookings/:id/checkout`
+- **THÌ** booking PHẢI thành `CHECKED_OUT`
+- **VÀ** `checkOutActual` được set thời điểm hiện tại
+- **VÀ** `totalAmount` PHẢI được set bằng tổng hiện tại cộng tổng addon
+- **VÀ** room status thành `DIRTY`
+- **VÀ** emit `checkout.completed` với final amount.
 
-#### Scenario: Check out booking before check-in
+#### Scenario: Check-out trước check-in
 
-- **GIVEN** the booking status is not `CHECKED_IN`
-- **WHEN** checkout is requested
-- **THEN** the API SHALL reject the request with `Khách chưa check-in`.
+- **CHO** booking không ở `CHECKED_IN`
+- **KHI** checkout
+- **THÌ** API PHẢI từ chối với `Khách chưa check-in`.
 
-### Requirement: Add-On Services
+### Requirement: Dịch Vụ Phát Sinh
 
-The system SHALL allow staff roles to add, update, list, and delete add-on services for bookings.
+Hệ thống PHẢI (SHALL) cho staff quản lý addon service cho booking đang ở.
 
-#### Scenario: Add service to checked-in booking
+#### Scenario: Thêm dịch vụ vào booking checked-in
 
-- **GIVEN** an authenticated receptionist, housekeeping user, or admin
-- **AND** the booking status is `CHECKED_IN`
-- **WHEN** `/staff/bookings/:bookingId/addons` is posted with service name, quantity, unit price, and optional note
-- **THEN** the system SHALL create a booking add-on
-- **AND** calculate `totalPrice = quantity * unitPrice`
-- **AND** increment booking `totalAmount` by the add-on total.
+- **CHO** receptionist, housekeeping hoặc admin đã đăng nhập
+- **VÀ** booking status `CHECKED_IN`
+- **KHI** post `/staff/bookings/:bookingId/addons` với tên dịch vụ, số lượng, đơn giá và note tùy chọn
+- **THÌ** hệ thống PHẢI tạo addon
+- **VÀ** tính `totalPrice = quantity * unitPrice`
+- **VÀ** tăng booking `totalAmount` theo total addon.
 
-#### Scenario: Add service before check-in
+#### Scenario: Thêm dịch vụ trước khi check-in
 
-- **GIVEN** the booking status is not `CHECKED_IN`
-- **WHEN** staff adds an add-on
-- **THEN** the API SHALL reject the request with `Chỉ có thể thêm dịch vụ khi khách đang ở`.
+- **CHO** booking không ở `CHECKED_IN`
+- **KHI** staff thêm addon
+- **THÌ** API PHẢI từ chối với `Chỉ có thể thêm dịch vụ khi khách đang ở`.
 
-#### Scenario: List add-ons
+#### Scenario: Liệt kê addon
 
-- **GIVEN** an authenticated staff-role user
-- **WHEN** `/staff/bookings/:bookingId/addons` is called
-- **THEN** add-ons for the booking SHALL be returned ordered by creation time ascending.
+- **CHO** staff-role user đã đăng nhập
+- **KHI** gọi `/staff/bookings/:bookingId/addons`
+- **THÌ** addon của booking PHẢI trả theo thời gian tạo tăng dần.
 
-#### Scenario: Update add-on quantity
+#### Scenario: Cập nhật số lượng addon
 
-- **GIVEN** an add-on exists
-- **WHEN** `/staff/addons/:id` is patched with a new quantity
-- **THEN** the system SHALL recalculate total price using the existing unit price
-- **AND** increment or decrement booking `totalAmount` by the difference.
+- **CHO** addon tồn tại
+- **KHI** patch `/staff/addons/:id` với quantity mới
+- **THÌ** hệ thống PHẢI tính lại total bằng unit price hiện tại
+- **VÀ** tăng/giảm booking `totalAmount` theo phần chênh lệch.
 
-#### Scenario: Update add-on note only
+#### Scenario: Cập nhật note addon
 
-- **GIVEN** an add-on exists
-- **WHEN** only `staffNote` is patched
-- **THEN** the note SHALL be updated without changing booking `totalAmount`.
+- **CHO** addon tồn tại
+- **KHI** chỉ patch `staffNote`
+- **THÌ** note PHẢI được cập nhật và booking `totalAmount` không đổi.
 
-#### Scenario: Delete add-on
+#### Scenario: Xóa addon
 
-- **GIVEN** an add-on exists
-- **WHEN** `/staff/addons/:id` is deleted
-- **THEN** the system SHALL decrement booking `totalAmount` by the add-on total
-- **AND** delete the add-on row
-- **AND** return `Đã xóa dịch vụ`.
+- **CHO** addon tồn tại
+- **KHI** delete `/staff/addons/:id`
+- **THÌ** hệ thống PHẢI giảm booking `totalAmount` theo total addon
+- **VÀ** xóa addon row
+- **VÀ** trả `Đã xóa dịch vụ`.
 
-### Requirement: Booking Notifications
+### Requirement: Notification Theo Vòng Đời Booking
 
-The system SHALL send/persist customer notifications for major booking lifecycle events.
+Hệ thống PHẢI (SHALL) tạo/gửi notification cho customer khi booking có sự kiện chính.
 
-#### Scenario: Booking confirmed notification
+#### Scenario: Thông báo booking confirmed
 
-- **GIVEN** a booking is confirmed through payment success
-- **WHEN** `booking.confirmed` is emitted
-- **THEN** the notification service SHALL create a confirmation notification and send email when configured.
+- **CHO** booking được xác nhận qua payment success
+- **KHI** emit `booking.confirmed`
+- **THÌ** notification service PHẢI tạo thông báo xác nhận và gửi email nếu có cấu hình.
 
-#### Scenario: Booking cancelled notification
+#### Scenario: Thông báo booking cancelled
 
-- **GIVEN** a customer cancels a booking
-- **WHEN** `booking.cancelled` is emitted
-- **THEN** the notification service SHALL create a cancellation notification including reason when present.
+- **CHO** customer hủy booking
+- **KHI** emit `booking.cancelled`
+- **THÌ** notification service PHẢI tạo thông báo hủy, gồm reason nếu có.
 
-#### Scenario: Booking expired notification
+#### Scenario: Thông báo booking expired
 
-- **GIVEN** an unpaid booking expires
-- **WHEN** `booking.expired` is emitted
-- **THEN** the notification service SHALL create an expiration notification.
+- **CHO** booking chưa thanh toán bị expire
+- **KHI** emit `booking.expired`
+- **THÌ** notification service PHẢI tạo thông báo hết hạn.
 
-#### Scenario: Checkout completed notification
+#### Scenario: Thông báo checkout completed
 
-- **GIVEN** checkout completes
-- **WHEN** `checkout.completed` is emitted
-- **THEN** the notification service SHALL create a checkout invoice-style notification including final amount when provided.
+- **CHO** checkout hoàn tất
+- **KHI** emit `checkout.completed`
+- **THÌ** notification service PHẢI tạo thông báo dạng hóa đơn, gồm final amount nếu có.

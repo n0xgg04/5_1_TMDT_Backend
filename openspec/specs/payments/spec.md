@@ -1,313 +1,311 @@
-# Payments Specification
+# Đặc Tả Thanh Toán
 
 ## Purpose
 
-Define online payment initiation, VNPay callback handling, Stripe card flows, bank-transfer payment method data, user payment methods, and payment authorization.
+Định nghĩa khởi tạo thanh toán, callback VNPay, luồng Stripe/VISA, tài khoản chuyển khoản, phương thức thanh toán đã lưu của user và phân quyền xem payment.
 
 ## Requirements
 
-### Requirement: Payment Initiation
+### Requirement: Khởi Tạo Thanh Toán
 
-The system SHALL allow an authenticated customer to initiate payment for their own pending booking.
+Hệ thống PHẢI (SHALL) cho customer khởi tạo thanh toán cho booking của chính mình khi booking còn chờ thanh toán.
 
-#### Scenario: Initiate VNPay payment
+#### Scenario: Khởi tạo VNPay
 
-- **GIVEN** an authenticated customer owns a booking in `PENDING_PAYMENT`
-- **AND** the booking payment deadline has not passed
-- **AND** no existing completed payment exists for the booking
-- **WHEN** `/payments/initiate` is posted with method `VNPAY`
-- **THEN** the system SHALL create or update the booking payment with status `PROCESSING`
-- **AND** set method to `VNPAY`
-- **AND** set payment type to `FULL`
-- **AND** set amount to the booking total
-- **AND** generate a VNPay gateway URL
-- **AND** set booking status to `PAYING`
-- **AND** return payment, gateway URL, and amount.
+- **CHO** customer sở hữu booking ở `PENDING_PAYMENT`
+- **VÀ** chưa quá `paymentDeadline`
+- **VÀ** chưa có payment `COMPLETED` cho booking
+- **KHI** post `/payments/initiate` với method `VNPAY`
+- **THÌ** hệ thống PHẢI tạo hoặc cập nhật payment status `PROCESSING`
+- **VÀ** set method `VNPAY`, payment type `FULL`, amount bằng total booking
+- **VÀ** tạo VNPay gateway URL
+- **VÀ** set booking status `PAYING`
+- **VÀ** trả payment, gateway URL và amount.
 
-#### Scenario: Initiate non-VNPay online method
+#### Scenario: Khởi tạo phương thức online không phải VNPay
 
-- **GIVEN** an authenticated customer owns a pending booking
-- **WHEN** `/payments/initiate` is posted with an online method other than `BANK_TRANSFER`
-- **THEN** the system SHALL create or update a `PROCESSING` payment
-- **AND** set booking status to `PAYING`
-- **AND** return payment and amount, with gateway URL present only when the method produced one.
+- **CHO** customer sở hữu booking pending
+- **KHI** post `/payments/initiate` với method online khác `BANK_TRANSFER`
+- **THÌ** hệ thống PHẢI tạo hoặc cập nhật payment `PROCESSING`
+- **VÀ** set booking status `PAYING`
+- **VÀ** trả payment và amount; gateway URL chỉ có khi method tạo được URL.
 
-#### Scenario: Initiate bank transfer
+#### Scenario: Khởi tạo chuyển khoản
 
-- **GIVEN** an authenticated customer owns a booking in `PENDING_PAYMENT`
-- **WHEN** `/payments/initiate` is posted with method `BANK_TRANSFER`
-- **THEN** the system SHALL create or update a payment with status `PROCESSING`
-- **AND** keep booking status `PENDING_PAYMENT`
-- **AND** return payment, amount, and the first active configured bank account when available.
+- **CHO** customer sở hữu booking ở `PENDING_PAYMENT`
+- **KHI** post `/payments/initiate` với method `BANK_TRANSFER`
+- **THÌ** hệ thống PHẢI tạo hoặc cập nhật payment status `PROCESSING`
+- **VÀ** giữ booking status `PENDING_PAYMENT`
+- **VÀ** trả payment, amount và tài khoản ngân hàng active đầu tiên nếu có.
 
-#### Scenario: Deposit payment type
+#### Scenario: Thanh toán đặt cọc
 
-- **GIVEN** payment initiation is invoked internally with payment type `DEPOSIT`
-- **WHEN** amount is calculated
-- **THEN** amount SHALL be 30 percent of booking total rounded down with `Math.floor`.
+- **CHO** service được gọi nội bộ với payment type `DEPOSIT`
+- **KHI** tính amount
+- **THÌ** amount PHẢI bằng 30% total booking và làm tròn xuống bằng `Math.floor`.
 
-#### Scenario: Booking missing
+#### Scenario: Booking không tồn tại
 
-- **GIVEN** the booking id does not exist
-- **WHEN** payment is initiated
-- **THEN** the API SHALL reject the request with `Đơn đặt phòng không tồn tại`.
+- **CHO** booking id không tồn tại
+- **KHI** khởi tạo thanh toán
+- **THÌ** API PHẢI từ chối với `Đơn đặt phòng không tồn tại`.
 
-#### Scenario: Customer pays another customer's booking
+#### Scenario: Thanh toán booking của người khác
 
-- **GIVEN** the authenticated user is not the booking customer
-- **WHEN** payment is initiated
-- **THEN** the API SHALL reject the request with `Không có quyền thanh toán đơn này`.
+- **CHO** user không phải customer của booking
+- **KHI** khởi tạo thanh toán
+- **THÌ** API PHẢI từ chối với `Không có quyền thanh toán đơn này`.
 
-#### Scenario: Booking not pending payment
+#### Scenario: Booking không ở trạng thái chờ thanh toán
 
-- **GIVEN** booking status is not `PENDING_PAYMENT`
-- **WHEN** payment is initiated
-- **THEN** the API SHALL reject the request with `Đơn không ở trạng thái chờ thanh toán`.
+- **CHO** booking status không phải `PENDING_PAYMENT`
+- **KHI** khởi tạo thanh toán
+- **THÌ** API PHẢI từ chối với `Đơn không ở trạng thái chờ thanh toán`.
 
-#### Scenario: Payment deadline passed
+#### Scenario: Booking quá hạn thanh toán
 
-- **GIVEN** current time is after `paymentDeadline`
-- **WHEN** payment is initiated
-- **THEN** the API SHALL reject the request with `Đơn đã hết hạn thanh toán`.
+- **CHO** thời điểm hiện tại sau `paymentDeadline`
+- **KHI** khởi tạo thanh toán
+- **THÌ** API PHẢI từ chối với `Đơn đã hết hạn thanh toán`.
 
-#### Scenario: Booking already paid
+#### Scenario: Booking đã thanh toán
 
-- **GIVEN** an existing payment for the booking has status `COMPLETED`
-- **WHEN** payment is initiated again
-- **THEN** the API SHALL reject the request with `Đơn đã được thanh toán`.
+- **CHO** payment hiện có của booking có status `COMPLETED`
+- **KHI** khởi tạo thanh toán lại
+- **THÌ** API PHẢI từ chối với `Đơn đã được thanh toán`.
 
-### Requirement: VNPay Gateway URL
+### Requirement: Tạo URL VNPay
 
-The system SHALL generate signed VNPay payment URLs using configured or demo VNPay settings.
+Hệ thống PHẢI (SHALL) tạo URL thanh toán VNPay có chữ ký bằng cấu hình VNPay hoặc giá trị demo.
 
-#### Scenario: Create VNPay URL
+#### Scenario: Tạo VNPay URL
 
-- **GIVEN** booking id, amount, order info, and client IP
-- **WHEN** a VNPay URL is created
-- **THEN** the URL SHALL include VNPay version `2.1.0`, command `pay`, VND currency, order type `hotel`, locale `vn`, configured return URL, client IP, creation date, 15-minute expire date, and signed secure hash.
+- **CHO** booking id, amount, order info và IP client
+- **KHI** tạo URL VNPay
+- **THÌ** URL PHẢI gồm version `2.1.0`, command `pay`, currency VND, order type `hotel`, locale `vn`, return URL, IP client, create date, expire date 15 phút và secure hash.
 
-#### Scenario: VNPay amount units
+#### Scenario: Đơn vị tiền VNPay
 
-- **GIVEN** amount is represented in VND
-- **WHEN** VNPay parameters are generated
-- **THEN** `vnp_Amount` SHALL be amount multiplied by 100.
+- **CHO** amount đang là VND
+- **KHI** tạo tham số VNPay
+- **THÌ** `vnp_Amount` PHẢI bằng amount nhân 100.
 
-#### Scenario: VNPay order reference
+#### Scenario: Mã tham chiếu VNPay
 
-- **GIVEN** a booking id
-- **WHEN** VNPay parameters are generated
-- **THEN** transaction reference SHALL be `<last 8 chars of bookingId>-<timestamp>`.
+- **CHO** booking id
+- **KHI** tạo tham số VNPay
+- **THÌ** transaction reference PHẢI có dạng `<8 ký tự cuối bookingId>-<timestamp>`.
 
-### Requirement: VNPay Callback Handling
+### Requirement: Xử Lý Callback VNPay
 
-The system SHALL verify VNPay callback signatures and update payment/booking through domain events.
+Hệ thống PHẢI (SHALL) verify chữ ký callback VNPay và cập nhật payment/booking qua domain event.
 
-#### Scenario: Invalid VNPay signature
+#### Scenario: Chữ ký VNPay không hợp lệ
 
-- **GIVEN** the secure hash does not match the callback parameters
-- **WHEN** `/payments/webhook/vnpay` is called
-- **THEN** the endpoint SHALL return `{ code: "97", message: "Invalid signature" }`.
+- **CHO** secure hash không khớp callback params
+- **KHI** gọi `/payments/webhook/vnpay`
+- **THÌ** endpoint PHẢI trả `{ code: "97", message: "Invalid signature" }`.
 
-#### Scenario: VNPay booking not found
+#### Scenario: Không tìm thấy booking VNPay
 
-- **GIVEN** the callback signature is valid
-- **AND** no booking can be resolved from the transaction reference
-- **WHEN** the webhook is handled
-- **THEN** the endpoint SHALL return `{ code: "01", message: "Order not found" }`.
+- **CHO** chữ ký callback hợp lệ
+- **VÀ** không resolve được booking từ transaction reference
+- **KHI** webhook xử lý
+- **THÌ** endpoint PHẢI trả `{ code: "01", message: "Order not found" }`.
 
-#### Scenario: Duplicate VNPay transaction
+#### Scenario: Giao dịch VNPay lặp
 
-- **GIVEN** the booking payment already has the same `gatewayTransactionId`
-- **WHEN** the webhook is handled again
-- **THEN** the endpoint SHALL return `{ code: "00", message: "Already processed" }` without duplicating side effects.
+- **CHO** payment của booking đã có cùng `gatewayTransactionId`
+- **KHI** webhook xử lý lại
+- **THÌ** endpoint PHẢI trả `{ code: "00", message: "Already processed" }` và không lặp side effect.
 
-#### Scenario: VNPay success
+#### Scenario: VNPay thành công
 
-- **GIVEN** the callback is valid
-- **AND** `vnp_ResponseCode` is `00`
-- **WHEN** the webhook is handled
-- **THEN** the payment SHALL be updated to `COMPLETED`
-- **AND** `gatewayTransactionId` and `paidAt` SHALL be set
-- **AND** `payment.success` SHALL be emitted with booking id, amount, and transaction id
-- **AND** the endpoint SHALL return `{ code: "00", message: "Confirmed" }`.
+- **CHO** callback hợp lệ
+- **VÀ** `vnp_ResponseCode` là `00`
+- **KHI** webhook xử lý
+- **THÌ** payment PHẢI chuyển `COMPLETED`
+- **VÀ** set `gatewayTransactionId`, `paidAt`
+- **VÀ** emit `payment.success` với booking id, amount và transaction id
+- **VÀ** endpoint trả `{ code: "00", message: "Confirmed" }`.
 
-#### Scenario: VNPay failure
+#### Scenario: VNPay thất bại
 
-- **GIVEN** the callback is valid
-- **AND** `vnp_ResponseCode` is not `00`
-- **WHEN** the webhook is handled
-- **THEN** the payment SHALL be updated to `FAILED`
-- **AND** `failureReason` SHALL include the VNPay response code
-- **AND** `payment.failed` SHALL be emitted.
+- **CHO** callback hợp lệ
+- **VÀ** `vnp_ResponseCode` khác `00`
+- **KHI** webhook xử lý
+- **THÌ** payment PHẢI chuyển `FAILED`
+- **VÀ** `failureReason` PHẢI chứa response code của VNPay
+- **VÀ** emit `payment.failed`.
 
-### Requirement: Payment Lookup
+### Requirement: Xem Payment Theo Booking
 
-The system SHALL allow a customer to fetch their own payment by booking id.
+Hệ thống PHẢI (SHALL) cho customer xem payment của booking thuộc về mình.
 
-#### Scenario: Get payment by booking
+#### Scenario: Lấy payment theo booking
 
-- **GIVEN** an authenticated customer owns the payment
-- **WHEN** `/payments/booking/:bookingId` is called
-- **THEN** the API SHALL return payment including booking.
+- **CHO** customer đã đăng nhập sở hữu payment
+- **KHI** gọi `/payments/booking/:bookingId`
+- **THÌ** API PHẢI trả payment kèm booking.
 
-#### Scenario: Payment not found
+#### Scenario: Không có payment
 
-- **GIVEN** no payment exists for the booking id
-- **WHEN** payment lookup is requested
-- **THEN** the API SHALL reject the request with `Thông tin thanh toán không tồn tại`.
+- **CHO** không có payment cho booking id
+- **KHI** xem payment
+- **THÌ** API PHẢI từ chối với `Thông tin thanh toán không tồn tại`.
 
-#### Scenario: Payment lookup by non-owner
+#### Scenario: User không sở hữu payment
 
-- **GIVEN** an authenticated user is not the payment customer
-- **WHEN** payment lookup is requested
-- **THEN** the API SHALL reject the request with `Không có quyền xem thông tin này`.
+- **CHO** user không phải customer của payment
+- **KHI** xem payment
+- **THÌ** API PHẢI từ chối với `Không có quyền xem thông tin này`.
 
-### Requirement: Stripe Card Setup
+### Requirement: Stripe Setup Thẻ
 
-The system SHALL expose Stripe setup intent helpers for saving card payment methods.
+Hệ thống PHẢI (SHALL) cung cấp helper tạo và confirm Stripe setup intent để lưu thẻ.
 
-#### Scenario: Create setup intent
+#### Scenario: Tạo setup intent
 
-- **GIVEN** an authenticated user
-- **WHEN** `/payments/stripe/setup-intent` is posted
-- **THEN** the API SHALL create a Stripe setup intent with card payment method types
-- **AND** return its client secret.
+- **CHO** user đã đăng nhập
+- **KHI** post `/payments/stripe/setup-intent`
+- **THÌ** API PHẢI tạo Stripe setup intent với payment method type `card`
+- **VÀ** trả client secret.
 
-#### Scenario: Confirm card setup
+#### Scenario: Confirm setup thẻ
 
-- **GIVEN** a setup client secret and Stripe payment method id
-- **WHEN** `/payments/stripe/confirm-setup` is posted
-- **THEN** the API SHALL confirm the setup intent
-- **AND** retrieve the payment method
-- **AND** return setup status, payment method id, and card last4.
+- **CHO** setup client secret và Stripe payment method id
+- **KHI** post `/payments/stripe/confirm-setup`
+- **THÌ** API PHẢI confirm setup intent
+- **VÀ** retrieve payment method
+- **VÀ** trả status, payment method id và last4 của thẻ.
 
-### Requirement: Stripe VISA Payment
+### Requirement: Thanh Toán Stripe/VISA
 
-The system SHALL allow a customer to pay a pending booking using a saved user payment method that contains a Stripe payment method id.
+Hệ thống PHẢI (SHALL) cho customer thanh toán booking pending bằng user payment method đã lưu có Stripe payment method id.
 
-#### Scenario: Create Stripe payment intent
+#### Scenario: Tạo Stripe payment intent
 
-- **GIVEN** an authenticated customer owns a `PENDING_PAYMENT` booking before payment deadline
-- **AND** the submitted user payment method belongs to the customer
-- **AND** the method details contain `paymentMethodId`
-- **WHEN** `/payments/stripe/payment-intent` is posted
-- **THEN** the system SHALL create a Stripe payment intent for booking total times 100 in VND
-- **AND** create or update the booking payment with method `VISA`, type `FULL`, status `PROCESSING`, amount, and Stripe payment intent id
-- **AND** set booking status to `PAYING`
-- **AND** return payment, client secret, and amount.
+- **CHO** customer sở hữu booking `PENDING_PAYMENT` và chưa quá hạn
+- **VÀ** user payment method thuộc customer
+- **VÀ** details của method có `paymentMethodId`
+- **KHI** post `/payments/stripe/payment-intent`
+- **THÌ** hệ thống PHẢI tạo Stripe payment intent với amount bằng total booking nhân 100, currency VND
+- **VÀ** tạo hoặc update payment method `VISA`, type `FULL`, status `PROCESSING`, amount và Stripe payment intent id
+- **VÀ** set booking status `PAYING`
+- **VÀ** trả payment, client secret và amount.
 
-#### Scenario: Missing user payment method
+#### Scenario: Không tìm thấy user payment method
 
-- **GIVEN** the submitted user payment method id does not belong to the customer
-- **WHEN** Stripe payment is initiated
-- **THEN** the API SHALL reject the request with `Không tìm thấy phương thức thanh toán`.
+- **CHO** id user payment method không thuộc customer
+- **KHI** khởi tạo Stripe payment
+- **THÌ** API PHẢI từ chối với `Không tìm thấy phương thức thanh toán`.
 
-#### Scenario: User payment method not linked to Stripe
+#### Scenario: Thẻ chưa liên kết Stripe
 
-- **GIVEN** the user payment method exists but its details do not contain `paymentMethodId`
-- **WHEN** Stripe payment is initiated
-- **THEN** the API SHALL reject the request with `Thẻ chưa được liên kết với Stripe`.
+- **CHO** user payment method tồn tại nhưng details không có `paymentMethodId`
+- **KHI** khởi tạo Stripe payment
+- **THÌ** API PHẢI từ chối với `Thẻ chưa được liên kết với Stripe`.
 
-#### Scenario: Confirm Stripe payment success
+#### Scenario: Confirm Stripe thành công
 
-- **GIVEN** a Stripe payment intent id maps to an existing payment
-- **AND** Stripe returns status `succeeded`
-- **WHEN** `/payments/stripe/confirm-payment` is posted
-- **THEN** the payment SHALL be updated to `COMPLETED`
-- **AND** `paidAt` SHALL be set
-- **AND** `payment.success` SHALL be emitted
-- **AND** the endpoint SHALL return `{ success: true, status: "succeeded" }`.
+- **CHO** Stripe payment intent id map tới payment hiện có
+- **VÀ** Stripe trả status `succeeded`
+- **KHI** post `/payments/stripe/confirm-payment`
+- **THÌ** payment PHẢI chuyển `COMPLETED`
+- **VÀ** set `paidAt`
+- **VÀ** emit `payment.success`
+- **VÀ** endpoint trả `{ success: true, status: "succeeded" }`.
 
-#### Scenario: Confirm Stripe payment failure
+#### Scenario: Confirm Stripe thất bại
 
-- **GIVEN** a Stripe payment intent id maps to an existing payment
-- **AND** Stripe returns a status other than `succeeded`
-- **WHEN** payment confirmation runs
-- **THEN** the payment SHALL be updated to `FAILED`
-- **AND** `failureReason` SHALL include the Stripe status
-- **AND** `payment.failed` SHALL be emitted.
+- **CHO** Stripe payment intent id map tới payment hiện có
+- **VÀ** Stripe trả status khác `succeeded`
+- **KHI** confirm payment
+- **THÌ** payment PHẢI chuyển `FAILED`
+- **VÀ** `failureReason` PHẢI chứa Stripe status
+- **VÀ** emit `payment.failed`.
 
-#### Scenario: Stripe payment not found
+#### Scenario: Không tìm thấy giao dịch Stripe
 
-- **GIVEN** no payment has the submitted Stripe payment intent id
-- **WHEN** Stripe confirmation runs
-- **THEN** the API SHALL reject the request with `Không tìm thấy giao dịch`.
+- **CHO** không có payment có Stripe payment intent id đã gửi
+- **KHI** confirm Stripe
+- **THÌ** API PHẢI từ chối với `Không tìm thấy giao dịch`.
 
-### Requirement: Bank Transfer Account Management
+### Requirement: Quản Lý Tài Khoản Chuyển Khoản
 
-The system SHALL expose active bank transfer accounts publicly and allow admins to manage all account records.
+Hệ thống PHẢI (SHALL) public tài khoản ngân hàng active và cho admin quản lý toàn bộ bản ghi.
 
-#### Scenario: Public bank account list
+#### Scenario: Danh sách tài khoản public
 
-- **GIVEN** active payment method info records exist
-- **WHEN** `/payment-methods` is called
-- **THEN** the API SHALL return active bank accounts ordered newest first.
+- **CHO** tồn tại payment method info active
+- **KHI** gọi `/payment-methods`
+- **THÌ** API PHẢI trả tài khoản active, mới nhất trước.
 
-#### Scenario: Admin bank account list
+#### Scenario: Admin xem tất cả tài khoản
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/payment-methods/admin` is called
-- **THEN** the API SHALL return active and inactive bank account records ordered newest first.
+- **CHO** admin đã đăng nhập
+- **KHI** gọi `/payment-methods/admin`
+- **THÌ** API PHẢI trả cả active và inactive, mới nhất trước.
 
-#### Scenario: Admin creates bank account
+#### Scenario: Admin tạo tài khoản
 
-- **GIVEN** an authenticated admin
-- **WHEN** `/payment-methods` is posted with bank name, account number, holder, and optional branch/QR/active state
-- **THEN** the system SHALL create a payment method info record.
+- **CHO** admin đã đăng nhập
+- **KHI** post `/payment-methods` với ngân hàng, số tài khoản, chủ tài khoản và tùy chọn chi nhánh/QR/active
+- **THÌ** hệ thống PHẢI tạo payment method info.
 
-#### Scenario: Admin updates bank account
+#### Scenario: Admin cập nhật tài khoản
 
-- **GIVEN** an authenticated admin
-- **AND** the bank account record exists
-- **WHEN** `/payment-methods/:id` is put
-- **THEN** the system SHALL update submitted fields.
+- **CHO** admin đã đăng nhập
+- **VÀ** bản ghi tài khoản tồn tại
+- **KHI** put `/payment-methods/:id`
+- **THÌ** hệ thống PHẢI cập nhật field đã gửi.
 
-#### Scenario: Admin deletes bank account
+#### Scenario: Admin xóa tài khoản
 
-- **GIVEN** an authenticated admin
-- **AND** the bank account record exists
-- **WHEN** `/payment-methods/:id` is deleted
-- **THEN** the system SHALL delete the record.
+- **CHO** admin đã đăng nhập
+- **VÀ** bản ghi tài khoản tồn tại
+- **KHI** delete `/payment-methods/:id`
+- **THÌ** hệ thống PHẢI xóa bản ghi.
 
-### Requirement: User Payment Methods
+### Requirement: Phương Thức Thanh Toán Của User
 
-The system SHALL allow authenticated users to manage their own saved payment methods.
+Hệ thống PHẢI (SHALL) cho user đã đăng nhập quản lý phương thức thanh toán đã lưu của chính mình.
 
-#### Scenario: List user payment methods
+#### Scenario: Liệt kê phương thức của user
 
-- **GIVEN** an authenticated user
-- **WHEN** `/user-payment-methods` is called
-- **THEN** the API SHALL return active methods for that user
-- **AND** order default methods first, then newest first.
+- **CHO** user đã đăng nhập
+- **KHI** gọi `/user-payment-methods`
+- **THÌ** API PHẢI trả method active của user
+- **VÀ** sắp xếp method default trước, sau đó mới nhất trước.
 
-#### Scenario: Create default user method
+#### Scenario: Tạo method default
 
-- **GIVEN** an authenticated user
-- **WHEN** they create a user payment method with `isDefault=true`
-- **THEN** all existing methods for that user SHALL be set `isDefault=false`
-- **AND** the new method SHALL be created as default.
+- **CHO** user đã đăng nhập
+- **KHI** tạo user payment method với `isDefault=true`
+- **THÌ** tất cả method hiện có của user PHẢI set `isDefault=false`
+- **VÀ** method mới được tạo là default.
 
-#### Scenario: Create non-default user method
+#### Scenario: Tạo method không default
 
-- **GIVEN** an authenticated user
-- **WHEN** they create a user payment method without `isDefault`
-- **THEN** the method SHALL be created with `isDefault=false` and `isActive=true`.
+- **CHO** user đã đăng nhập
+- **KHI** tạo method không gửi `isDefault`
+- **THÌ** method PHẢI được tạo với `isDefault=false` và `isActive=true`.
 
-#### Scenario: Update user method to default
+#### Scenario: Cập nhật method thành default
 
-- **GIVEN** the method belongs to the authenticated user
-- **WHEN** it is patched with `isDefault=true`
-- **THEN** all of the user's other methods SHALL be unset as default
-- **AND** the target method SHALL be updated.
+- **CHO** method thuộc user đã đăng nhập
+- **KHI** patch với `isDefault=true`
+- **THÌ** tất cả method khác của user PHẢI bỏ default
+- **VÀ** target method được cập nhật.
 
-#### Scenario: Update another user's method
+#### Scenario: Cập nhật method của người khác
 
-- **GIVEN** the method id does not belong to the authenticated user
-- **WHEN** update is requested
-- **THEN** the API SHALL reject the request with `Không tìm thấy phương thức`.
+- **CHO** method id không thuộc user đã đăng nhập
+- **KHI** cập nhật
+- **THÌ** API PHẢI từ chối với `Không tìm thấy phương thức`.
 
-#### Scenario: Delete user method
+#### Scenario: Xóa method của user
 
-- **GIVEN** the method belongs to the authenticated user
-- **WHEN** `/user-payment-methods/:id` is deleted
-- **THEN** the system SHALL soft-delete it by setting `isActive=false`.
+- **CHO** method thuộc user đã đăng nhập
+- **KHI** delete `/user-payment-methods/:id`
+- **THÌ** hệ thống PHẢI soft-delete bằng cách set `isActive=false`.
