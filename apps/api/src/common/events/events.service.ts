@@ -15,6 +15,11 @@ import { ModuleRef } from "@nestjs/core";
  */
 export type DomainEvent =
   | "booking.created"
+  | "booking.request.created"
+  | "booking.request.approved"
+  | "booking.request.rejected"
+  | "booking.approval.expired"
+  | "booking.payment.expired"
   | "booking.confirmed"
   | "booking.cancelled"
   | "booking.expired"

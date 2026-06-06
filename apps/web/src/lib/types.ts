@@ -23,6 +23,7 @@ export type RoomStatus =
   | "RESERVED";
 
 export type BookingStatus =
+  | "PENDING_HOST_APPROVAL"
   | "PENDING_PAYMENT"
   | "PAYING"
   | "PENDING_APPROVAL"
@@ -86,7 +87,8 @@ export interface Booking {
   children?: number;
   totalAmount: string | number;
   status: BookingStatus;
-  paymentDeadline: string;
+  approvalDeadline?: string | null;
+  paymentDeadline?: string | null;
   guestNotes?: string | null;
   specialRequests?: string | null;
   approvedById?: string | null;
@@ -98,6 +100,8 @@ export interface Booking {
   payment?: Payment;
   review?: Review | null;
   attachments?: BookingAttachment[];
+  hasActiveOverlap?: boolean;
+  conversation?: Conversation | null;
 }
 
 export interface Payment {
@@ -110,6 +114,41 @@ export interface Payment {
   receiptImageUrl?: string | null;
   gatewayUrl?: string | null;
   paidAt?: string | null;
+}
+
+export interface Notification {
+  id: string;
+  recipientId: string;
+  email: string;
+  type: string;
+  templateData: Record<string, any>;
+  sentAt?: string | null;
+  readAt?: string | null;
+  failed: boolean;
+  failReason?: string | null;
+  retries: number;
+  createdAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  customerId: string;
+  staffId?: string | null;
+  bookingId?: string | null;
+  subject?: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  messages?: Message[];
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
 }
 
 export interface BookingAttachment {

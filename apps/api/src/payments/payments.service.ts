@@ -8,6 +8,7 @@ import { PrismaService } from "../common/prisma/prisma.service";
 import { EventsService } from "../common/events/events.service";
 import { StripeService } from "./stripe.service";
 import { VNPayGateway } from "./gateway/vnpay.gateway";
+import { CouponsService } from "../coupons/coupons.service";
 import {
   PaymentMethod,
   PaymentStatus,
@@ -22,6 +23,7 @@ export class PaymentsService {
     private readonly events: EventsService,
     private readonly stripe: StripeService,
     private readonly vnpay: VNPayGateway,
+    private readonly coupons: CouponsService,
   ) {}
 
   async initiatePayment(
@@ -30,6 +32,7 @@ export class PaymentsService {
     method: PaymentMethod,
     ipAddr: string,
     paymentType: PaymentType = PaymentType.FULL,
+    couponCode?: string,
   ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
@@ -38,8 +41,14 @@ export class PaymentsService {
     if (booking.customerId !== customerId) {
       throw new BadRequestException("Không có quyền thanh toán đơn này");
     }
+    if (booking.status === BookingStatus.PENDING_HOST_APPROVAL) {
+      throw new BadRequestException("Đơn chưa được duyệt để thanh toán");
+    }
     if (booking.status !== BookingStatus.PENDING_PAYMENT) {
       throw new BadRequestException("Đơn không ở trạng thái chờ thanh toán");
+    }
+    if (!booking.approvedAt || !booking.paymentDeadline) {
+      throw new BadRequestException("Đơn chưa được duyệt để thanh toán");
     }
     if (new Date() > booking.paymentDeadline) {
       throw new BadRequestException("Đơn đã hết hạn thanh toán");
@@ -52,7 +61,12 @@ export class PaymentsService {
       throw new ConflictException("Đơn đã được thanh toán");
     }
 
-    let amount = Number(booking.totalAmount);
+    const prepared = await this.prepareAmountWithCoupon(
+      booking,
+      customerId,
+      couponCode,
+    );
+    let amount = prepared.amount;
     if (paymentType === PaymentType.DEPOSIT) {
       amount = Math.floor(amount * 0.3);
     }
@@ -184,6 +198,7 @@ export class PaymentsService {
     bookingId: string,
     customerId: string,
     userPaymentMethodId: string,
+    couponCode?: string,
   ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
@@ -192,8 +207,14 @@ export class PaymentsService {
     if (booking.customerId !== customerId) {
       throw new BadRequestException("Không có quyền thanh toán đơn này");
     }
+    if (booking.status === BookingStatus.PENDING_HOST_APPROVAL) {
+      throw new BadRequestException("Đơn chưa được duyệt để thanh toán");
+    }
     if (booking.status !== BookingStatus.PENDING_PAYMENT) {
       throw new BadRequestException("Đơn không ở trạng thái chờ thanh toán");
+    }
+    if (!booking.approvedAt || !booking.paymentDeadline) {
+      throw new BadRequestException("Đơn chưa được duyệt để thanh toán");
     }
     if (new Date() > booking.paymentDeadline) {
       throw new BadRequestException("Đơn đã hết hạn thanh toán");
@@ -220,7 +241,11 @@ export class PaymentsService {
       throw new ConflictException("Đơn đã được thanh toán");
     }
 
-    const amount = Number(booking.totalAmount);
+    const { amount } = await this.prepareAmountWithCoupon(
+      booking,
+      customerId,
+      couponCode,
+    );
 
     const { clientSecret, paymentIntentId } =
       await this.stripe.createPaymentIntent({
@@ -307,5 +332,44 @@ export class PaymentsService {
     }
 
     return { success: isSuccess, status: paymentIntent.status };
+  }
+
+  private async prepareAmountWithCoupon(
+    booking: {
+      id: string;
+      couponCode: string | null;
+      totalAmount: unknown;
+    },
+    customerId: string,
+    couponCode?: string,
+  ) {
+    const requestedCode = couponCode?.trim();
+    if (!requestedCode) {
+      return { amount: Number(booking.totalAmount) };
+    }
+
+    const normalized = requestedCode.toUpperCase();
+    if (booking.couponCode) {
+      if (booking.couponCode.toUpperCase() !== normalized) {
+        throw new BadRequestException("Đơn đã áp dụng mã giảm giá khác");
+      }
+      return { amount: Number(booking.totalAmount) };
+    }
+
+    const couponResult = await this.coupons.reserveCouponForUser(
+      customerId,
+      normalized,
+      Number(booking.totalAmount),
+    );
+    await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        couponCode: normalized,
+        discountAmount: couponResult.discount,
+        totalAmount: couponResult.finalAmount,
+      },
+    });
+
+    return { amount: couponResult.finalAmount };
   }
 }

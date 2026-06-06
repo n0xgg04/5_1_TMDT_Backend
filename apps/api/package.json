@@ -7,6 +7,8 @@
     "vercel-build": "prisma generate && tsc -p tsconfig.serverless.json && node scripts/prepare-vercel.js",
     "dev": "nest start --watch",
     "start:prod": "node dist/main",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test --require ts-node/register/transpile-only test/*.test.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "ts-node prisma/seed.ts"

@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   ChevronLeft,
   Calendar,
@@ -13,21 +14,31 @@ import {
   CreditCard,
   XCircle,
   Star,
-  Receipt,
+  MessageSquare,
+  Send,
 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { useAuthStore } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
 import { BookingStatusBadge } from "@/components/ui/badge";
 import { toast } from "@/lib/toast";
-import { formatCurrency, formatDate, diffNights } from "@/lib/utils";
-import type { Booking, BookingStatus } from "@/lib/types";
+import {
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  diffNights,
+} from "@/lib/utils";
+import type { Booking, BookingStatus, Conversation } from "@/lib/types";
 
 export default function BookingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const [couponCode, setCouponCode] = useState("");
+  const [message, setMessage] = useState("");
 
   const q = useQuery({
     queryKey: ["booking", id],
@@ -47,11 +58,38 @@ export default function BookingDetailPage() {
 
   const payM = useMutation({
     mutationFn: () =>
-      api.post(`/payments/initiate`, { bookingId: id }).then((r) => r.data),
+      api
+        .post(`/payments/initiate`, {
+          bookingId: id,
+          method: "VNPAY",
+          couponCode: couponCode.trim() || undefined,
+        })
+        .then((r) => r.data),
     onSuccess: (data) => {
       if (data.gatewayUrl) {
         window.location.href = data.gatewayUrl;
       }
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err)),
+  });
+
+  const chatQ = useQuery({
+    queryKey: ["booking-chat", id],
+    enabled: q.data?.status === "PENDING_HOST_APPROVAL",
+    queryFn: () =>
+      api
+        .get<Conversation>(`/chat/conversation/booking/${id}`)
+        .then((r) => r.data),
+  });
+
+  const sendMessageM = useMutation({
+    mutationFn: (content: string) =>
+      api
+        .post(`/chat/conversation/${chatQ.data?.id}/messages`, { content })
+        .then((r) => r.data),
+    onSuccess: () => {
+      setMessage("");
+      qc.invalidateQueries({ queryKey: ["booking-chat", id] });
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
   });
@@ -72,8 +110,8 @@ export default function BookingDetailPage() {
   const b = q.data;
   const nights = diffNights(b.checkIn, b.checkOut);
   const canCancel: BookingStatus[] = [
+    "PENDING_HOST_APPROVAL",
     "PENDING_PAYMENT",
-    "PENDING_APPROVAL",
     "CONFIRMED",
   ];
   const canPay = b.status === "PENDING_PAYMENT";
@@ -138,7 +176,7 @@ export default function BookingDetailPage() {
                 <InfoRow
                   icon={<Users className="h-4 w-4" />}
                   label="Khách"
-                  value={`${b.adults ?? 1} ngườ i lớn${b.children ? `, ${b.children} trẻ em` : ""}`}
+                  value={`${b.adults ?? 1} người lớn${b.children ? `, ${b.children} trẻ em` : ""}`}
                 />
                 <InfoRow
                   icon={<BedDouble className="h-4 w-4" />}
@@ -163,8 +201,81 @@ export default function BookingDetailPage() {
                   {b.rejectedReason}
                 </div>
               )}
+              {b.status === "PENDING_HOST_APPROVAL" &&
+                b.approvalDeadline && (
+                  <div className="rounded-xl bg-violet-50 p-3 text-sm text-violet-700">
+                    <span className="font-medium">Hạn duyệt:</span>{" "}
+                    {formatDateTime(b.approvalDeadline)}
+                  </div>
+                )}
+              {b.status === "PENDING_PAYMENT" && b.paymentDeadline && (
+                <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">
+                  <span className="font-medium">Hạn thanh toán:</span>{" "}
+                  {formatDateTime(b.paymentDeadline)}
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {b.status === "PENDING_HOST_APPROVAL" && (
+            <Card>
+              <CardContent className="p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-brand-600" />
+                  <h2 className="text-lg font-bold text-slate-900">
+                    Trao đổi với admin
+                  </h2>
+                </div>
+                <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl bg-slate-50 p-3">
+                  {chatQ.isLoading ? (
+                    <p className="text-sm text-slate-500">Đang tải chat...</p>
+                  ) : !chatQ.data?.messages?.length ? (
+                    <p className="text-sm text-slate-500">
+                      Chưa có tin nhắn nào cho yêu cầu này.
+                    </p>
+                  ) : (
+                    chatQ.data.messages.map((m) => {
+                      const mine = m.senderId === user?.id;
+                      return (
+                        <div
+                          key={m.id}
+                          className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${
+                              mine
+                                ? "bg-brand-600 text-white"
+                                : "bg-white text-slate-700 ring-1 ring-slate-200"
+                            }`}
+                          >
+                            {m.content}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Nhập tin nhắn..."
+                    className="h-10 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-500"
+                  />
+                  <Button
+                    onClick={() => {
+                      const content = message.trim();
+                      if (content) sendMessageM.mutate(content);
+                    }}
+                    disabled={!chatQ.data?.id || chatQ.isLoading}
+                    loading={sendMessageM.isPending}
+                  >
+                    <Send className="h-4 w-4" /> Gửi
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div>
@@ -200,13 +311,21 @@ export default function BookingDetailPage() {
 
               <div className="flex flex-col gap-2">
                 {canPay && (
-                  <Button
-                    className="w-full"
-                    onClick={() => payM.mutate()}
-                    loading={payM.isPending}
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" /> Thanh toán ngay
-                  </Button>
+                  <div className="space-y-2">
+                    <input
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      placeholder="Mã giảm giá"
+                      className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-500"
+                    />
+                    <Button
+                      className="w-full"
+                      onClick={() => payM.mutate()}
+                      loading={payM.isPending}
+                    >
+                      <CreditCard className="mr-2 h-4 w-4" /> Thanh toán ngay
+                    </Button>
+                  </div>
                 )}
                 {canCancel.includes(b.status) && (
                   <Button

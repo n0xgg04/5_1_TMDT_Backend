@@ -1,8 +1,8 @@
 import { Controller, Post, Get, Body, Param, Query, Req } from "@nestjs/common";
 import { Request } from "express";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
-import { IsString, IsEnum } from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
+import { IsString, IsEnum, IsOptional } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { PaymentMethod } from "@prisma/client";
 import { PaymentsService } from "./payments.service";
 import { StripeService } from "./stripe.service";
@@ -17,6 +17,11 @@ class InitiatePaymentDto {
   @ApiProperty({ enum: PaymentMethod })
   @IsEnum(PaymentMethod)
   method!: PaymentMethod;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
 }
 
 class ConfirmStripeSetupDto {
@@ -37,6 +42,11 @@ class CreateStripePaymentIntentDto {
   @ApiProperty()
   @IsString()
   paymentMethodId!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
 }
 
 @ApiTags("Payments")
@@ -64,6 +74,8 @@ export class PaymentsController {
       user.id,
       dto.method,
       ipAddr,
+      undefined,
+      dto.couponCode,
     );
   }
 
@@ -108,6 +120,7 @@ export class PaymentsController {
       dto.bookingId,
       user.id,
       dto.paymentMethodId,
+      dto.couponCode,
     );
   }
 

@@ -325,88 +325,14 @@ function BookingInner() {
           children,
           guestNotes: otherRequests || undefined,
           specialRequests: selectedRequests.join(", ") || undefined,
-          couponCode:
-            selectedCoupon?.coupon.code || appliedManualCode || undefined,
-          paymentMethodId: selectedMethodId || undefined,
-          payMode,
         })
         .then((r) => r.data),
-    onSuccess: async (booking) => {
-      toast.success("Tạo đơn thành công", `Mã đơn: ${booking.bookingCode}`);
-      try {
-        if (payMode === "BANK_TRANSFER") {
-          setQrBookingId(booking.id);
-          setShowQrModal(true);
-          setQrCountdown(30);
-          return;
-        }
-        if (payMode === "CASH") {
-          toast.info(
-            "Đơn đã được tạo",
-            "Vui lòng thanh toán khi nhận phòng. Đơn đang chờ duyệt.",
-          );
-          router.push("/my-bookings");
-          return;
-        }
-
-        const selectedMethod = userMethodsQ.data?.find(
-          (m) => m.id === selectedMethodId,
-        );
-        const methodType = selectedMethod?.type ?? "VNPAY";
-
-        if (methodType === "VISA") {
-          const { clientSecret } = await api
-            .post("/payments/stripe/payment-intent", {
-              bookingId: booking.id,
-              paymentMethodId: selectedMethodId,
-            })
-            .then((r) => r.data);
-
-          const stripe = await loadStripe(
-            process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "",
-          );
-          if (!stripe) {
-            throw new Error("Stripe chưa sẵn sàng");
-          }
-
-          const result = await stripe.confirmCardPayment(clientSecret);
-
-          if (result.error) {
-            throw new Error(result.error.message ?? "Thanh toán thất bại");
-          }
-
-          await api.post("/payments/stripe/confirm-payment", {
-            paymentIntentId: result.paymentIntent.id,
-          });
-
-          toast.success(
-            "Thanh toán thành công",
-            "Đơn đặt phòng đã được xác nhận",
-          );
-          router.push("/my-bookings");
-          return;
-        }
-
-        const payRes = await api
-          .post("/payments/initiate", {
-            bookingId: booking.id,
-            method: methodType,
-            paymentType: payMode,
-          })
-          .then((r) => r.data);
-        if (payRes.gatewayUrl) {
-          toast.info("Đang chuyển sang cổng thanh toán…");
-          window.location.href = payRes.gatewayUrl;
-          return;
-        }
-        router.push("/my-bookings");
-      } catch (e) {
-        toast.warning(
-          "Không tạo được phiên thanh toán",
-          "Vui lòng thử lại trong mục Đơn của tôi.",
-        );
-        router.push("/my-bookings");
-      }
+    onSuccess: (booking) => {
+      toast.success(
+        "Đã gửi yêu cầu đặt chỗ",
+        `Mã đơn: ${booking.bookingCode}. Vui lòng chờ duyệt trong 24 giờ.`,
+      );
+      router.push(`/my-bookings/${booking.id}`);
     },
     onError: (err) =>
       toast.error("Đặt phòng thất bại", getApiErrorMessage(err)),
@@ -441,9 +367,9 @@ function BookingInner() {
   return (
     <main className="container-page py-8">
       <div className="mb-6 flex items-center gap-2 text-sm text-slate-500">
-        <span className="font-medium text-brand-600">1. Review</span>
+        <span className="font-medium text-brand-600">1. Gửi yêu cầu</span>
         <ArrowRight className="h-3.5 w-3.5" />
-        <span className="font-bold text-slate-900">2. Pay</span>
+        <span className="font-bold text-slate-900">2. Chờ duyệt</span>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -552,108 +478,18 @@ function BookingInner() {
           <Card>
             <CardContent className="p-5">
               <h2 className="text-lg font-bold text-slate-900">
-                Phương thức thanh toán
+                Quy trình xét duyệt
               </h2>
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <PayOption
-                  active={payMode === "FULL"}
-                  onClick={() => setPayMode("FULL")}
-                  icon={<CreditCard className="h-5 w-5" />}
-                  title="Thanh toán ngay"
-                  desc="Trả toàn bộ"
-                />
-                <PayOption
-                  active={payMode === "BANK_TRANSFER"}
-                  onClick={() => setPayMode("BANK_TRANSFER")}
-                  icon={<Building2 className="h-5 w-5" />}
-                  title="Chuyển khoản"
-                  desc="Quét mã QR"
-                />
-                <PayOption
-                  active={payMode === "CASH"}
-                  onClick={() => setPayMode("CASH")}
-                  icon={<Banknote className="h-5 w-5" />}
-                  title="Tại quầy"
-                  desc="Thanh toán khi nhận phòng"
-                />
+              <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
+                <p className="font-semibold text-sky-900">
+                  Bạn chưa cần thanh toán ở bước này
+                </p>
+                <p className="mt-1">
+                  Admin sẽ kiểm tra phòng và duyệt yêu cầu trong 24 giờ. Khi
+                  được duyệt, hệ thống sẽ gửi thông báo và email để bạn thanh
+                  toán trong thời hạn hiển thị trên đơn.
+                </p>
               </div>
-
-              {payMode === "FULL" && (
-                <div className="mt-4 space-y-3">
-                  <p className="text-sm font-medium text-slate-700">
-                    Chọn phương thức
-                  </p>
-                  {savedMethods.length === 0 && (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
-                      Bạn chưa có phương thức thanh toán.
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => router.push("/profile")}
-                      >
-                        <Plus className="h-3.5 w-3.5" /> Thêm ngay
-                      </Button>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {savedMethods.map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => setSelectedMethodId(m.id)}
-                        className={cn(
-                          "flex items-center gap-3 rounded-xl border p-3 text-left transition-all",
-                          selectedMethodId === m.id
-                            ? "border-brand-500 bg-brand-50 ring-2 ring-brand-200"
-                            : "border-slate-200 bg-white hover:border-slate-300",
-                        )}
-                      >
-                        <CreditCard className="h-5 w-5 text-slate-400" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-900">
-                            {m.label}
-                          </p>
-                          <p className="text-xs text-slate-500">{m.type}</p>
-                        </div>
-                        {m.isDefault && (
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-                            Mặc định
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => router.push("/profile")}
-                  >
-                    <Plus className="mr-1 h-4 w-4" /> Thêm phương thức thanh
-                    toán
-                  </Button>
-                </div>
-              )}
-
-              {payMode === "BANK_TRANSFER" && (
-                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                  <p className="font-semibold text-amber-900">
-                    Thanh toán qua chuyển khoản
-                  </p>
-                  <p className="mt-1">
-                    Sau khi đặt phòng, bạn sẽ được chuyển đến mã QR để thanh
-                    toán.
-                  </p>
-                </div>
-              )}
-
-              {payMode === "CASH" && (
-                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                  <p className="font-semibold">Thanh toán khi nhận phòng</p>
-                  <p className="mt-1">
-                    Bạn sẽ thanh toán toàn bộ {formatCurrency(finalTotal)} tại
-                    quầy lễ tân. Đơn sẽ được staff duyệt sau khi bạn đến.
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
@@ -735,121 +571,19 @@ function BookingInner() {
                   label={`Phòng × ${nights} đêm`}
                   value={formatCurrency(total)}
                 />
-                {discount > 0 && (
-                  <Row
-                    label={`Giảm giá (${selectedCoupon?.coupon.code})`}
-                    value={`-${formatCurrency(discount)}`}
-                  />
-                )}
-                <Row label="Thuế VAT (10%)" value={formatCurrency(vat)} />
-                {insurance && (
-                  <Row label="Bảo hiểm du lịch" value={formatCurrency(43500)} />
-                )}
                 <div className="border-t border-slate-100 pt-2">
                   <Row
                     bold
-                    label="Tổng cộng"
-                    value={formatCurrency(finalTotal)}
+                    label="Giá dự kiến"
+                    value={formatCurrency(total)}
                   />
                 </div>
               </div>
 
-              <div className="mt-4">
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Áp dụng ưu đãi
-                </label>
-
-                {discount > 0 ? (
-                  <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <Ticket className="h-4 w-4 text-emerald-600" />
-                      <span className="text-sm font-medium text-emerald-800">
-                        {selectedCoupon?.coupon.code ?? appliedManualCode}
-                      </span>
-                      <span className="text-xs text-emerald-600">
-                        -{formatCurrency(discount)}
-                      </span>
-                    </div>
-                    <button
-                      onClick={clearCoupon}
-                      className="rounded p-1 text-emerald-600 hover:bg-emerald-100"
-                      title="Bỏ mã"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Nhập mã giảm giá"
-                        value={manualCouponCode}
-                        onChange={(e) => {
-                          setManualCouponCode(e.target.value);
-                          setCouponError(null);
-                        }}
-                        className="flex-1"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={
-                          !manualCouponCode.trim() ||
-                          applyManualCoupon.isPending ||
-                          total <= 0
-                        }
-                        onClick={() =>
-                          applyManualCoupon.mutate(manualCouponCode)
-                        }
-                      >
-                        {applyManualCoupon.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          "Áp dụng"
-                        )}
-                      </Button>
-                    </div>
-                    {couponError && (
-                      <p className="mt-1 text-xs text-rose-500">
-                        {couponError}
-                      </p>
-                    )}
-
-                    {availableCoupons.length > 0 && (
-                      <div className="mt-3">
-                        <p className="mb-1 text-xs text-slate-500">
-                          Hoặc chọn từ mã đã lưu
-                        </p>
-                        <select
-                          value={selectedCoupon?.id ?? ""}
-                          onChange={(e) => {
-                            const c = availableCoupons.find(
-                              (x) => x.id === e.target.value,
-                            );
-                            if (c) applyCoupon.mutate(c);
-                            else clearCoupon();
-                          }}
-                          disabled={applyCoupon.isPending}
-                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 disabled:opacity-50"
-                        >
-                          <option value="">Chọn mã giảm giá</option>
-                          {availableCoupons.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.coupon.code} —{" "}
-                              {c.coupon.type === "percentage"
-                                ? `Giảm ${c.coupon.value}%`
-                                : `Giảm ${formatCurrency(Number(c.coupon.value))}`}
-                              {c.coupon.minAmount
-                                ? ` (tối thiểu ${formatCurrency(Number(c.coupon.minAmount))})`
-                                : ""}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+              <p className="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                Mã giảm giá và phương thức thanh toán sẽ được chọn sau khi yêu
+                cầu đặt chỗ được duyệt.
+              </p>
 
               <Button
                 size="lg"
@@ -861,12 +595,11 @@ function BookingInner() {
                   !contactName ||
                   !contactPhone ||
                   !contactEmail ||
-                  !guestName ||
-                  (payMode === "FULL" && !selectedMethodId)
+                  !guestName
                 }
                 onClick={() => create.mutate()}
               >
-                <CheckCircle2 className="h-4 w-4" /> Đặt phòng
+                <CheckCircle2 className="h-4 w-4" /> Gửi yêu cầu đặt chỗ
               </Button>
               <p className="mt-2 text-xs text-slate-500 text-center">
                 Bằng việc tiếp tục, bạn đồng ý với Điều khoản & Chính sách bảo

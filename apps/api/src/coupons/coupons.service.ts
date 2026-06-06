@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
+import { PaymentStatus } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { CreateCouponDto, ApplyCouponDto } from "./coupons.dto";
 
@@ -91,6 +92,87 @@ export class CouponsService {
       where: { code: code.toUpperCase() },
       data: { usageCount: { increment: 1 } },
     });
+  }
+
+  async reserveCouponForUser(userId: string, code: string, amount: number) {
+    const normalized = code.toUpperCase();
+    const couponResult = await this.applyCoupon({ code: normalized, amount });
+    await this.incrementUsage(normalized);
+
+    const coupon = await this.prisma.coupon.findUnique({
+      where: { code: normalized },
+    });
+    if (coupon) {
+      await this.prisma.userCoupon.upsert({
+        where: { userId_couponId: { userId, couponId: coupon.id } },
+        update: { isUsed: true, usedAt: new Date() },
+        create: {
+          userId,
+          couponId: coupon.id,
+          isUsed: true,
+          usedAt: new Date(),
+        },
+      });
+    }
+
+    return couponResult;
+  }
+
+  async releaseReservationForBooking(booking: {
+    id: string;
+    customerId: string;
+    couponCode: string | null;
+    totalAmount: unknown;
+    discountAmount?: unknown;
+    payment?: { status: PaymentStatus } | null;
+  }) {
+    if (
+      !booking.couponCode ||
+      booking.payment?.status === PaymentStatus.COMPLETED
+    ) {
+      return;
+    }
+
+    const coupon = await this.prisma.coupon.findUnique({
+      where: { code: booking.couponCode.toUpperCase() },
+    });
+    if (!coupon) return;
+
+    if (coupon.usageCount > 0) {
+      await this.prisma.coupon.update({
+        where: { id: coupon.id },
+        data: { usageCount: { decrement: 1 } },
+      });
+    }
+
+    const discountAmount = Number(booking.discountAmount ?? 0);
+    await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        couponCode: null,
+        discountAmount: null,
+        totalAmount:
+          discountAmount > 0
+            ? Number(booking.totalAmount) + discountAmount
+            : Number(booking.totalAmount),
+      },
+    });
+
+    const completedUsage = await this.prisma.booking.count({
+      where: {
+        id: { not: booking.id },
+        customerId: booking.customerId,
+        couponCode: coupon.code,
+        payment: { is: { status: PaymentStatus.COMPLETED } },
+      },
+    });
+
+    if (completedUsage === 0) {
+      await this.prisma.userCoupon.updateMany({
+        where: { userId: booking.customerId, couponId: coupon.id },
+        data: { isUsed: false, usedAt: null },
+      });
+    }
   }
 
   async getMyCoupons(userId: string) {

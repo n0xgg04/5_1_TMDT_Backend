@@ -228,11 +228,28 @@ export class SearchService {
     checkIn: Date,
     checkOut: Date,
   ): Promise<string[]> {
+    const now = new Date();
     const conflicting = await this.prisma.booking.findMany({
       where: {
-        status: {
-          in: ["PENDING_PAYMENT", "PAYING", "CONFIRMED", "CHECKED_IN"],
-        },
+        OR: [
+          {
+            status: "PENDING_HOST_APPROVAL",
+            approvalDeadline: { gt: now },
+          },
+          {
+            status: {
+              in: [
+                "PENDING_APPROVAL",
+                "CONFIRMED",
+                "CHECKED_IN",
+              ],
+            },
+          },
+          {
+            status: { in: ["PENDING_PAYMENT", "PAYING"] },
+            paymentDeadline: { gt: now },
+          },
+        ],
         AND: [{ checkIn: { lt: checkOut } }, { checkOut: { gt: checkIn } }],
       },
       select: { roomId: true },

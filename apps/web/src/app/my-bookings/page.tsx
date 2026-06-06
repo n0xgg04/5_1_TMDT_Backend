@@ -27,15 +27,21 @@ import { Modal } from "@/components/ui/modal";
 import { BookingStatusBadge, bookingStatusLabel } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { toast } from "@/lib/toast";
-import { formatCurrency, formatDate, diffNights } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  diffNights,
+} from "@/lib/utils";
 import type { Booking, BookingStatus } from "@/lib/types";
 
 const STATUSES:
   | { value: ""; label: string }[]
   | { value: string; label: string }[] = [
   { value: "", label: "Tất cả" },
+  { value: "PENDING_HOST_APPROVAL", label: "Chờ duyệt yêu cầu" },
   { value: "PENDING_PAYMENT", label: "Chờ thanh toán" },
-  { value: "PENDING_APPROVAL", label: "Chờ duyệt" },
+  { value: "PENDING_APPROVAL", label: "Chờ duyệt biên lai" },
   { value: "CONFIRMED", label: "Đã xác nhận" },
   { value: "CHECKED_IN", label: "Đang lưu trú" },
   { value: "CHECKED_OUT", label: "Đã hoàn thành" },
@@ -81,9 +87,19 @@ export default function MyBookingsPage() {
   });
 
   const payM = useMutation({
-    mutationFn: (bookingId: string) =>
+    mutationFn: ({
+      bookingId,
+      couponCode,
+    }: {
+      bookingId: string;
+      couponCode?: string;
+    }) =>
       api
-        .post("/payments/initiate", { bookingId, method: "VNPAY" })
+        .post("/payments/initiate", {
+          bookingId,
+          method: "VNPAY",
+          couponCode,
+        })
         .then((r) => r.data),
     onSuccess: (data) => {
       if (data.gatewayUrl) window.location.href = data.gatewayUrl;
@@ -210,7 +226,9 @@ export default function MyBookingsPage() {
               key={b.id}
               booking={b}
               onCancel={() => setCancelTarget(b)}
-              onPay={() => payM.mutate(b.id)}
+              onPay={(couponCode) =>
+                payM.mutate({ bookingId: b.id, couponCode })
+              }
               paying={payM.isPending}
               onUpload={(id, url) => uploadM.mutate({ id, url })}
               uploading={uploadM.isPending}
@@ -388,7 +406,7 @@ function BookingItem({
 }: {
   booking: Booking;
   onCancel: () => void;
-  onPay: () => void;
+  onPay: (couponCode?: string) => void;
   paying: boolean;
   onUpload: (id: string, url: string) => void;
   uploading: boolean;
@@ -397,8 +415,8 @@ function BookingItem({
   const router = useRouter();
   const nights = diffNights(booking.checkIn, booking.checkOut);
   const canCancel: BookingStatus[] = [
+    "PENDING_HOST_APPROVAL",
     "PENDING_PAYMENT",
-    "PENDING_APPROVAL",
     "CONFIRMED",
   ];
   const canPay: BookingStatus[] = ["PENDING_PAYMENT"];
@@ -406,6 +424,7 @@ function BookingItem({
   const canReview = booking.status === "CHECKED_OUT" && !booking.review;
   const [receiptUrl, setReceiptUrl] = useState("");
   const [showUpload, setShowUpload] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
 
   const fallbackImg =
     "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&auto=format&fit=crop&q=80";
@@ -444,10 +463,18 @@ function BookingItem({
                 {booking.checkOutTime ? `(${booking.checkOutTime})` : ""} (
                 {nights} đêm)
               </span>
-              {booking.status === "PENDING_PAYMENT" && (
+              {booking.status === "PENDING_HOST_APPROVAL" &&
+                booking.approvalDeadline && (
+                  <span className="inline-flex items-center gap-1.5 text-violet-700">
+                    <Clock className="h-4 w-4" /> Hạn duyệt:{" "}
+                    {formatDateTime(booking.approvalDeadline)}
+                  </span>
+                )}
+              {booking.status === "PENDING_PAYMENT" &&
+                booking.paymentDeadline && (
                 <span className="inline-flex items-center gap-1.5 text-amber-700">
                   <Clock className="h-4 w-4" /> Hạn thanh toán:{" "}
-                  {formatDate(booking.paymentDeadline)}
+                  {formatDateTime(booking.paymentDeadline)}
                 </span>
               )}
             </div>
@@ -463,14 +490,17 @@ function BookingItem({
             )}
             {canUpload.includes(booking.status) && !showUpload && (
               <button
-                onClick={() => setShowUpload(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowUpload(true);
+                }}
                 className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline"
               >
                 <Receipt className="h-3.5 w-3.5" /> Upload biên lai chuyển khoản
               </button>
             )}
             {showUpload && (
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2 flex gap-2" onClick={(e) => e.stopPropagation()}>
                 <input
                   type="text"
                   placeholder="Dán link ảnh biên lai"
@@ -512,11 +542,26 @@ function BookingItem({
               {booking.payment.paymentType})
             </p>
           )}
-          <div className="flex gap-2">
+          <div
+            className="flex flex-col items-end gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
             {canPay.includes(booking.status) && (
-              <Button size="sm" onClick={onPay} loading={paying}>
-                <CreditCard className="h-4 w-4" /> Thanh toán
-              </Button>
+              <div className="flex flex-col items-end gap-2">
+                <input
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  placeholder="Mã giảm giá"
+                  className="h-8 w-36 rounded-lg border border-slate-200 px-2 text-xs outline-none focus:border-brand-500"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => onPay(couponCode.trim() || undefined)}
+                  loading={paying}
+                >
+                  <CreditCard className="h-4 w-4" /> Thanh toán
+                </Button>
+              </div>
             )}
             {canCancel.includes(booking.status) && (
               <Button size="sm" variant="outline" onClick={onCancel}>

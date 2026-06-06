@@ -9,8 +9,8 @@ import { BookingsService } from "./bookings.service";
  *
  * Handlers:
  *  - payment.success → confirm booking + fire booking.confirmed
- *  - payment.failed  → expire booking
- *  - booking.confirmed / .cancelled / .expired / checkout.completed
+ *  - payment.failed  → release coupon and return to payment window if valid
+ *  - booking lifecycle events / checkout.completed
  *    → send notification email via Resend
  */
 @Injectable()
@@ -32,8 +32,8 @@ export class BookingEventHandlers implements OnModuleInit {
 
     this.events.on("payment.failed", async (p) => {
       const bookingId = p.bookingId as string;
-      this.logger.log(`Saga: payment.failed → expire booking ${bookingId}`);
-      await this.bookings.expireBooking(bookingId);
+      this.logger.log(`Saga: payment.failed → reopen payment ${bookingId}`);
+      await this.bookings.handlePaymentFailed(bookingId);
     });
 
     this.events.on("booking.confirmed", (p) =>
@@ -43,11 +43,41 @@ export class BookingEventHandlers implements OnModuleInit {
       }),
     );
 
+    this.events.on("booking.request.approved", (p) =>
+      this.notifications.send({
+        type: "booking.request.approved",
+        bookingId: p.bookingId as string,
+        paymentDeadline: p.paymentDeadline as Date | string | undefined,
+      }),
+    );
+
+    this.events.on("booking.request.rejected", (p) =>
+      this.notifications.send({
+        type: "booking.request.rejected",
+        bookingId: p.bookingId as string,
+        reason: p.reason as string | undefined,
+      }),
+    );
+
     this.events.on("booking.cancelled", (p) =>
       this.notifications.send({
         type: "booking.cancelled",
         bookingId: p.bookingId as string,
         reason: p.reason as string | undefined,
+      }),
+    );
+
+    this.events.on("booking.approval.expired", (p) =>
+      this.notifications.send({
+        type: "booking.approval.expired",
+        bookingId: p.bookingId as string,
+      }),
+    );
+
+    this.events.on("booking.payment.expired", (p) =>
+      this.notifications.send({
+        type: "booking.payment.expired",
+        bookingId: p.bookingId as string,
       }),
     );
 

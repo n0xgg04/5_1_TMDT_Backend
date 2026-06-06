@@ -2,7 +2,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { DollarSign, TrendingUp, BedDouble, CheckCircle2 } from "lucide-react";
+import {
+  DollarSign,
+  TrendingUp,
+  BedDouble,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+} from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -64,9 +71,26 @@ export default function AdminDashboard() {
   const confirmed = Number(
     summary.data?.CONFIRMED ?? summary.data?.confirmed ?? 0,
   );
+  const pendingHostApproval = Number(summary.data?.PENDING_HOST_APPROVAL ?? 0);
+  const pendingPayment = Number(summary.data?.PENDING_PAYMENT ?? 0);
+  const expiringSoon = Number(
+    summary.data?.PENDING_HOST_APPROVAL_EXPIRING_SOON ?? 0,
+  );
   const checkedIn = Number(
     summary.data?.CHECKED_IN ?? summary.data?.checkedIn ?? 0,
   );
+  const statusLabels: Record<string, string> = {
+    PENDING_HOST_APPROVAL: "Chờ duyệt yêu cầu",
+    PENDING_PAYMENT: "Chờ thanh toán",
+    PAYING: "Đang thanh toán",
+    PENDING_APPROVAL: "Chờ duyệt biên lai",
+    CONFIRMED: "Đã xác nhận",
+    CHECKED_IN: "Đang lưu trú",
+    CHECKED_OUT: "Đã trả phòng",
+    CANCELLED: "Đã hủy",
+    REJECTED: "Bị từ chối",
+    EXPIRED: "Hết hạn",
+  };
 
   return (
     <div>
@@ -93,7 +117,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Stat
           icon={<DollarSign className="h-5 w-5" />}
           label="Doanh thu"
@@ -109,6 +133,20 @@ export default function AdminDashboard() {
           loading={occupancy.isLoading}
         />
         <Stat
+          icon={<Clock className="h-5 w-5" />}
+          label="Chờ duyệt yêu cầu"
+          value={String(pendingHostApproval)}
+          tone="violet"
+          loading={summary.isLoading}
+        />
+        <Stat
+          icon={<CreditCard className="h-5 w-5" />}
+          label="Chờ thanh toán"
+          value={String(pendingPayment)}
+          tone="amber"
+          loading={summary.isLoading}
+        />
+        <Stat
           icon={<CheckCircle2 className="h-5 w-5" />}
           label="Đơn xác nhận"
           value={String(confirmed)}
@@ -117,9 +155,9 @@ export default function AdminDashboard() {
         />
         <Stat
           icon={<BedDouble className="h-5 w-5" />}
-          label="Đang lưu trú"
-          value={String(checkedIn)}
-          tone="violet"
+          label="Sắp hết hạn duyệt"
+          value={String(expiringSoon)}
+          tone="rose"
           loading={summary.isLoading}
         />
       </div>
@@ -184,8 +222,10 @@ export default function AdminDashboard() {
                 <BarChart
                   data={
                     summary.data
-                      ? Object.entries(summary.data).map(([k, v]) => ({
-                          status: k,
+                      ? Object.entries(summary.data)
+                          .filter(([k]) => !k.endsWith("_EXPIRING_SOON"))
+                          .map(([k, v]) => ({
+                          status: statusLabels[k] ?? k,
                           count: Number(v),
                         }))
                       : []
@@ -224,7 +264,7 @@ function Stat({
   icon: React.ReactNode;
   label: string;
   value: string;
-  tone: "brand" | "emerald" | "sky" | "violet";
+  tone: "brand" | "emerald" | "sky" | "violet" | "amber" | "rose";
   loading?: boolean;
 }) {
   const tones = {
@@ -232,6 +272,8 @@ function Stat({
     emerald: "from-emerald-500 to-emerald-700",
     sky: "from-sky-500 to-sky-700",
     violet: "from-violet-500 to-violet-700",
+    amber: "from-amber-500 to-amber-700",
+    rose: "from-rose-500 to-rose-700",
   } as const;
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-card">

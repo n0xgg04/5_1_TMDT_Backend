@@ -8,23 +8,23 @@ import {
   Calendar,
   User as UserIcon,
   BedDouble,
-  CreditCard,
-  Receipt,
   Clock,
   MessageSquare,
-  Image as ImageIcon,
+  AlertTriangle,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookingStatusBadge } from "@/components/ui/badge";
+import { BookingStatusBadge, RoomStatusBadge } from "@/components/ui/badge";
 import { toast } from "@/lib/toast";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import type { Booking } from "@/lib/types";
 
 export default function StaffPendingBookingsPage() {
   const qc = useQueryClient();
+  const router = useRouter();
   const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
   const [showRejectInput, setShowRejectInput] = useState<
     Record<string, boolean>
@@ -34,12 +34,14 @@ export default function StaffPendingBookingsPage() {
     queryKey: ["staff-pending-bookings"],
     queryFn: () =>
       api
-        .get<{ items: Booking[]; total: number }>("/bookings/staff/pending")
+        .get<{ items: Booking[]; total: number }>(
+          "/bookings/staff/approval-requests",
+        )
         .then((r) => r.data),
   });
 
   const approve = useMutation({
-    mutationFn: (id: string) => api.post(`/bookings/${id}/approve`, {}),
+    mutationFn: (id: string) => api.post(`/bookings/${id}/approve-request`, {}),
     onSuccess: () => {
       toast.success("Đã duyệt booking");
       qc.invalidateQueries({ queryKey: ["staff-pending-bookings"] });
@@ -49,7 +51,7 @@ export default function StaffPendingBookingsPage() {
 
   const reject = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      api.post(`/bookings/${id}/reject`, { reason }),
+      api.post(`/bookings/${id}/reject-request`, { reason }),
     onSuccess: () => {
       toast.success("Đã từ chối booking");
       qc.invalidateQueries({ queryKey: ["staff-pending-bookings"] });
@@ -57,12 +59,22 @@ export default function StaffPendingBookingsPage() {
     onError: (e) => toast.error("Từ chối thất bại", getApiErrorMessage(e)),
   });
 
+  const openChat = useMutation({
+    mutationFn: (id: string) =>
+      api.post(`/chat/staff/bookings/${id}/conversation`).then((r) => r.data),
+    onSuccess: () => {
+      toast.success("Đã mở hội thoại");
+      router.push("/staff/conversations");
+    },
+    onError: (e) => toast.error("Không mở được chat", getApiErrorMessage(e)),
+  });
+
   return (
     <div>
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Duyệt đặt phòng</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Xem xét và phê duyệt các đơn đặt phòng từ khách hàng
+          Xem xét yêu cầu đặt chỗ trước khi khách được thanh toán
         </p>
       </div>
 
@@ -77,7 +89,7 @@ export default function StaffPendingBookingsPage() {
           <CardContent className="py-12 text-center">
             <CheckCircle className="mx-auto h-10 w-10 text-slate-300" />
             <p className="mt-3 text-sm text-slate-500">
-              Không có đơn nào chờ duyệt
+              Không có yêu cầu nào chờ duyệt
             </p>
           </CardContent>
         </Card>
@@ -102,7 +114,19 @@ export default function StaffPendingBookingsPage() {
                           approve.isPending && approve.variables === b.id
                         }
                       >
-                        <CheckCircle className="h-4 w-4" /> Duyệt
+                        <CheckCircle className="h-4 w-4" /> Duyệt yêu cầu
+                      </Button>
+                    )}
+                    {!showRejectInput[b.id] && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openChat.mutate(b.id)}
+                        loading={
+                          openChat.isPending && openChat.variables === b.id
+                        }
+                      >
+                        <MessageSquare className="h-4 w-4" /> Chat
                       </Button>
                     )}
                     {!showRejectInput[b.id] ? (
@@ -165,7 +189,7 @@ export default function StaffPendingBookingsPage() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <InfoRow
                     icon={<UserIcon className="h-4 w-4" />}
-                    label="Ngườ i lớn"
+                    label="Người lớn"
                     value={`${b.adults ?? 2}`}
                   />
                   <InfoRow
@@ -174,10 +198,29 @@ export default function StaffPendingBookingsPage() {
                     value={`${b.children ?? 0}`}
                   />
                   <InfoRow
-                    icon={<CreditCard className="h-4 w-4" />}
-                    label="Thanh toán"
-                    value={`${b.payment?.method ?? "-"} (${b.payment?.paymentType ?? "FULL"})`}
+                    icon={<Clock className="h-4 w-4" />}
+                    label="Hạn duyệt"
+                    value={
+                      b.approvalDeadline
+                        ? new Date(b.approvalDeadline).toLocaleString("vi-VN")
+                        : "-"
+                    }
                   />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 p-4 text-sm">
+                  <span className="text-slate-500">Trạng thái phòng:</span>
+                  {b.room?.status && <RoomStatusBadge status={b.room.status} />}
+                  {b.hasActiveOverlap && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Có đơn trùng lịch
+                    </span>
+                  )}
+                  {b.conversation && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200">
+                      <MessageSquare className="h-3.5 w-3.5" /> Đã có hội thoại
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
@@ -215,27 +258,6 @@ export default function StaffPendingBookingsPage() {
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
                     <p className="font-medium text-slate-700">Ghi chú:</p>
                     <p className="mt-1 text-slate-600">{b.guestNotes}</p>
-                  </div>
-                )}
-
-                {b.attachments && b.attachments.length > 0 && (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="flex items-center gap-1 text-sm font-medium text-slate-700">
-                      <Receipt className="h-3.5 w-3.5" /> Biên lai chuyển khoản
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                      {b.attachments.map((att) => (
-                        <a
-                          key={att.id}
-                          href={att.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-brand-700 ring-1 ring-slate-200 hover:bg-slate-100"
-                        >
-                          <ImageIcon className="h-3 w-3" /> Xem ảnh
-                        </a>
-                      ))}
-                    </div>
                   </div>
                 )}
 

@@ -39,6 +39,13 @@ export class BookingsController {
     return this.bookingsService.getMyBookings(user.id, +page, +limit, status);
   }
 
+  @Get("staff/approval-requests")
+  @Roles(Role.RECEPTIONIST, Role.ADMIN)
+  @ApiOperation({ summary: "Danh sách yêu cầu đặt chỗ chờ duyệt" })
+  getApprovalRequests(@Query("page") page = 1, @Query("limit") limit = 10) {
+    return this.bookingsService.getApprovalRequests(+page, +limit);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Chi tiết đơn đặt phòng" })
   getBooking(
@@ -81,6 +88,27 @@ export class BookingsController {
     @Body() dto: UploadReceiptDto,
   ) {
     return this.bookingsService.uploadReceipt(id, user.id, dto);
+  }
+
+  @Post(":id/approve-request")
+  @Roles(Role.RECEPTIONIST, Role.ADMIN)
+  @ApiOperation({ summary: "Duyệt yêu cầu đặt chỗ trước thanh toán" })
+  approveRequest(
+    @Param("id") id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.bookingsService.approveRequest(id, user.id);
+  }
+
+  @Post(":id/reject-request")
+  @Roles(Role.RECEPTIONIST, Role.ADMIN)
+  @ApiOperation({ summary: "Từ chối yêu cầu đặt chỗ trước thanh toán" })
+  rejectRequest(
+    @Param("id") id: string,
+    @CurrentUser() user: { id: string },
+    @Body() dto: RejectBookingDto,
+  ) {
+    return this.bookingsService.rejectRequest(id, user.id, dto);
   }
 
   @Get("staff/pending")

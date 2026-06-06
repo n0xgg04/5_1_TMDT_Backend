@@ -36,9 +36,10 @@ export function Badge({
 }
 
 const bookingMap: Record<BookingStatus, { tone: Tone; label: string }> = {
+  PENDING_HOST_APPROVAL: { tone: "violet", label: "Chờ duyệt yêu cầu" },
   PENDING_PAYMENT: { tone: "amber", label: "Chờ thanh toán" },
   PAYING: { tone: "sky", label: "Đang thanh toán" },
-  PENDING_APPROVAL: { tone: "amber", label: "Chờ duyệt" },
+  PENDING_APPROVAL: { tone: "amber", label: "Chờ duyệt biên lai" },
   CONFIRMED: { tone: "emerald", label: "Đã xác nhận" },
   CHECKED_IN: { tone: "violet", label: "Đang lưu trú" },
   CHECKED_OUT: { tone: "slate", label: "Đã trả phòng" },

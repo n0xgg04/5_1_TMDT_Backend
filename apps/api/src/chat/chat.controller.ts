@@ -20,6 +20,15 @@ export class ChatController {
     return this.chatService.getOrCreateConversation(user.id, subject);
   }
 
+  @Get("conversation/booking/:bookingId")
+  @ApiOperation({ summary: "Lấy hoặc tạo conversation theo booking chờ duyệt" })
+  getOrCreateBookingConversation(
+    @Param("bookingId") bookingId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.chatService.getOrCreateBookingConversation(user.id, bookingId);
+  }
+
   @Post("conversation/:id/messages")
   @ApiOperation({ summary: "Gửi tin nhắn" })
   sendMessage(
@@ -42,6 +51,19 @@ export class ChatController {
   @ApiOperation({ summary: "Lấy chi tiết conversation (staff/admin)" })
   getConversation(@Param("id") id: string) {
     return this.chatService.getConversation(id);
+  }
+
+  @Post("staff/bookings/:bookingId/conversation")
+  @Roles(Role.RECEPTIONIST, Role.ADMIN)
+  @ApiOperation({ summary: "Mở chat theo booking đang chờ duyệt" })
+  getOrCreateStaffBookingConversation(
+    @Param("bookingId") bookingId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.chatService.getOrCreateStaffBookingConversation(
+      user.id,
+      bookingId,
+    );
   }
 
   @Post("staff/conversations/:id/assign")

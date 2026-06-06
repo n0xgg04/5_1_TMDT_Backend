@@ -32,7 +32,14 @@ export class RoomsService {
       where: {
         room: { roomTypeId: id },
         status: {
-          in: ["PENDING_PAYMENT", "PAYING", "CONFIRMED", "CHECKED_IN"],
+          in: [
+            "PENDING_HOST_APPROVAL",
+            "PENDING_PAYMENT",
+            "PAYING",
+            "PENDING_APPROVAL",
+            "CONFIRMED",
+            "CHECKED_IN",
+          ],
         },
       },
     });

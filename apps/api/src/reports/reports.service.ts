@@ -115,10 +115,21 @@ export class ReportsService {
       _count: { id: true },
     });
 
-    const result: Record<string, number> = {};
+    const result: Record<string, number> = Object.values(BookingStatus).reduce(
+      (acc, status) => ({ ...acc, [status]: 0 }),
+      {},
+    );
     for (const s of summary) {
       result[s.status] = s._count.id;
     }
+    const soon = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    result.PENDING_HOST_APPROVAL_EXPIRING_SOON =
+      await this.prisma.booking.count({
+        where: {
+          status: BookingStatus.PENDING_HOST_APPROVAL,
+          approvalDeadline: { lte: soon, gt: new Date() },
+        },
+      });
     return result;
   }
 }

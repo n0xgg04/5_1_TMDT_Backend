@@ -17,12 +17,11 @@ import {
   ApproveBookingDto,
   RejectBookingDto,
 } from "./dto/bookings.dto";
-import {
-  BookingStatus,
-  Role,
-  PaymentMethod,
-  PaymentStatus,
-} from "@prisma/client";
+import { BookingStatus, Role, PaymentStatus } from "@prisma/client";
+
+const APPROVAL_TTL_MS = 24 * 60 * 60 * 1000;
+const PAYMENT_TTL_MS = 30 * 60 * 1000;
+const MAX_PAYMENT_TTL_MS = 2 * 60 * 60 * 1000;
 
 @Injectable()
 export class BookingsService {
@@ -60,15 +59,11 @@ export class BookingsService {
       if (!room.roomType.isActive)
         throw new BadRequestException("Loại phòng không còn hoạt động");
 
-      const conflict = await this.prisma.booking.findFirst({
-        where: {
-          roomId: dto.roomId,
-          status: {
-            in: ["PENDING_PAYMENT", "PAYING", "CONFIRMED", "CHECKED_IN"],
-          },
-          AND: [{ checkIn: { lt: checkOut } }, { checkOut: { gt: checkIn } }],
-        },
-      });
+      const conflict = await this.findActiveOverlap(
+        dto.roomId,
+        checkIn,
+        checkOut,
+      );
       if (conflict)
         throw new ConflictException(
           "Phòng đã được đặt trong khoảng thời gian này",
@@ -89,23 +84,7 @@ export class BookingsService {
         totalAmount = flashSaleResult.price as any;
       }
 
-      let discountAmount: number | undefined;
-      let appliedCouponId: string | undefined;
-      if (dto.couponCode) {
-        const couponResult = await this.couponsService.applyCoupon({
-          code: dto.couponCode,
-          amount: Number(totalAmount),
-        });
-        discountAmount = couponResult.discount;
-        totalAmount = couponResult.finalAmount as any;
-        await this.couponsService.incrementUsage(dto.couponCode);
-        const coupon = await this.prisma.coupon.findUnique({
-          where: { code: dto.couponCode.toUpperCase() },
-        });
-        if (coupon) appliedCouponId = coupon.id;
-      }
-
-      const paymentDeadline = new Date(Date.now() + 15 * 60 * 1000);
+      const approvalDeadline = new Date(Date.now() + APPROVAL_TTL_MS);
 
       const booking = await this.prisma.booking.create({
         data: {
@@ -118,36 +97,21 @@ export class BookingsService {
           adults: dto.adults ?? 2,
           children: dto.children ?? 0,
           totalAmount,
-          discountAmount,
-          couponCode: dto.couponCode,
-          paymentDeadline,
+          approvalDeadline,
+          paymentDeadline: null,
           guestNotes: dto.guestNotes,
           specialRequests: dto.specialRequests,
-          status: BookingStatus.PENDING_PAYMENT,
+          status: BookingStatus.PENDING_HOST_APPROVAL,
         },
         include: { room: { include: { roomType: true } } },
       });
 
-      if (appliedCouponId) {
-        await this.prisma.userCoupon.upsert({
-          where: {
-            userId_couponId: { userId: customerId, couponId: appliedCouponId },
-          },
-          update: { isUsed: true, usedAt: new Date() },
-          create: {
-            userId: customerId,
-            couponId: appliedCouponId,
-            isUsed: true,
-            usedAt: new Date(),
-          },
-        });
-      }
-
-      await this.publishOutbox("booking.created", {
+      await this.publishOutbox("booking.request.created", {
         bookingId: booking.id,
         customerId,
         roomId: dto.roomId,
         totalAmount,
+        approvalDeadline,
       });
 
       return booking;
@@ -208,12 +172,14 @@ export class BookingsService {
   async cancelBooking(bookingId: string, userId: string, reason?: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
+      include: { payment: true },
     });
     if (!booking) throw new NotFoundException("Đơn đặt phòng không tồn tại");
     if (booking.customerId !== userId)
       throw new ForbiddenException("Không có quyền hủy đơn này");
 
     const cancellable: BookingStatus[] = [
+      BookingStatus.PENDING_HOST_APPROVAL,
       BookingStatus.PENDING_PAYMENT,
       BookingStatus.PAYING,
       BookingStatus.CONFIRMED,
@@ -221,6 +187,8 @@ export class BookingsService {
     if (!cancellable.includes(booking.status)) {
       throw new BadRequestException("Không thể hủy đơn ở trạng thái này");
     }
+
+    await this.couponsService.releaseReservationForBooking(booking);
 
     const updated = await this.prisma.booking.update({
       where: { id: bookingId },
@@ -243,16 +211,21 @@ export class BookingsService {
     if (!booking) throw new NotFoundException("Đơn không tồn tại");
 
     if (
-      booking.status !== BookingStatus.PENDING_PAYMENT &&
       booking.status !== BookingStatus.PAYING
     ) {
       return booking;
     }
 
-    const updated = await this.prisma.booking.update({
-      where: { id: bookingId },
-      data: { status: BookingStatus.CONFIRMED },
-    });
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: BookingStatus.CONFIRMED },
+      }),
+      this.prisma.room.update({
+        where: { id: booking.roomId },
+        data: { status: "RESERVED" },
+      }),
+    ]);
 
     await this.events.emit("booking.confirmed", {
       bookingId,
@@ -265,8 +238,22 @@ export class BookingsService {
   async expireBooking(bookingId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
+      include: { payment: true },
     });
     if (!booking) return;
+
+    if (booking.status === BookingStatus.PENDING_HOST_APPROVAL) {
+      await this.prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: BookingStatus.EXPIRED },
+      });
+
+      await this.events.emit("booking.approval.expired", {
+        bookingId,
+        customerId: booking.customerId,
+      });
+      return;
+    }
 
     if (
       booking.status !== BookingStatus.PENDING_PAYMENT &&
@@ -275,14 +262,43 @@ export class BookingsService {
       return;
     }
 
+    await this.couponsService.releaseReservationForBooking(booking);
+
     await this.prisma.booking.update({
       where: { id: bookingId },
       data: { status: BookingStatus.EXPIRED },
     });
 
-    await this.events.emit("booking.expired", {
+    await this.events.emit("booking.payment.expired", {
       bookingId,
       customerId: booking.customerId,
+    });
+  }
+
+  async handlePaymentFailed(bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { payment: true },
+    });
+    if (!booking) return;
+
+    await this.couponsService.releaseReservationForBooking(booking);
+
+    if (
+      booking.status !== BookingStatus.PENDING_PAYMENT &&
+      booking.status !== BookingStatus.PAYING
+    ) {
+      return;
+    }
+
+    if (booking.paymentDeadline && new Date() > booking.paymentDeadline) {
+      await this.expireBooking(bookingId);
+      return;
+    }
+
+    await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: BookingStatus.PENDING_PAYMENT },
     });
   }
 
@@ -355,8 +371,18 @@ export class BookingsService {
   async getExpiredBookings() {
     return this.prisma.booking.findMany({
       where: {
-        status: { in: [BookingStatus.PENDING_PAYMENT] },
-        paymentDeadline: { lt: new Date() },
+        OR: [
+          {
+            status: BookingStatus.PENDING_HOST_APPROVAL,
+            approvalDeadline: { lt: new Date() },
+          },
+          {
+            status: {
+              in: [BookingStatus.PENDING_PAYMENT, BookingStatus.PAYING],
+            },
+            paymentDeadline: { lt: new Date() },
+          },
+        ],
       },
     });
   }
@@ -373,6 +399,9 @@ export class BookingsService {
     if (!booking) throw new NotFoundException("Đơn đặt phòng không tồn tại");
     if (booking.customerId !== customerId) {
       throw new ForbiddenException("Không có quyền thao tác");
+    }
+    if (booking.status === BookingStatus.PENDING_HOST_APPROVAL) {
+      throw new BadRequestException("Đơn chưa được duyệt để thanh toán");
     }
     if (booking.status !== BookingStatus.PENDING_PAYMENT) {
       throw new BadRequestException("Đơn không ở trạng thái chờ thanh toán");
@@ -396,6 +425,58 @@ export class BookingsService {
     ]);
 
     return { message: "Đã upload biên lai, chờ staff xác nhận" };
+  }
+
+  async getApprovalRequests(page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+    const where = { status: BookingStatus.PENDING_HOST_APPROVAL };
+    const [items, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          room: { include: { roomType: true, branch: true } },
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+      this.prisma.booking.count({ where }),
+    ]);
+
+    const bookingIds = items.map((b) => b.id);
+    const conversations = await this.prisma.conversation.findMany({
+      where: { bookingId: { in: bookingIds } },
+      include: { messages: { orderBy: { createdAt: "desc" }, take: 1 } },
+    });
+    const conversationByBooking = new Map(
+      conversations.map((c) => [c.bookingId, c]),
+    );
+
+    const decorated = await Promise.all(
+      items.map(async (booking) => ({
+        ...booking,
+        conversation: conversationByBooking.get(booking.id) ?? null,
+        hasActiveOverlap: Boolean(
+          await this.findActiveOverlap(
+            booking.roomId,
+            booking.checkIn,
+            booking.checkOut,
+            booking.id,
+          ),
+        ),
+      })),
+    );
+
+    return { items: decorated, data: decorated, total, page, limit };
   }
 
   async getPendingBookings(page = 1, limit = 10) {
@@ -425,7 +506,86 @@ export class BookingsService {
         where: { status: BookingStatus.PENDING_APPROVAL },
       }),
     ]);
-    return { data: items, total, page, limit };
+    return { items, data: items, total, page, limit };
+  }
+
+  async approveRequest(bookingId: string, staffId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { room: true },
+    });
+    if (!booking) throw new NotFoundException("Đơn không tồn tại");
+    if (booking.status !== BookingStatus.PENDING_HOST_APPROVAL) {
+      throw new BadRequestException("Đơn không ở trạng thái chờ duyệt yêu cầu");
+    }
+    if (booking.approvalDeadline && new Date() > booking.approvalDeadline) {
+      throw new BadRequestException("Yêu cầu đặt phòng đã hết hạn duyệt");
+    }
+
+    const conflict = await this.findActiveOverlap(
+      booking.roomId,
+      booking.checkIn,
+      booking.checkOut,
+      bookingId,
+    );
+    if (conflict) {
+      throw new ConflictException("Phòng đã được đặt trong khoảng thời gian này");
+    }
+
+    const now = new Date();
+    const paymentDeadline = new Date(
+      now.getTime() + Math.min(PAYMENT_TTL_MS, MAX_PAYMENT_TTL_MS),
+    );
+    const updated = await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: BookingStatus.PENDING_PAYMENT,
+        approvedById: staffId,
+        approvedAt: now,
+        paymentDeadline,
+      },
+    });
+
+    await this.events.emit("booking.request.approved", {
+      bookingId,
+      staffId,
+      customerId: booking.customerId,
+      paymentDeadline,
+    });
+
+    return updated;
+  }
+
+  async rejectRequest(
+    bookingId: string,
+    staffId: string,
+    dto: RejectBookingDto,
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+    if (!booking) throw new NotFoundException("Đơn không tồn tại");
+    if (booking.status !== BookingStatus.PENDING_HOST_APPROVAL) {
+      throw new BadRequestException("Đơn không ở trạng thái chờ duyệt yêu cầu");
+    }
+
+    const updated = await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: BookingStatus.REJECTED,
+        approvedById: staffId,
+        rejectedReason: dto.reason,
+      },
+    });
+
+    await this.events.emit("booking.request.rejected", {
+      bookingId,
+      staffId,
+      customerId: booking.customerId,
+      reason: dto.reason,
+    });
+
+    return updated;
   }
 
   async approveBooking(
@@ -466,15 +626,20 @@ export class BookingsService {
           approvedAt: new Date(),
         },
       }),
+      this.prisma.payment.updateMany({
+        where: { bookingId },
+        data: { status: PaymentStatus.COMPLETED, paidAt: new Date() },
+      }),
       this.prisma.room.update({
         where: { id: booking.roomId },
         data: { status: "RESERVED" },
       }),
     ]);
 
-    await this.events.emit("booking.approved", {
+    await this.events.emit("booking.confirmed", {
       bookingId,
       staffId,
+      customerId: booking.customerId,
     });
 
     return updated;
@@ -502,6 +667,8 @@ export class BookingsService {
         rejectedReason: dto.reason,
       },
     });
+
+    await this.couponsService.releaseReservationForBooking(booking);
 
     if (booking.payment?.status === PaymentStatus.COMPLETED) {
       await this.prisma.payment.update({
@@ -538,5 +705,42 @@ export class BookingsService {
       },
     });
     await this.events.emit(eventType as never, payload);
+  }
+
+  private findActiveOverlap(
+    roomId: string,
+    checkIn: Date,
+    checkOut: Date,
+    excludeBookingId?: string,
+  ) {
+    const now = new Date();
+    return this.prisma.booking.findFirst({
+      where: {
+        roomId,
+        ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+        AND: [{ checkIn: { lt: checkOut } }, { checkOut: { gt: checkIn } }],
+        OR: [
+          {
+            status: BookingStatus.PENDING_HOST_APPROVAL,
+            approvalDeadline: { gt: now },
+          },
+          {
+            status: {
+              in: [
+                BookingStatus.PENDING_APPROVAL,
+                BookingStatus.CONFIRMED,
+                BookingStatus.CHECKED_IN,
+              ],
+            },
+          },
+          {
+            status: {
+              in: [BookingStatus.PENDING_PAYMENT, BookingStatus.PAYING],
+            },
+            paymentDeadline: { gt: now },
+          },
+        ],
+      },
+    });
   }
 }

@@ -64,7 +64,13 @@ const ITEMS: NavItem[] = [
   },
   {
     href: "/staff/pending-bookings",
-    label: "Duyệt đặt phòng",
+    label: "Duyệt yêu cầu",
+    icon: ClipboardList,
+    roles: ["RECEPTIONIST", "ADMIN"],
+  },
+  {
+    href: "/staff/receipt-approvals",
+    label: "Duyệt biên lai",
     icon: ClipboardList,
     roles: ["RECEPTIONIST", "ADMIN"],
   },

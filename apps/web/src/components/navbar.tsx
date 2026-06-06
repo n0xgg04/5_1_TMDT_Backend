@@ -14,11 +14,13 @@ import {
   Ticket,
   ChevronDown,
   Heart,
+  Bell,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
 import { api } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
+import type { Notification } from "@/lib/types";
 
 const customerLinks = [
   { href: "/", label: "Trang chủ" },
@@ -31,6 +33,7 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const clear = useAuthStore((s) => s.clear);
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -107,6 +110,7 @@ export function Navbar() {
                   </span>
                 ) : null}
               </Link>
+              <NotificationBell accessToken={accessToken} />
               {user.role === "ADMIN" && (
                 <Link href="/admin/dashboard">
                   <Button variant="outline" size="sm">
@@ -223,6 +227,10 @@ export function Navbar() {
             <div className="border-t border-slate-100 pt-2">
               {user ? (
                 <>
+                  <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-700">
+                    <span>Thông báo</span>
+                    <NotificationBell accessToken={accessToken} />
+                  </div>
                   <Link
                     href="/profile"
                     onClick={() => setOpen(false)}
@@ -257,5 +265,125 @@ export function Navbar() {
         </div>
       )}
     </header>
+  );
+}
+
+function NotificationBell({ accessToken }: { accessToken: string | null }) {
+  const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
+  const ref = useRef<HTMLDivElement>(null);
+
+  const q = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () =>
+      api.get<Notification[]>("/notifications/me").then((r) => r.data),
+    enabled: Boolean(accessToken),
+    refetchInterval: 30_000,
+  });
+
+  const markRead = useMutation({
+    mutationFn: (id: string) =>
+      api.patch(`/notifications/${id}/read`).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken || typeof window === "undefined") return;
+    const baseURL = api.defaults.baseURL;
+    if (!baseURL) return;
+    const stream = new EventSource(
+      `${baseURL}/notifications/stream?access_token=${encodeURIComponent(accessToken)}`,
+    );
+    stream.addEventListener("notification", () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    });
+    stream.onerror = () => {
+      stream.close();
+    };
+    return () => stream.close();
+  }, [accessToken, qc]);
+
+  const notifications = q.data ?? [];
+  const unread = notifications.filter((n) => !n.readAt).length;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+      >
+        <Bell className="h-4 w-4" />
+        {unread > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+            {unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+          <div className="border-b border-slate-100 px-3 py-2">
+            <p className="text-sm font-semibold text-slate-900">Thông báo</p>
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <p className="px-3 py-6 text-center text-sm text-slate-500">
+                Chưa có thông báo
+              </p>
+            ) : (
+              notifications.slice(0, 8).map((n) => {
+                const data = n.templateData ?? {};
+                const title =
+                  n.type === "booking.request.approved"
+                    ? "Yêu cầu đã được duyệt"
+                    : n.type === "booking.request.rejected"
+                      ? "Yêu cầu bị từ chối"
+                      : n.type.includes("expired")
+                        ? "Đơn đã hết hạn"
+                        : "Cập nhật đặt phòng";
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => {
+                      if (!n.readAt) markRead.mutate(n.id);
+                      const bookingId = data.bookingId;
+                      if (typeof bookingId === "string") {
+                        window.location.href = `/my-bookings/${bookingId}`;
+                      }
+                    }}
+                    className={cn(
+                      "block w-full border-b border-slate-100 px-3 py-3 text-left text-sm hover:bg-slate-50",
+                      !n.readAt && "bg-amber-50/50",
+                    )}
+                  >
+                    <p className="font-medium text-slate-900">{title}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {typeof data.bookingCode === "string"
+                        ? `Đơn ${data.bookingCode}`
+                        : n.type}
+                    </p>
+                    {typeof data.paymentDeadline === "string" && (
+                      <p className="mt-1 text-xs text-amber-700">
+                        Hạn thanh toán: {formatDateTime(data.paymentDeadline)}
+                      </p>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
