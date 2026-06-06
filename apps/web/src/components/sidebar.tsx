@@ -14,6 +14,9 @@ import {
   CheckSquare,
   ClipboardList,
   MessageSquare,
+  DollarSign,
+  TicketPercent,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
@@ -37,6 +40,12 @@ const ITEMS: NavItem[] = [
     roles: ["ADMIN"],
   },
   {
+    href: "/admin/bookings",
+    label: "Đặt phòng",
+    icon: BookOpen,
+    roles: ["ADMIN"],
+  },
+  {
     href: "/admin/room-types",
     label: "Loại phòng",
     icon: Tags,
@@ -48,7 +57,19 @@ const ITEMS: NavItem[] = [
     icon: BedDouble,
     roles: ["ADMIN"],
   },
+  {
+    href: "/admin/pricing",
+    label: "Cấu hình giá",
+    icon: DollarSign,
+    roles: ["ADMIN"],
+  },
   { href: "/admin/staff", label: "Nhân viên", icon: Users, roles: ["ADMIN"] },
+  {
+    href: "/admin/coupons",
+    label: "Khuyến mãi",
+    icon: TicketPercent,
+    roles: ["ADMIN"],
+  },
   // Staff
   {
     href: "/staff/room-map",

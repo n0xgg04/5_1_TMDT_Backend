@@ -39,6 +39,27 @@ export class BookingsController {
     return this.bookingsService.getMyBookings(user.id, +page, +limit, status);
   }
 
+  @Get()
+  @Roles(Role.ADMIN, Role.RECEPTIONIST)
+  @ApiOperation({ summary: "Danh sách tất cả đơn đặt phòng (Admin/Staff)" })
+  getAllBookings(
+    @Query("page") page = 1,
+    @Query("limit") limit = 10,
+    @Query("status") status?: BookingStatus,
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+    @Query("search") search?: string,
+  ) {
+    return this.bookingsService.getAllBookings(
+      +page,
+      +limit,
+      status,
+      from,
+      to,
+      search,
+    );
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Chi tiết đơn đặt phòng" })
   getBooking(

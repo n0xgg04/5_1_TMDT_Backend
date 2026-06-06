@@ -156,6 +156,73 @@ export class BookingsService {
     }
   }
 
+  async getAllBookings(
+    page = 1,
+    limit = 10,
+    status?: BookingStatus,
+    from?: string,
+    to?: string,
+    search?: string,
+  ) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+
+    if (status) where.status = status;
+    if (from || to) {
+      where.createdAt = {};
+      if (from) where.createdAt.gte = new Date(from);
+      if (to) {
+        const toDate = new Date(to);
+        toDate.setHours(23, 59, 59, 999);
+        where.createdAt.lte = toDate;
+      }
+    }
+    if (search) {
+      where.OR = [
+        { bookingCode: { contains: search, mode: "insensitive" } },
+        {
+          customer: {
+            OR: [
+              { firstName: { contains: search, mode: "insensitive" } },
+              { lastName: { contains: search, mode: "insensitive" } },
+              { email: { contains: search, mode: "insensitive" } },
+              { phone: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          room: { include: { roomType: true } },
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+          addons: true,
+          payment: true,
+          review: true,
+          approver: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.booking.count({ where }),
+    ]);
+    return { data: items, total, page, limit };
+  }
+
   async getMyBookings(
     customerId: string,
     page = 1,

@@ -1,10 +1,11 @@
-import { Controller, Get, Query } from "@nestjs/common";
+import { Controller, Get, Query, Res } from "@nestjs/common";
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
   ApiQuery,
 } from "@nestjs/swagger";
+import { Response } from "express";
 import { Role } from "@prisma/client";
 import { ReportsService } from "./reports.service";
 import { Roles } from "../common/decorators/roles.decorator";
@@ -25,18 +26,47 @@ export class ReportsController {
     required: false,
     enum: ["day", "week", "month"],
   })
-  getRevenue(
+  @ApiQuery({ name: "format", required: false, enum: ["json", "csv"] })
+  async getRevenue(
     @Query("from") from: string,
     @Query("to") to: string,
     @Query("groupBy") groupBy: "day" | "week" | "month" = "day",
+    @Query("format") format: "json" | "csv" = "json",
+    @Res() res?: Response,
   ) {
-    return this.reportsService.getRevenueReport(from, to, groupBy);
+    if (format === "csv") {
+      const csv = await this.reportsService.exportRevenueCsv(from, to, groupBy);
+      res!.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res!.setHeader(
+        "Content-Disposition",
+        `attachment; filename=revenue-${from}-to-${to}.csv`,
+      );
+      return res!.send(csv);
+    }
+    const result = await this.reportsService.getRevenueReport(from, to, groupBy);
+    return res!.json(result);
   }
 
   @Get("occupancy")
   @ApiOperation({ summary: "Báo cáo tỷ lệ lấp phòng (Admin)" })
-  getOccupancy(@Query("from") from: string, @Query("to") to: string) {
-    return this.reportsService.getOccupancyReport(from, to);
+  @ApiQuery({ name: "format", required: false, enum: ["json", "csv"] })
+  async getOccupancy(
+    @Query("from") from: string,
+    @Query("to") to: string,
+    @Query("format") format: "json" | "csv" = "json",
+    @Res() res?: Response,
+  ) {
+    if (format === "csv") {
+      const csv = await this.reportsService.exportOccupancyCsv(from, to);
+      res!.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res!.setHeader(
+        "Content-Disposition",
+        `attachment; filename=occupancy-${from}-to-${to}.csv`,
+      );
+      return res!.send(csv);
+    }
+    const result = await this.reportsService.getOccupancyReport(from, to);
+    return res!.json(result);
   }
 
   @Get("bookings/summary")

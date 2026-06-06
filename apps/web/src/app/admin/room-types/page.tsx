@@ -12,15 +12,18 @@ import {
   Users,
   Maximize2,
   BedDouble,
+  DollarSign,
 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/lib/toast";
+import { formatCurrency } from "@/lib/utils";
 
 const schema = z.object({
   name: z.string().min(1, "Bắt buộc"),
@@ -44,6 +47,12 @@ interface RoomTypeRow {
   images: string[];
   isActive: boolean;
   _count?: { rooms: number };
+  pricingRules?: {
+    id: string;
+    type: "DEFAULT" | "SEASONAL" | "HOLIDAY";
+    pricePerNight: string;
+    isActive: boolean;
+  }[];
 }
 
 export default function AdminRoomTypesPage() {
@@ -163,6 +172,24 @@ export default function AdminRoomTypesPage() {
                   <BedDouble className="h-3 w-3" /> {rt.bedType}
                 </span>
               </div>
+              {rt.pricingRules && rt.pricingRules.filter((r) => r.isActive).length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <DollarSign className="h-3 w-3 text-brand-600" />
+                  {rt.pricingRules
+                    .filter((r) => r.isActive)
+                    .slice(0, 3)
+                    .map((r) => (
+                      <Badge key={r.id} tone={r.type === "HOLIDAY" ? "rose" : r.type === "SEASONAL" ? "amber" : "slate"} className="text-[10px]">
+                        {r.type === "HOLIDAY" ? "Lễ" : r.type === "SEASONAL" ? "Mùa" : "Cơ bản"}: {formatCurrency(Number(r.pricePerNight))}
+                      </Badge>
+                    ))}
+                  {rt.pricingRules.filter((r) => r.isActive).length > 3 && (
+                    <span className="text-[10px] text-slate-400">
+                      +{rt.pricingRules.filter((r) => r.isActive).length - 3}
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-2">
                 <Button
                   size="sm"
