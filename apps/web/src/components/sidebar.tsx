@@ -14,6 +14,7 @@ import {
   CheckSquare,
   ClipboardList,
   MessageSquare,
+  CalendarDays,
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
@@ -55,6 +56,12 @@ const ITEMS: NavItem[] = [
     label: "Sơ đồ phòng",
     icon: Map,
     roles: ["RECEPTIONIST", "HOUSEKEEPING", "ADMIN"],
+  },
+  {
+    href: "/staff/booking-calendar",
+    label: "Lịch đặt phòng",
+    icon: CalendarDays,
+    roles: ["RECEPTIONIST", "ADMIN"],
   },
   {
     href: "/staff/check-in",

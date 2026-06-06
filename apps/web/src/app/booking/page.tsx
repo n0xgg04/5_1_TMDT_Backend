@@ -32,11 +32,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  BookingConflictDialog,
+  type BookingConflictDialogData,
+} from "@/components/booking/booking-conflict-dialog";
 import { useAuthStore } from "@/lib/auth-store";
 import { toast } from "@/lib/toast";
 import { formatCurrency, formatDate, diffNights, cn } from "@/lib/utils";
 import { loadStripe } from "@stripe/stripe-js";
-import type { UserPaymentMethod, UserCoupon } from "@/lib/types";
+import type {
+  RangeAvailabilityResponse,
+  UserPaymentMethod,
+  UserCoupon,
+} from "@/lib/types";
 
 interface PricingRule {
   id: string;
@@ -150,6 +158,8 @@ function BookingInner() {
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrCountdown, setQrCountdown] = useState(30);
   const [qrBookingId, setQrBookingId] = useState<string | null>(null);
+  const [conflictDialog, setConflictDialog] =
+    useState<BookingConflictDialogData | null>(null);
 
   useEffect(() => {
     if (hydrated && !user) {
@@ -165,6 +175,17 @@ function BookingInner() {
     queryFn: () =>
       api
         .get<RoomTypeDetail>(`/rooms/types/${roomTypeId}/public`)
+        .then((r) => r.data),
+  });
+
+  const rangeAvailabilityQ = useQuery({
+    queryKey: ["booking-range-availability", roomId, checkIn, checkOut],
+    enabled: Boolean(roomId && checkIn && checkOut),
+    queryFn: () =>
+      api
+        .get<RangeAvailabilityResponse>("/availability/check", {
+          params: { roomId, from: checkIn, to: checkOut },
+        })
         .then((r) => r.data),
   });
 
@@ -312,6 +333,28 @@ function BookingInner() {
     setAppliedManualCode("");
   };
 
+  const findOtherHref = `/rooms?checkIn=${checkIn}&checkOut=${checkOut}&guests=${adults + children}`;
+
+  const openConflictDialog = (
+    message?: string,
+    conflicts = rangeAvailabilityQ.data?.conflicts ?? [],
+  ) => {
+    setConflictDialog({
+      title: "Khoảng ngày này chưa thể đặt",
+      message,
+      selectedFrom: checkIn,
+      selectedTo: checkOut,
+      conflicts,
+      findOtherHref,
+    });
+  };
+
+  const isBookingConflictMessage = (message: string) =>
+    message.includes("Phòng đã được đặt") ||
+    message.includes("Ngày trả phòng") ||
+    message.includes("Ngày không hợp lệ") ||
+    message.includes("Khoảng ngày");
+
   const create = useMutation({
     mutationFn: () =>
       api
@@ -334,9 +377,27 @@ function BookingInner() {
       );
       router.push(`/my-bookings/${booking.id}`);
     },
-    onError: (err) =>
-      toast.error("Đặt phòng thất bại", getApiErrorMessage(err)),
+    onError: (err) => {
+      const message = getApiErrorMessage(err);
+      if (isBookingConflictMessage(message)) {
+        openConflictDialog(message);
+        return;
+      }
+      toast.error("Đặt phòng thất bại", message);
+    },
   });
+
+  const submitBookingRequest = () => {
+    if (rangeAvailabilityQ.data && !rangeAvailabilityQ.data.available) {
+      openConflictDialog(undefined, rangeAvailabilityQ.data.conflicts);
+      return;
+    }
+    if (rangeAvailabilityQ.error) {
+      openConflictDialog(getApiErrorMessage(rangeAvailabilityQ.error));
+      return;
+    }
+    create.mutate();
+  };
 
   if (!roomTypeId || !roomId || !checkIn || !checkOut) {
     return (
@@ -585,6 +646,14 @@ function BookingInner() {
                 cầu đặt chỗ được duyệt.
               </p>
 
+              {rangeAvailabilityQ.data &&
+                !rangeAvailabilityQ.data.available && (
+                  <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+                    Khoảng ngày này đã có người đặt hoặc đang được giữ. Vui lòng
+                    chọn lại ngày.
+                  </div>
+                )}
+
               <Button
                 size="lg"
                 className="mt-4 w-full"
@@ -592,12 +661,13 @@ function BookingInner() {
                 disabled={
                   !user ||
                   priceQ.isLoading ||
+                  rangeAvailabilityQ.isLoading ||
                   !contactName ||
                   !contactPhone ||
                   !contactEmail ||
                   !guestName
                 }
-                onClick={() => create.mutate()}
+                onClick={submitBookingRequest}
               >
                 <CheckCircle2 className="h-4 w-4" /> Gửi yêu cầu đặt chỗ
               </Button>
@@ -669,6 +739,18 @@ function BookingInner() {
           </div>
         </div>
       )}
+
+      <BookingConflictDialog
+        open={Boolean(conflictDialog)}
+        data={conflictDialog}
+        onClose={() => setConflictDialog(null)}
+        onChooseDates={() => router.back()}
+        onFindOther={() => {
+          if (conflictDialog?.findOtherHref) {
+            router.push(conflictDialog.findOtherHref);
+          }
+        }}
+      />
     </main>
   );
 }

@@ -3,9 +3,7 @@
 ## Purpose
 
 Định nghĩa quản lý loại phòng, phòng vật lý, chi nhánh, trạng thái phòng, quy tắc giá, tìm kiếm phòng trống, phòng nổi bật, flash sale public và chi tiết loại phòng public.
-
 ## Requirements
-
 ### Requirement: Quản Lý Loại Phòng
 
 Hệ thống PHẢI (SHALL) cho phép admin tạo, cập nhật, vô hiệu hóa mềm và liệt kê loại phòng; receptionist được đọc loại phòng.
@@ -157,7 +155,7 @@ Hệ thống PHẢI (SHALL) tính giá loại phòng bằng pricing rule active 
 
 ### Requirement: Tìm Kiếm Phòng Public
 
-Hệ thống PHẢI (SHALL) cho user ẩn danh tìm phòng vật lý còn trống theo ngày, số khách, tỉnh/thành, loại phòng, khoảng giá, tiện nghi, sao, sort và phân trang.
+Hệ thống PHẢI (SHALL) cho user ẩn danh tìm phòng vật lý còn trống theo ngày, số khách, tỉnh/thành, loại phòng, khoảng giá, tiện nghi, sao, sort và phân trang; kết quả search PHẢI dùng cùng rule availability với calendar và tạo booking.
 
 #### Scenario: Thiếu tham số bắt buộc
 
@@ -185,10 +183,17 @@ Hệ thống PHẢI (SHALL) cho user ẩn danh tìm phòng vật lý còn trốn
 
 #### Scenario: Loại trừ booking trùng lịch
 
-- **CHO** phòng có booking ở `PENDING_PAYMENT`, `PAYING`, `CONFIRMED`, `CHECKED_IN`
+- **CHO** phòng có booking active-hold ở `PENDING_HOST_APPROVAL`, `PENDING_PAYMENT`, `PAYING`, `PENDING_APPROVAL`, `CONFIRMED` hoặc `CHECKED_IN`
 - **VÀ** booking đó overlap khoảng ngày yêu cầu theo điều kiện `checkIn < requestedCheckOut` và `checkOut > requestedCheckIn`
 - **KHI** search chạy
 - **THÌ** phòng đó PHẢI bị loại khỏi kết quả.
+
+#### Scenario: Pending quá hạn không chặn search
+
+- **CHO** phòng có booking `PENDING_HOST_APPROVAL` đã quá `approvalDeadline`
+- **HOẶC** booking `PENDING_PAYMENT` hoặc `PAYING` đã quá `paymentDeadline`
+- **KHI** search chạy cho range overlap booking đó
+- **THÌ** booking quá hạn đó KHÔNG được loại phòng khỏi kết quả.
 
 #### Scenario: Trạng thái phòng được search
 
@@ -274,7 +279,8 @@ Hệ thống PHẢI (SHALL) cho user ẩn danh tìm phòng vật lý còn trốn
 
 - **CHO** cùng bộ tham số search được gọi lại trong 60 giây
 - **KHI** Redis có key `search:<params>`
-- **THÌ** API PHẢI trả JSON response từ cache.
+- **THÌ** API PHẢI trả JSON response từ cache
+- **VÀ** cache key PHẢI thay đổi khi các tham số ngày, khách hoặc loại phòng thay đổi.
 
 ### Requirement: Danh Sách Tỉnh/Thành
 
@@ -357,3 +363,4 @@ Hệ thống PHẢI (SHALL) public review approved của loại phòng.
 - **CHO** loại phòng tồn tại
 - **KHI** gọi `/rooms/types/:id/reviews`
 - **THÌ** API PHẢI trả review approved mới nhất trước và average rating.
+

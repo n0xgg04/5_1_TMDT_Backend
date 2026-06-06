@@ -27,10 +27,20 @@ import { api, getApiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
+import { AvailabilityCalendar } from "@/components/booking/availability-calendar";
+import {
+  BookingConflictDialog,
+  type BookingConflictDialogData,
+} from "@/components/booking/booking-conflict-dialog";
 import { toast } from "@/lib/toast";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
-import type { RoomType, Review, HotelBranch } from "@/lib/types";
+import type {
+  Review,
+  HotelBranch,
+  RoomTypeAvailabilityResponse,
+  RangeAvailabilityResponse,
+} from "@/lib/types";
 
 interface RoomTypeDetail {
   id: string;
@@ -85,6 +95,29 @@ const TAB_LABELS: Record<TabKey, string> = {
   reviews: "Đánh giá",
 };
 
+function toISODate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseISODate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function addDaysISO(date: string, days: number) {
+  const next = parseISODate(date);
+  next.setDate(next.getDate() + days);
+  return toISODate(next);
+}
+
+function defaultStayDates() {
+  const today = toISODate(new Date());
+  return { checkIn: today, checkOut: addDaysISO(today, 1) };
+}
+
 export default function RoomDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -95,12 +128,37 @@ export default function RoomDetailPage() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
+  const [stayDates, setStayDates] = useState(defaultStayDates);
+  const [selectedRoomId, setSelectedRoomId] = useState("");
+  const [conflictDialog, setConflictDialog] =
+    useState<BookingConflictDialogData | null>(null);
 
   const q = useQuery({
     queryKey: ["room-detail", id],
     enabled: !!id,
     queryFn: () =>
       api.get<RoomTypeDetail>(`/rooms/types/${id}/public`).then((r) => r.data),
+  });
+
+  const calendarTo = addDaysISO(stayDates.checkIn, 30);
+  const availabilityQ = useQuery({
+    queryKey: [
+      "room-type-availability",
+      id,
+      stayDates.checkIn,
+      calendarTo,
+    ],
+    enabled: !!id && !!stayDates.checkIn,
+    queryFn: () =>
+      api
+        .get<RoomTypeAvailabilityResponse>("/availability/room-type", {
+          params: {
+            roomTypeId: id,
+            from: stayDates.checkIn,
+            to: calendarTo,
+          },
+        })
+        .then((r) => r.data),
   });
 
   const saveM = useMutation({
@@ -161,6 +219,22 @@ export default function RoomDetailPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    if (stayDates.checkOut <= stayDates.checkIn) {
+      setStayDates((prev) => ({
+        ...prev,
+        checkOut: addDaysISO(prev.checkIn, 1),
+      }));
+    }
+  }, [stayDates.checkIn, stayDates.checkOut]);
+
+  useEffect(() => {
+    const firstRoomId = q.data?.rooms?.[0]?.id;
+    if (firstRoomId && !selectedRoomId) {
+      setSelectedRoomId(firstRoomId);
+    }
+  }, [q.data?.rooms, selectedRoomId]);
+
   if (q.isLoading) return <RoomDetailSkeleton />;
   if (q.error || !q.data)
     return (
@@ -199,15 +273,58 @@ export default function RoomDetailPage() {
     else saveM.mutate();
   };
 
-  const goBook = (roomId?: string) => {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+  const goBook = async (roomId?: string) => {
+    const targetRoomId = roomId ?? selectedRoomId ?? room.rooms[0]?.id ?? "";
+    if (!targetRoomId) {
+      toast.error("Chưa có phòng khả dụng để đặt");
+      return;
+    }
+    if (stayDates.checkOut <= stayDates.checkIn) {
+      setConflictDialog({
+        title: "Khoảng ngày chưa hợp lệ",
+        message: "Ngày trả phòng phải sau ngày nhận phòng.",
+        selectedFrom: stayDates.checkIn,
+        selectedTo: stayDates.checkOut,
+        findOtherHref: `/rooms?checkIn=${stayDates.checkIn}&checkOut=${stayDates.checkOut}&guests=${room.maxGuests}`,
+      });
+      return;
+    }
+    try {
+      const availability = await api
+        .get<RangeAvailabilityResponse>("/availability/check", {
+          params: {
+            roomId: targetRoomId,
+            from: stayDates.checkIn,
+            to: stayDates.checkOut,
+          },
+        })
+        .then((r) => r.data);
+
+      if (!availability.available) {
+        setConflictDialog({
+          selectedFrom: stayDates.checkIn,
+          selectedTo: stayDates.checkOut,
+          conflicts: availability.conflicts,
+          findOtherHref: `/rooms?checkIn=${stayDates.checkIn}&checkOut=${stayDates.checkOut}&guests=${room.maxGuests}`,
+        });
+        return;
+      }
+    } catch (err) {
+      setConflictDialog({
+        title: "Không thể kiểm tra lịch phòng",
+        message: getApiErrorMessage(err),
+        selectedFrom: stayDates.checkIn,
+        selectedTo: stayDates.checkOut,
+        findOtherHref: `/rooms?checkIn=${stayDates.checkIn}&checkOut=${stayDates.checkOut}&guests=${room.maxGuests}`,
+      });
+      return;
+    }
+
     const qs = new URLSearchParams({
       roomTypeId: room.id,
-      roomId: roomId ?? room.rooms[0]?.id ?? "",
-      checkIn: today.toISOString().slice(0, 10),
-      checkOut: tomorrow.toISOString().slice(0, 10),
+      roomId: targetRoomId,
+      checkIn: stayDates.checkIn,
+      checkOut: stayDates.checkOut,
       guests: String(room.maxGuests),
     });
     router.push(`/booking?${qs.toString()}`);
@@ -705,6 +822,62 @@ export default function RoomDetailPage() {
                   <p className="mt-1 text-3xl font-bold text-brand-700">
                     {formatCurrency(pricePerNight)}
                   </p>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                    <label className="text-sm font-medium text-slate-700">
+                      Ngày nhận phòng
+                      <input
+                        type="date"
+                        value={stayDates.checkIn}
+                        min={toISODate(new Date())}
+                        onChange={(e) =>
+                          setStayDates((prev) => ({
+                            ...prev,
+                            checkIn: e.target.value,
+                          }))
+                        }
+                        className="mt-1 block h-10 w-full rounded-lg border border-slate-300 px-3 text-sm focus:border-brand-500 focus:outline-none"
+                      />
+                    </label>
+                    <label className="text-sm font-medium text-slate-700">
+                      Ngày trả phòng
+                      <input
+                        type="date"
+                        value={stayDates.checkOut}
+                        min={addDaysISO(stayDates.checkIn, 1)}
+                        onChange={(e) =>
+                          setStayDates((prev) => ({
+                            ...prev,
+                            checkOut: e.target.value,
+                          }))
+                        }
+                        className="mt-1 block h-10 w-full rounded-lg border border-slate-300 px-3 text-sm focus:border-brand-500 focus:outline-none"
+                      />
+                    </label>
+                  </div>
+                  {room.rooms.length > 1 && (
+                    <label className="mt-3 block text-sm font-medium text-slate-700">
+                      Phòng
+                      <select
+                        value={selectedRoomId}
+                        onChange={(e) => setSelectedRoomId(e.target.value)}
+                        className="mt-1 block h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-brand-500 focus:outline-none"
+                      >
+                        {room.rooms.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            Phòng {r.roomNumber} - tầng {r.floor}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <div className="mt-4">
+                    <AvailabilityCalendar
+                      days={availabilityQ.data?.days ?? []}
+                      selectedFrom={stayDates.checkIn}
+                      selectedTo={stayDates.checkOut}
+                      loading={availabilityQ.isLoading}
+                    />
+                  </div>
                   <Button className="mt-4 w-full" onClick={() => goBook()}>
                     Đặt phòng ngay
                   </Button>
@@ -713,6 +886,73 @@ export default function RoomDetailPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="container-page mt-6 lg:hidden">
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-sm text-slate-500">Giá mỗi đêm</p>
+            <p className="mt-1 text-2xl font-bold text-brand-700">
+              {formatCurrency(pricePerNight)}
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="text-sm font-medium text-slate-700">
+                Ngày nhận phòng
+                <input
+                  type="date"
+                  value={stayDates.checkIn}
+                  min={toISODate(new Date())}
+                  onChange={(e) =>
+                    setStayDates((prev) => ({
+                      ...prev,
+                      checkIn: e.target.value,
+                    }))
+                  }
+                  className="mt-1 block h-10 w-full rounded-lg border border-slate-300 px-3 text-sm focus:border-brand-500 focus:outline-none"
+                />
+              </label>
+              <label className="text-sm font-medium text-slate-700">
+                Ngày trả phòng
+                <input
+                  type="date"
+                  value={stayDates.checkOut}
+                  min={addDaysISO(stayDates.checkIn, 1)}
+                  onChange={(e) =>
+                    setStayDates((prev) => ({
+                      ...prev,
+                      checkOut: e.target.value,
+                    }))
+                  }
+                  className="mt-1 block h-10 w-full rounded-lg border border-slate-300 px-3 text-sm focus:border-brand-500 focus:outline-none"
+                />
+              </label>
+            </div>
+            {room.rooms.length > 1 && (
+              <label className="mt-3 block text-sm font-medium text-slate-700">
+                Phòng
+                <select
+                  value={selectedRoomId}
+                  onChange={(e) => setSelectedRoomId(e.target.value)}
+                  className="mt-1 block h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-brand-500 focus:outline-none"
+                >
+                  {room.rooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      Phòng {r.roomNumber} - tầng {r.floor}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <div className="mt-4">
+              <AvailabilityCalendar
+                days={availabilityQ.data?.days ?? []}
+                selectedFrom={stayDates.checkIn}
+                selectedTo={stayDates.checkOut}
+                loading={availabilityQ.isLoading}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       {Array.isArray(room.similarRooms) && room.similarRooms.length > 0 && (
@@ -770,6 +1010,18 @@ export default function RoomDetailPage() {
           <ArrowUp className="h-5 w-5" />
         </button>
       )}
+
+      <BookingConflictDialog
+        open={Boolean(conflictDialog)}
+        data={conflictDialog}
+        onClose={() => setConflictDialog(null)}
+        onChooseDates={() => setConflictDialog(null)}
+        onFindOther={() => {
+          if (conflictDialog?.findOtherHref) {
+            router.push(conflictDialog.findOtherHref);
+          }
+        }}
+      />
     </main>
   );
 }

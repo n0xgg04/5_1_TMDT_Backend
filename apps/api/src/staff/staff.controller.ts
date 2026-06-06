@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  BadRequestException,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { IsString } from "class-validator";
@@ -36,6 +37,27 @@ export class StaffController {
     return this.staffService.getRoomMap(
       floor !== undefined ? +floor : undefined,
     );
+  }
+
+  @Get("booking-calendar")
+  @Roles(Role.RECEPTIONIST, Role.ADMIN)
+  @ApiOperation({ summary: "Lịch đặt phòng theo phòng và ngày" })
+  getBookingCalendar(
+    @Query("from") from: string,
+    @Query("to") to: string,
+    @Query("roomTypeId") roomTypeId?: string,
+    @Query("floor") floor?: string,
+  ) {
+    const parsedFloor = floor !== undefined ? Number(floor) : undefined;
+    if (parsedFloor !== undefined && Number.isNaN(parsedFloor)) {
+      throw new BadRequestException("Tầng không hợp lệ");
+    }
+    return this.staffService.getBookingCalendar({
+      from,
+      to,
+      roomTypeId,
+      floor: parsedFloor,
+    });
   }
 
   @Patch("room-map/:roomId")

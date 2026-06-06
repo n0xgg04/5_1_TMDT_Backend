@@ -6,13 +6,26 @@ import {
   PaymentMethod,
   PaymentStatus,
   PaymentType,
+  Role,
+  RoomStatus,
 } from "@prisma/client";
 import { BookingsService } from "../src/bookings/bookings.service";
+import { AvailabilityService } from "../src/availability/availability.service";
+import { StaffController } from "../src/staff/staff.controller";
+import { ROLES_KEY } from "../src/common/decorators/roles.decorator";
 import { PaymentsService } from "../src/payments/payments.service";
 import { CouponsService } from "../src/coupons/coupons.service";
 import { NotificationsService } from "../src/notifications/notifications.service";
 
 const HOUR = 60 * 60 * 1000;
+
+function dateOnly(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
 
 function makeBooking(overrides: Record<string, unknown> = {}) {
   return {
@@ -41,6 +54,7 @@ function makeBookingsService({
   pricing = {},
   coupons = {},
   flashSales = {},
+  availability = {},
 }: {
   prisma: Record<string, unknown>;
   redis?: Record<string, unknown>;
@@ -48,6 +62,7 @@ function makeBookingsService({
   pricing?: Record<string, unknown>;
   coupons?: Record<string, unknown>;
   flashSales?: Record<string, unknown>;
+  availability?: Record<string, unknown>;
 }) {
   return new BookingsService(
     prisma as any,
@@ -74,6 +89,11 @@ function makeBookingsService({
         price,
       }),
       ...flashSales,
+    } as any,
+    {
+      findActiveOverlap: async () => null,
+      getBookedRoomIds: async () => [],
+      ...availability,
     } as any,
   );
 }
@@ -169,6 +189,177 @@ test("approveRequest moves a valid request to PENDING_PAYMENT with a payment dea
       30 * 60 * 1000,
   );
   assert.equal(emitted[0].event, "booking.request.approved");
+});
+
+test("availability detects overlap for 1/6-4/6 against an active 3/6-6/6 booking", async () => {
+  const findManyCalls: any[] = [];
+  const service = new AvailabilityService({
+    booking: {
+      findMany: async (args: any) => {
+        findManyCalls.push(args);
+        return [
+          {
+            id: "booking-conflict",
+            roomId: "room-1",
+            checkIn: new Date("2026-06-03"),
+            checkOut: new Date("2026-06-06"),
+            status: BookingStatus.CONFIRMED,
+            bookingCode: "PRIVATE-CODE",
+            customer: { firstName: "Private" },
+          },
+        ];
+      },
+    },
+  } as any);
+
+  const result = await service.checkRoomRange(
+    "room-1",
+    "2026-06-01",
+    "2026-06-04",
+  );
+
+  assert.equal(result.available, false);
+  assert.deepEqual(result.conflicts, [
+    { checkIn: "2026-06-03", checkOut: "2026-06-06", status: "booked" },
+  ]);
+  assert.equal(
+    dateOnly(findManyCalls[0].where.AND[0].checkIn.lt),
+    "2026-06-04",
+  );
+  assert.equal(
+    dateOnly(findManyCalls[0].where.AND[1].checkOut.gt),
+    "2026-06-01",
+  );
+});
+
+test("availability active holds require live approval or payment deadlines", async () => {
+  const findManyCalls: any[] = [];
+  const service = new AvailabilityService({
+    booking: {
+      findMany: async (args: any) => {
+        findManyCalls.push(args);
+        return [];
+      },
+    },
+  } as any);
+
+  const bookedRoomIds = await service.getBookedRoomIds(
+    new Date("2026-06-01"),
+    new Date("2026-06-04"),
+  );
+
+  assert.deepEqual(bookedRoomIds, []);
+  const rules = findManyCalls[0].where.OR;
+  const approvalRule = rules.find(
+    (rule: any) => rule.status === BookingStatus.PENDING_HOST_APPROVAL,
+  );
+  const paymentRule = rules.find(
+    (rule: any) =>
+      Array.isArray(rule.status?.in) &&
+      rule.status.in.includes(BookingStatus.PENDING_PAYMENT),
+  );
+  assert.ok(approvalRule.approvalDeadline.gt instanceof Date);
+  assert.ok(paymentRule.paymentDeadline.gt instanceof Date);
+});
+
+test("public room availability does not expose customer, booking code or payment data", async () => {
+  const findManyCalls: any[] = [];
+  const service = new AvailabilityService({
+    room: {
+      findUnique: async () => ({ id: "room-1", status: RoomStatus.AVAILABLE }),
+    },
+    booking: {
+      findMany: async (args: any) => {
+        findManyCalls.push(args);
+        return [
+          {
+            id: "booking-private",
+            roomId: "room-1",
+            checkIn: new Date("2026-06-03"),
+            checkOut: new Date("2026-06-06"),
+            status: BookingStatus.PENDING_PAYMENT,
+            bookingCode: "PRIVATE-CODE",
+            customer: { firstName: "Private" },
+            payment: { status: PaymentStatus.PROCESSING },
+          },
+        ];
+      },
+    },
+  } as any);
+
+  const result = await service.getRoomCalendar(
+    "room-1",
+    "2026-06-01",
+    "2026-06-07",
+  );
+  const serialized = JSON.stringify(result);
+
+  assert.equal(findManyCalls[0].select.bookingCode, undefined);
+  assert.equal(findManyCalls[0].select.customer, undefined);
+  assert.equal(findManyCalls[0].select.payment, undefined);
+  assert.equal(serialized.includes("PRIVATE-CODE"), false);
+  assert.equal(serialized.includes("Private"), false);
+});
+
+test("staff booking calendar role guard and booking block metadata are present", async () => {
+  const roles = Reflect.getMetadata(
+    ROLES_KEY,
+    StaffController.prototype.getBookingCalendar,
+  );
+  assert.deepEqual(roles, [Role.RECEPTIONIST, Role.ADMIN]);
+
+  const service = new AvailabilityService({
+    room: {
+      findMany: async () => [
+        {
+          id: "room-1",
+          roomNumber: "101",
+          floor: 1,
+          status: RoomStatus.AVAILABLE,
+          roomType: { id: "rt-1", name: "Deluxe", maxGuests: 2 },
+          branch: { id: "branch-1", name: "Main", city: "Da Nang" },
+        },
+      ],
+    },
+    booking: {
+      findMany: async () => [
+        {
+          id: "booking-1",
+          bookingCode: "B001",
+          roomId: "room-1",
+          status: BookingStatus.PENDING_HOST_APPROVAL,
+          checkIn: new Date("2026-06-03"),
+          checkOut: new Date("2026-06-06"),
+          createdAt: new Date("2026-05-30"),
+          customer: {
+            id: "customer-1",
+            firstName: "An",
+            lastName: "Nguyen",
+            email: "an@example.com",
+            phone: "0900000000",
+          },
+          room: {
+            id: "room-1",
+            roomNumber: "101",
+            floor: 1,
+            roomType: { id: "rt-1", name: "Deluxe" },
+          },
+        },
+      ],
+    },
+  } as any);
+
+  const result = await service.getStaffCalendar({
+    from: "2026-06-01",
+    to: "2026-06-07",
+  });
+  const block = result.rooms[0].bookings[0];
+
+  assert.equal(block.bookingCode, "B001");
+  assert.equal(block.status, BookingStatus.PENDING_HOST_APPROVAL);
+  assert.equal(block.action.type, "approval-request");
+  assert.equal(block.action.href, "/staff/pending-bookings");
+  assert.equal(block.customer.email, "an@example.com");
 });
 
 test("rejectRequest persists rejection reason and emits a request rejected event", async () => {

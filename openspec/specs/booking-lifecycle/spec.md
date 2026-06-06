@@ -3,12 +3,10 @@
 ## Purpose
 
 Định nghĩa tạo booking, chống đặt trùng, áp dụng khuyến mãi, lịch sử/chi tiết booking, hủy, hết hạn, upload biên lai, duyệt/từ chối, check-in, check-out, dịch vụ phát sinh, event và chuyển trạng thái.
-
 ## Requirements
-
 ### Requirement: Khách Hàng Tạo Booking
 
-Hệ thống PHẢI (SHALL) cho khách hàng đã đăng nhập tạo booking cho một phòng vật lý trong khoảng ngày hợp lệ.
+Hệ thống PHẢI (SHALL) cho khách hàng đã đăng nhập tạo yêu cầu đặt chỗ cho một phòng vật lý trong khoảng ngày hợp lệ; yêu cầu này chưa được phép thanh toán cho đến khi admin/receptionist duyệt, và tạo booking PHẢI là guard cuối cùng chống đặt trùng sau khi user đã xem availability.
 
 #### Scenario: Tạo booking hợp lệ
 
@@ -18,14 +16,15 @@ Hệ thống PHẢI (SHALL) cho khách hàng đã đăng nhập tạo booking ch
 - **VÀ** loại phòng đang active
 - **VÀ** không có booking active overlap cùng phòng
 - **KHI** post `/bookings`
-- **THÌ** hệ thống PHẢI tính tổng tiền
+- **THÌ** hệ thống PHẢI tính tổng tiền dự kiến
 - **VÀ** áp dụng flash sale nếu có
-- **VÀ** áp dụng coupon nếu gửi coupon hợp lệ
-- **VÀ** tạo booking status `PENDING_PAYMENT`
-- **VÀ** set `paymentDeadline` sau thời điểm tạo 15 phút
+- **VÀ** KHÔNG áp dụng hoặc consume coupon ở bước tạo booking
+- **VÀ** tạo booking status `PENDING_HOST_APPROVAL`
+- **VÀ** set `approvalDeadline` sau thời điểm tạo 24 giờ
+- **VÀ** chưa set quyền thanh toán cho booking cho đến khi duyệt
 - **VÀ** default `checkInTime=14:00`, `checkOutTime=12:00`, adults = 2, children = 0 khi thiếu
-- **VÀ** lưu outbox event `booking.created`
-- **VÀ** emit `booking.created`.
+- **VÀ** lưu outbox event `booking.request.created`
+- **VÀ** emit `booking.request.created`.
 
 #### Scenario: Khoảng ngày không hợp lệ
 
@@ -53,10 +52,25 @@ Hệ thống PHẢI (SHALL) cho khách hàng đã đăng nhập tạo booking ch
 
 #### Scenario: Booking active overlap
 
-- **CHO** phòng đã có booking ở `PENDING_PAYMENT`, `PAYING`, `CONFIRMED` hoặc `CHECKED_IN`
-- **VÀ** booking đó overlap khoảng ngày yêu cầu
+- **CHO** phòng đã có booking active-hold ở `PENDING_HOST_APPROVAL`, `PENDING_PAYMENT`, `PAYING`, `PENDING_APPROVAL`, `CONFIRMED` hoặc `CHECKED_IN`
+- **VÀ** booking đó overlap khoảng ngày yêu cầu theo điều kiện `checkIn < requestedCheckOut` và `checkOut > requestedCheckIn`
 - **KHI** customer tạo booking
-- **THÌ** API PHẢI từ chối với `Phòng đã được đặt trong khoảng thời gian này`.
+- **THÌ** API PHẢI từ chối với `Phòng đã được đặt trong khoảng thời gian này`
+- **VÀ** response PHẢI đủ rõ để frontend hiển thị dialog cảnh báo lớn giữa màn hình.
+
+#### Scenario: Overlap một phần vẫn bị chặn
+
+- **CHO** phòng đã có booking active từ `2026-06-03` đến `2026-06-06`
+- **KHI** customer tạo booking từ `2026-06-01` đến `2026-06-04`
+- **THÌ** API PHẢI từ chối vì hai khoảng ngày overlap.
+
+#### Scenario: Coupon gửi khi tạo booking
+
+- **CHO** customer gửi coupon code trong request tạo booking
+- **KHI** booking được tạo thành công
+- **THÌ** hệ thống KHÔNG được tăng usage coupon
+- **VÀ** KHÔNG được đánh dấu `UserCoupon` là đã dùng
+- **VÀ** API PHẢI hướng dẫn coupon chỉ được áp dụng ở bước thanh toán.
 
 #### Scenario: Luôn giải phóng lock
 
@@ -135,11 +149,12 @@ Hệ thống PHẢI (SHALL) chỉ cho chủ booking, admin và receptionist xem 
 
 Hệ thống PHẢI (SHALL) cho customer hủy booking của chính mình trong các trạng thái cho phép.
 
-#### Scenario: Hủy booking chờ hoặc đã xác nhận
+#### Scenario: Hủy booking chờ duyệt, chờ thanh toán hoặc đã xác nhận
 
-- **CHO** customer sở hữu booking ở `PENDING_PAYMENT`, `PAYING` hoặc `CONFIRMED`
+- **CHO** customer sở hữu booking ở `PENDING_HOST_APPROVAL`, `PENDING_PAYMENT`, `PAYING` hoặc `CONFIRMED`
 - **KHI** post `/bookings/:id/cancel`
 - **THÌ** hệ thống PHẢI set status `CANCELLED`
+- **VÀ** release coupon reservation nếu booking đang giữ coupon chưa thanh toán thành công
 - **VÀ** emit `booking.cancelled` với reason đã gửi hoặc `Customer cancelled`.
 
 #### Scenario: Hủy booking của người khác
@@ -150,53 +165,68 @@ Hệ thống PHẢI (SHALL) cho customer hủy booking của chính mình trong 
 
 #### Scenario: Hủy booking ở trạng thái không cho phép
 
-- **CHO** booking không ở `PENDING_PAYMENT`, `PAYING`, `CONFIRMED`
+- **CHO** booking không ở `PENDING_HOST_APPROVAL`, `PENDING_PAYMENT`, `PAYING` hoặc `CONFIRMED`
 - **KHI** yêu cầu hủy
 - **THÌ** API PHẢI từ chối với `Không thể hủy đơn ở trạng thái này`.
 
 ### Requirement: Xác Nhận Và Hết Hạn Theo Payment Event
 
-Hệ thống PHẢI (SHALL) chuyển trạng thái booking dựa trên domain event thanh toán thành công/thất bại.
+Hệ thống PHẢI (SHALL) chuyển trạng thái booking dựa trên domain event thanh toán thành công/thất bại và deadline của từng giai đoạn duyệt/thanh toán.
 
 #### Scenario: Xác nhận booking sau payment success
 
-- **CHO** booking ở `PENDING_PAYMENT` hoặc `PAYING`
+- **CHO** booking ở `PAYING`
+- **VÀ** booking đã được duyệt yêu cầu đặt chỗ
 - **KHI** `confirmBooking` chạy
 - **THÌ** hệ thống PHẢI set status `CONFIRMED`
+- **VÀ** set room status `RESERVED`
+- **VÀ** giữ coupon reservation là đã sử dụng nếu booking có coupon
 - **VÀ** emit `booking.confirmed`.
 
 #### Scenario: Confirm idempotent
 
-- **CHO** booking không ở `PENDING_PAYMENT` hoặc `PAYING`
+- **CHO** booking không ở `PAYING`
 - **KHI** `confirmBooking` chạy
 - **THÌ** booking PHẢI được trả về nguyên trạng.
 
-#### Scenario: Expire booking chưa thanh toán
+#### Scenario: Expire yêu cầu đặt chỗ chưa duyệt
 
-- **CHO** booking ở `PENDING_PAYMENT` hoặc `PAYING`
+- **CHO** booking ở `PENDING_HOST_APPROVAL`
+- **VÀ** `approvalDeadline` trước hiện tại
 - **KHI** `expireBooking` chạy
 - **THÌ** hệ thống PHẢI set status `EXPIRED`
-- **VÀ** emit `booking.expired`.
+- **VÀ** emit `booking.approval.expired`.
+
+#### Scenario: Expire booking đã duyệt chưa thanh toán
+
+- **CHO** booking ở `PENDING_PAYMENT` hoặc `PAYING`
+- **VÀ** `paymentDeadline` trước hiện tại
+- **KHI** `expireBooking` chạy
+- **THÌ** hệ thống PHẢI set status `EXPIRED`
+- **VÀ** release coupon reservation nếu có
+- **VÀ** emit `booking.payment.expired`.
 
 #### Scenario: Expire idempotent
 
-- **CHO** booking không ở `PENDING_PAYMENT` hoặc `PAYING`
+- **CHO** booking không ở `PENDING_HOST_APPROVAL`, `PENDING_PAYMENT` hoặc `PAYING`
 - **KHI** `expireBooking` chạy
 - **THÌ** hệ thống KHÔNG được đổi trạng thái.
 
 #### Scenario: Tìm booking quá hạn
 
-- **CHO** có booking `paymentDeadline` trước hiện tại
+- **CHO** có booking `approvalDeadline` hoặc `paymentDeadline` trước hiện tại
 - **KHI** cron query booking quá hạn
-- **THÌ** chỉ booking đang `PENDING_PAYMENT` được trả về.
+- **THÌ** hệ thống PHẢI trả booking `PENDING_HOST_APPROVAL` quá hạn duyệt
+- **VÀ** trả booking `PENDING_PAYMENT` hoặc `PAYING` quá hạn thanh toán.
 
 ### Requirement: Biên Lai Chuyển Khoản Và Duyệt Booking
 
-Hệ thống PHẢI (SHALL) hỗ trợ customer upload biên lai và receptionist/admin duyệt hoặc từ chối.
+Hệ thống PHẢI (SHALL) hỗ trợ customer upload biên lai sau khi yêu cầu đặt chỗ đã được duyệt và receptionist/admin duyệt hoặc từ chối biên lai thanh toán; luồng này PHẢI tách biệt với duyệt yêu cầu đặt chỗ.
 
 #### Scenario: Upload biên lai
 
 - **CHO** customer sở hữu booking ở `PENDING_PAYMENT`
+- **VÀ** booking đã được duyệt yêu cầu đặt chỗ
 - **KHI** post `/bookings/:id/upload-receipt` với `receiptImageUrl`
 - **THÌ** payment hiện có của booking PHẢI được update receipt image và status `PENDING`
 - **VÀ** tạo booking attachment type `receipt`
@@ -209,16 +239,22 @@ Hệ thống PHẢI (SHALL) hỗ trợ customer upload biên lai và receptionis
 - **KHI** upload biên lai
 - **THÌ** API PHẢI từ chối với `Không có quyền thao tác`.
 
+#### Scenario: Upload biên lai khi booking chưa được duyệt yêu cầu đặt chỗ
+
+- **CHO** booking ở `PENDING_HOST_APPROVAL`
+- **KHI** upload biên lai
+- **THÌ** API PHẢI từ chối với `Đơn chưa được duyệt để thanh toán`.
+
 #### Scenario: Upload biên lai khi booking không chờ thanh toán
 
 - **CHO** booking không ở `PENDING_PAYMENT`
 - **KHI** upload biên lai
 - **THÌ** API PHẢI từ chối với `Đơn không ở trạng thái chờ thanh toán`.
 
-#### Scenario: Staff xem booking chờ duyệt
+#### Scenario: Staff xem booking chờ duyệt biên lai
 
 - **CHO** receptionist hoặc admin đã đăng nhập
-- **KHI** gọi `/bookings/staff/pending`
+- **KHI** gọi endpoint danh sách biên lai chờ duyệt
 - **THÌ** API PHẢI trả booking `PENDING_APPROVAL`, cũ nhất trước
 - **VÀ** include room, room type, customer summary, payment, attachments
 - **VÀ** trả metadata phân trang.
@@ -228,7 +264,7 @@ Hệ thống PHẢI (SHALL) hỗ trợ customer upload biên lai và receptionis
 - **CHO** receptionist hoặc admin đã đăng nhập
 - **VÀ** booking ở `PENDING_APPROVAL`
 - **VÀ** không có booking `CONFIRMED` hoặc `CHECKED_IN` khác conflict cùng phòng/ngày
-- **KHI** post `/bookings/:id/approve`
+- **KHI** staff duyệt biên lai
 - **THÌ** hệ thống PHẢI set booking status `CONFIRMED`
 - **VÀ** lưu `approvedById`, `approvedAt`
 - **VÀ** set room status `RESERVED`
@@ -244,7 +280,7 @@ Hệ thống PHẢI (SHALL) hỗ trợ customer upload biên lai và receptionis
 
 - **CHO** receptionist hoặc admin đã đăng nhập
 - **VÀ** booking ở `PENDING_APPROVAL`
-- **KHI** post `/bookings/:id/reject` với reason
+- **KHI** staff từ chối biên lai với reason
 - **THÌ** hệ thống PHẢI set booking status `REJECTED`
 - **VÀ** lưu `approvedById`, `rejectedReason`
 - **VÀ** emit `booking.rejected`
@@ -370,3 +406,51 @@ Hệ thống PHẢI (SHALL) tạo/gửi notification cho customer khi booking c�
 - **CHO** checkout hoàn tất
 - **KHI** emit `checkout.completed`
 - **THÌ** notification service PHẢI tạo thông báo dạng hóa đơn, gồm final amount nếu có.
+
+### Requirement: Duyệt Yêu Cầu Đặt Chỗ Trước Thanh Toán
+
+Hệ thống PHẢI (SHALL) cho admin/receptionist duyệt hoặc từ chối yêu cầu đặt chỗ trong 24 giờ trước khi khách được phép thanh toán.
+
+#### Scenario: Staff xem yêu cầu đặt chỗ chờ duyệt
+
+- **CHO** receptionist hoặc admin đã đăng nhập
+- **KHI** gọi `/bookings/staff/approval-requests`
+- **THÌ** API PHẢI trả booking `PENDING_HOST_APPROVAL`, cũ nhất trước
+- **VÀ** include room, room type, branch, customer summary, trạng thái phòng và conversation nếu có
+- **VÀ** trả metadata phân trang.
+
+#### Scenario: Duyệt yêu cầu đặt chỗ
+
+- **CHO** receptionist hoặc admin đã đăng nhập
+- **VÀ** booking ở `PENDING_HOST_APPROVAL`
+- **VÀ** `approvalDeadline` chưa quá hạn
+- **VÀ** không có booking active khác conflict cùng phòng/ngày
+- **KHI** post `/bookings/:id/approve-request`
+- **THÌ** hệ thống PHẢI set booking status `PENDING_PAYMENT`
+- **VÀ** lưu `approvedById`, `approvedAt`
+- **VÀ** set `paymentDeadline` sau thời điểm duyệt 30 phút theo mặc định
+- **VÀ** payment deadline KHÔNG được vượt quá 2 giờ sau thời điểm duyệt
+- **VÀ** emit `booking.request.approved`.
+
+#### Scenario: Duyệt yêu cầu đã quá hạn
+
+- **CHO** booking ở `PENDING_HOST_APPROVAL`
+- **VÀ** `approvalDeadline` đã quá hạn
+- **KHI** staff duyệt yêu cầu
+- **THÌ** API PHẢI từ chối với `Yêu cầu đặt phòng đã hết hạn duyệt`.
+
+#### Scenario: Duyệt yêu cầu bị conflict
+
+- **CHO** có booking active khác overlap cùng phòng/ngày
+- **KHI** staff duyệt yêu cầu
+- **THÌ** API PHẢI từ chối với `Phòng đã được đặt trong khoảng thời gian này`.
+
+#### Scenario: Từ chối yêu cầu đặt chỗ
+
+- **CHO** receptionist hoặc admin đã đăng nhập
+- **VÀ** booking ở `PENDING_HOST_APPROVAL`
+- **KHI** post `/bookings/:id/reject-request` với reason
+- **THÌ** hệ thống PHẢI set booking status `REJECTED`
+- **VÀ** lưu `approvedById`, `rejectedReason`
+- **VÀ** emit `booking.request.rejected`.
+

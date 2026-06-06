@@ -6,10 +6,14 @@ import {
 import { PrismaService } from "../common/prisma/prisma.service";
 import { AddAddonDto, UpdateAddonDto } from "./dto/staff.dto";
 import { BookingStatus } from "@prisma/client";
+import { AvailabilityService } from "../availability/availability.service";
 
 @Injectable()
 export class StaffService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly availability: AvailabilityService,
+  ) {}
 
   async getRoomMap(floor?: number) {
     return this.prisma.room.findMany({
@@ -31,6 +35,15 @@ export class StaffService {
       },
       orderBy: [{ floor: "asc" }, { roomNumber: "asc" }],
     });
+  }
+
+  async getBookingCalendar(params: {
+    from: string;
+    to: string;
+    roomTypeId?: string;
+    floor?: number;
+  }) {
+    return this.availability.getStaffCalendar(params);
   }
 
   async updateRoomStatus(roomId: string, status: string) {

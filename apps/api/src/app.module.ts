@@ -24,6 +24,7 @@ import { FlashSalesModule } from "./flash-sales/flash-sales.module";
 import { ChatModule } from "./chat/chat.module";
 import { UserPaymentMethodsModule } from "./user-payment-methods/user-payment-methods.module";
 import { WishlistModule } from "./wishlist/wishlist.module";
+import { AvailabilityModule } from "./availability/availability.module";
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { WishlistModule } from "./wishlist/wishlist.module";
     ChatModule,
     UserPaymentMethodsModule,
     WishlistModule,
+    AvailabilityModule,
     ReviewsModule,
     StaffModule,
     ReportsModule,

@@ -5,9 +5,10 @@ import { BookingEventHandlers } from "./booking.events";
 import { RoomsModule } from "../rooms/rooms.module";
 import { CouponsModule } from "../coupons/coupons.module";
 import { FlashSalesModule } from "../flash-sales/flash-sales.module";
+import { AvailabilityModule } from "../availability/availability.module";
 
 @Module({
-  imports: [RoomsModule, CouponsModule, FlashSalesModule],
+  imports: [RoomsModule, CouponsModule, FlashSalesModule, AvailabilityModule],
   controllers: [BookingsController],
   providers: [BookingsService, BookingEventHandlers],
   exports: [BookingsService],

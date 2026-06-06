@@ -11,6 +11,7 @@ import { EventsService } from "../common/events/events.service";
 import { PricingService } from "../rooms/pricing.service";
 import { CouponsService } from "../coupons/coupons.service";
 import { FlashSalesService } from "../flash-sales/flash-sales.service";
+import { AvailabilityService } from "../availability/availability.service";
 import {
   CreateBookingDto,
   UploadReceiptDto,
@@ -32,6 +33,7 @@ export class BookingsService {
     private readonly pricingService: PricingService,
     private readonly couponsService: CouponsService,
     private readonly flashSalesService: FlashSalesService,
+    private readonly availability: AvailabilityService,
   ) {}
 
   async createBooking(customerId: string, dto: CreateBookingDto) {
@@ -59,7 +61,7 @@ export class BookingsService {
       if (!room.roomType.isActive)
         throw new BadRequestException("Loại phòng không còn hoạt động");
 
-      const conflict = await this.findActiveOverlap(
+      const conflict = await this.availability.findActiveOverlap(
         dto.roomId,
         checkIn,
         checkOut,
@@ -466,7 +468,7 @@ export class BookingsService {
         ...booking,
         conversation: conversationByBooking.get(booking.id) ?? null,
         hasActiveOverlap: Boolean(
-          await this.findActiveOverlap(
+          await this.availability.findActiveOverlap(
             booking.roomId,
             booking.checkIn,
             booking.checkOut,
@@ -522,7 +524,7 @@ export class BookingsService {
       throw new BadRequestException("Yêu cầu đặt phòng đã hết hạn duyệt");
     }
 
-    const conflict = await this.findActiveOverlap(
+    const conflict = await this.availability.findActiveOverlap(
       booking.roomId,
       booking.checkIn,
       booking.checkOut,
@@ -707,40 +709,4 @@ export class BookingsService {
     await this.events.emit(eventType as never, payload);
   }
 
-  private findActiveOverlap(
-    roomId: string,
-    checkIn: Date,
-    checkOut: Date,
-    excludeBookingId?: string,
-  ) {
-    const now = new Date();
-    return this.prisma.booking.findFirst({
-      where: {
-        roomId,
-        ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
-        AND: [{ checkIn: { lt: checkOut } }, { checkOut: { gt: checkIn } }],
-        OR: [
-          {
-            status: BookingStatus.PENDING_HOST_APPROVAL,
-            approvalDeadline: { gt: now },
-          },
-          {
-            status: {
-              in: [
-                BookingStatus.PENDING_APPROVAL,
-                BookingStatus.CONFIRMED,
-                BookingStatus.CHECKED_IN,
-              ],
-            },
-          },
-          {
-            status: {
-              in: [BookingStatus.PENDING_PAYMENT, BookingStatus.PAYING],
-            },
-            paymentDeadline: { gt: now },
-          },
-        ],
-      },
-    });
-  }
 }

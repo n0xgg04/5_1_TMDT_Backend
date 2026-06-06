@@ -3,9 +3,7 @@
 ## Purpose
 
 Định nghĩa tạo coupon, public coupon, claim coupon, áp dụng coupon, usage tracking, user coupon state và flash sale.
-
 ## Requirements
-
 ### Requirement: Quản Trị Coupon
 
 Hệ thống PHẢI (SHALL) cho admin tạo coupon và xem tất cả coupon.
@@ -136,18 +134,26 @@ Hệ thống PHẢI (SHALL) validate và tính discount coupon; endpoint apply �
 
 ### Requirement: Sử Dụng Coupon Trong Booking
 
-Luồng tạo booking PHẢI (SHALL) consume coupon sau khi đã tính flash sale.
+Luồng booking PHẢI (SHALL) chỉ consume coupon ở bước thanh toán sau khi yêu cầu đặt chỗ đã được duyệt; tạo booking không được consume coupon.
 
-#### Scenario: Booking dùng coupon tăng usage
+#### Scenario: Tạo booking không consume coupon
 
 - **CHO** customer tạo booking với coupon hợp lệ
-- **KHI** tạo booking thành công
-- **THÌ** usage count của coupon PHẢI tăng
-- **VÀ** user coupon PHẢI được upsert thành đã dùng với `usedAt`.
+- **KHI** tạo booking thành công ở `PENDING_HOST_APPROVAL`
+- **THÌ** usage count của coupon KHÔNG được tăng
+- **VÀ** user coupon KHÔNG được đánh dấu đã dùng.
 
-#### Scenario: Chuẩn hóa code khi booking
+#### Scenario: Thanh toán dùng coupon reserve usage
 
-- **CHO** customer gửi coupon code chữ thường
+- **CHO** customer khởi tạo thanh toán cho booking đã duyệt với coupon hợp lệ
+- **KHI** payment được tạo ở trạng thái `PROCESSING`
+- **THÌ** usage count của coupon PHẢI tăng để reserve lượt dùng
+- **VÀ** user coupon PHẢI được upsert thành đã dùng với `usedAt`
+- **VÀ** booking PHẢI lưu coupon code và discount amount.
+
+#### Scenario: Chuẩn hóa code khi thanh toán
+
+- **CHO** customer gửi coupon code chữ thường ở bước thanh toán
 - **KHI** apply coupon
 - **THÌ** lookup PHẢI dùng code uppercase.
 
@@ -197,3 +203,23 @@ Luồng booking PHẢI (SHALL) giảm giá gốc theo phần trăm flash sale ac
 - **CHO** có flash sale id
 - **KHI** gọi tăng sold count
 - **THÌ** `soldCount` của flash sale PHẢI tăng 1.
+
+### Requirement: Hoàn Tác Coupon Khi Thanh Toán Không Hoàn Tất
+
+Hệ thống PHẢI (SHALL) release coupon reservation khi booking đã reserve coupon nhưng thanh toán không hoàn tất.
+
+#### Scenario: Payment failed release coupon
+
+- **CHO** booking có coupon reservation
+- **VÀ** payment chuyển `FAILED`
+- **KHI** hệ thống xử lý payment failed
+- **THÌ** usage count của coupon PHẢI giảm idempotent
+- **VÀ** user coupon PHẢI được đánh dấu chưa dùng nếu không có booking completed khác dùng coupon đó.
+
+#### Scenario: Booking hết hạn thanh toán release coupon
+
+- **CHO** booking có coupon reservation
+- **VÀ** booking hết hạn ở `PENDING_PAYMENT` hoặc `PAYING`
+- **KHI** cron expire booking
+- **THÌ** hệ thống PHẢI release coupon reservation trước hoặc trong cùng transaction chuyển booking sang `EXPIRED`.
+

@@ -247,3 +247,82 @@ export interface Paginated<T> {
   page: number;
   limit: number;
 }
+
+export type AvailabilityDayStatus = "available" | "held" | "booked";
+
+export interface AvailabilityDay {
+  date: string;
+  status: AvailabilityDayStatus;
+  available: boolean;
+}
+
+export interface RoomTypeAvailabilityDay {
+  date: string;
+  status: "available" | "booked";
+  totalRooms: number;
+  availableRooms: number;
+  heldRooms: number;
+  bookedRooms: number;
+}
+
+export interface RoomAvailabilityResponse {
+  roomId: string;
+  from: string;
+  to: string;
+  days: AvailabilityDay[];
+}
+
+export interface RoomTypeAvailabilityResponse {
+  roomTypeId: string;
+  from: string;
+  to: string;
+  days: RoomTypeAvailabilityDay[];
+}
+
+export interface AvailabilityConflict {
+  checkIn: string;
+  checkOut: string;
+  status: AvailabilityDayStatus;
+}
+
+export interface RangeAvailabilityResponse {
+  available: boolean;
+  from: string;
+  to: string;
+  conflicts: AvailabilityConflict[];
+}
+
+export interface StaffCalendarAction {
+  type: "approval-request" | "receipt-approval" | "booking-detail";
+  href: string;
+}
+
+export interface StaffCalendarBookingBlock {
+  id: string;
+  bookingCode: string;
+  status: BookingStatus;
+  checkIn: string;
+  checkOut: string;
+  action: StaffCalendarAction;
+  customer: Pick<AuthUser, "id" | "firstName" | "lastName" | "email" | "phone">;
+  room: Pick<Room, "id" | "roomNumber" | "floor"> & {
+    roomType: Pick<RoomType, "id" | "name">;
+  };
+}
+
+export interface StaffCalendarRoom {
+  id: string;
+  roomNumber: string;
+  floor: number;
+  status: RoomStatus;
+  roomType: Pick<RoomType, "id" | "name" | "maxGuests">;
+  branch: Pick<HotelBranch, "id" | "name" | "city">;
+  bookings: StaffCalendarBookingBlock[];
+}
+
+export interface StaffBookingCalendarResponse {
+  from: string;
+  to: string;
+  days: string[];
+  rooms: StaffCalendarRoom[];
+}

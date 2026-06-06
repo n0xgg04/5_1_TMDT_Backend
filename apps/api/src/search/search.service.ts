@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { RedisService } from "../common/redis/redis.service";
 import { PricingService } from "../rooms/pricing.service";
+import { AvailabilityService } from "../availability/availability.service";
 
 export interface SearchParams {
   checkIn: string;
@@ -24,6 +25,7 @@ export class SearchService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly pricingService: PricingService,
+    private readonly availability: AvailabilityService,
   ) {}
 
   async searchAvailableRooms(params: SearchParams) {
@@ -34,7 +36,10 @@ export class SearchService {
     const checkIn = new Date(params.checkIn);
     const checkOut = new Date(params.checkOut);
 
-    const bookedRoomIds = await this.getBookedRoomIds(checkIn, checkOut);
+    const bookedRoomIds = await this.availability.getBookedRoomIds(
+      checkIn,
+      checkOut,
+    );
 
     const rooms = await this.prisma.room.findMany({
       where: {
@@ -224,36 +229,4 @@ export class SearchService {
     }));
   }
 
-  private async getBookedRoomIds(
-    checkIn: Date,
-    checkOut: Date,
-  ): Promise<string[]> {
-    const now = new Date();
-    const conflicting = await this.prisma.booking.findMany({
-      where: {
-        OR: [
-          {
-            status: "PENDING_HOST_APPROVAL",
-            approvalDeadline: { gt: now },
-          },
-          {
-            status: {
-              in: [
-                "PENDING_APPROVAL",
-                "CONFIRMED",
-                "CHECKED_IN",
-              ],
-            },
-          },
-          {
-            status: { in: ["PENDING_PAYMENT", "PAYING"] },
-            paymentDeadline: { gt: now },
-          },
-        ],
-        AND: [{ checkIn: { lt: checkOut } }, { checkOut: { gt: checkIn } }],
-      },
-      select: { roomId: true },
-    });
-    return conflicting.map((b) => b.roomId);
-  }
 }

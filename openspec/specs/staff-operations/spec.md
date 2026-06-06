@@ -3,9 +3,7 @@
 ## Purpose
 
 Định nghĩa sơ đồ phòng, cập nhật trạng thái phòng, xử lý booking của staff, dịch vụ phát sinh, hội thoại hỗ trợ và quyền của receptionist/housekeeping/admin.
-
 ## Requirements
-
 ### Requirement: Sơ Đồ Phòng Staff
 
 Hệ thống PHẢI (SHALL) cho receptionist, housekeeping và admin xem sơ đồ phòng với thông tin phòng và booking active gần nhất.
@@ -177,3 +175,99 @@ Hệ thống PHẢI (SHALL) cho receptionist/admin xem, nhận xử lý, xem chi
 - **CHO** customer đã đăng nhập
 - **KHI** gọi bất kỳ endpoint `/chat/staff/*`
 - **THÌ** API PHẢI từ chối bằng role guard.
+
+### Requirement: Staff Duyệt Yêu Cầu Đặt Chỗ
+
+Hệ thống PHẢI (SHALL) cho receptionist/admin xử lý queue yêu cầu đặt chỗ trước thanh toán.
+
+#### Scenario: Liệt kê yêu cầu đặt chỗ chờ duyệt
+
+- **CHO** receptionist hoặc admin đã đăng nhập
+- **KHI** gọi `/bookings/staff/approval-requests`
+- **THÌ** API PHẢI trả booking `PENDING_HOST_APPROVAL` theo `createdAt` tăng dần
+- **VÀ** include customer summary, room, room type, branch, room status, approval deadline và conversation summary.
+
+#### Scenario: Kiểm tra trạng thái phòng trong queue duyệt
+
+- **CHO** staff đang xem một yêu cầu đặt chỗ
+- **KHI** response queue được trả về
+- **THÌ** mỗi item PHẢI cho biết phòng đang `AVAILABLE`, `RESERVED`, `OCCUPIED`, `DIRTY`, `CLEANING` hoặc `MAINTENANCE`
+- **VÀ** cho biết có booking active overlap khác hay không.
+
+#### Scenario: Receptionist duyệt yêu cầu đặt chỗ
+
+- **CHO** receptionist đã đăng nhập
+- **VÀ** booking ở `PENDING_HOST_APPROVAL`
+- **KHI** post `/bookings/:id/approve-request`
+- **THÌ** booking PHẢI thành `PENDING_PAYMENT`
+- **VÀ** user nhận notification yêu cầu thanh toán.
+
+#### Scenario: Admin từ chối yêu cầu đặt chỗ
+
+- **CHO** admin đã đăng nhập
+- **VÀ** booking ở `PENDING_HOST_APPROVAL`
+- **KHI** post `/bookings/:id/reject-request` với reason
+- **THÌ** booking PHẢI thành `REJECTED`
+- **VÀ** user nhận notification từ chối.
+
+#### Scenario: Housekeeping không được duyệt yêu cầu
+
+- **CHO** housekeeping đã đăng nhập
+- **KHI** gọi endpoint duyệt hoặc từ chối yêu cầu đặt chỗ
+- **THÌ** API PHẢI từ chối bằng role guard.
+
+### Requirement: Staff Chat Với Khách Trong Lúc Chờ Duyệt
+
+Hệ thống PHẢI (SHALL) cho receptionist/admin chat với customer ngay từ queue yêu cầu đặt chỗ.
+
+#### Scenario: Mở chat từ pending request
+
+- **CHO** receptionist hoặc admin đang xem request `PENDING_HOST_APPROVAL`
+- **KHI** chọn hành động chat
+- **THÌ** hệ thống PHẢI mở conversation gắn với booking
+- **VÀ** assign staff hiện tại nếu conversation chưa có staff.
+
+#### Scenario: Chat không làm đổi trạng thái booking
+
+- **CHO** conversation gắn với booking `PENDING_HOST_APPROVAL`
+- **KHI** staff hoặc customer gửi message
+- **THÌ** booking status PHẢI giữ nguyên.
+
+### Requirement: Lịch Booking Staff Admin
+
+Hệ thống PHẢI (SHALL) cho receptionist/admin xem lịch booking theo phòng và ngày để nắm lịch thuê, lịch giữ chỗ và lịch chờ duyệt.
+
+#### Scenario: Xem lịch booking theo khoảng ngày
+
+- **CHO** receptionist hoặc admin đã đăng nhập
+- **KHI** gọi endpoint calendar với `from` và `to`
+- **THÌ** API PHẢI trả danh sách phòng và booking active overlap trong khoảng ngày đó
+- **VÀ** booking PHẢI gồm id, booking code, status, check-in/check-out, customer summary và room summary.
+
+#### Scenario: Calendar phân biệt trạng thái booking
+
+- **CHO** calendar có booking `PENDING_HOST_APPROVAL`, `PENDING_PAYMENT`, `PAYING`, `PENDING_APPROVAL`, `CONFIRMED` hoặc `CHECKED_IN`
+- **KHI** staff xem lịch
+- **THÌ** mỗi booking block PHẢI hiển thị trạng thái bằng màu/nhãn khác nhau
+- **VÀ** phải phân biệt rõ chờ duyệt yêu cầu, chờ thanh toán, đang thanh toán, chờ duyệt biên lai, đã xác nhận và đang lưu trú.
+
+#### Scenario: Booking quá hạn không còn giữ lịch
+
+- **CHO** booking `PENDING_HOST_APPROVAL` quá `approvalDeadline`
+- **HOẶC** booking `PENDING_PAYMENT` hoặc `PAYING` quá `paymentDeadline`
+- **KHI** staff xem calendar
+- **THÌ** booking đó KHÔNG được hiển thị như một block đang giữ phòng.
+
+#### Scenario: Điều hướng từ calendar tới xử lý booking
+
+- **CHO** staff click một booking block trên calendar
+- **KHI** booking ở `PENDING_HOST_APPROVAL`
+- **THÌ** UI PHẢI điều hướng hoặc mở action duyệt yêu cầu đặt chỗ
+- **VÀ** nếu booking ở `PENDING_APPROVAL` thì UI PHẢI điều hướng hoặc mở action duyệt biên lai.
+
+#### Scenario: Customer không được xem calendar staff
+
+- **CHO** customer đã đăng nhập
+- **KHI** gọi endpoint calendar staff/admin
+- **THÌ** API PHẢI từ chối bằng role guard.
+
