@@ -132,4 +132,39 @@ export class ReportsService {
       });
     return result;
   }
+
+  async exportRevenueCsv(
+    from: string,
+    to: string,
+    groupBy: "day" | "week" | "month" = "day",
+  ): Promise<string> {
+    const report = await this.getRevenueReport(from, to, groupBy);
+    const rows = [["Date", "Revenue (VND)"]];
+    for (const d of report.data) {
+      rows.push([d.date, d.revenue.toString()]);
+    }
+    rows.push([]);
+    rows.push(["Total Revenue", report.totalRevenue.toString()]);
+    rows.push(["Total Bookings", report.totalBookings.toString()]);
+    rows.push([]);
+    rows.push(["Room Type", "Bookings", "Revenue (VND)"]);
+    for (const [type, info] of Object.entries(report.byRoomType)) {
+      rows.push([type, info.count.toString(), info.revenue.toString()]);
+    }
+    return rows.map((r) => r.join(",")).join("\n");
+  }
+
+  async exportOccupancyCsv(from: string, to: string): Promise<string> {
+    const report = await this.getOccupancyReport(from, to);
+    const rows = [
+      ["Metric", "Value"],
+      ["From", report.from],
+      ["To", report.to],
+      ["Total Rooms", report.totalRooms.toString()],
+      ["Total Room Nights", report.totalRoomNights.toString()],
+      ["Occupied Nights", report.occupiedNights.toString()],
+      ["Occupancy Rate (%)", report.occupancyRate.toString()],
+    ];
+    return rows.map((r) => r.join(",")).join("\n");
+  }
 }
