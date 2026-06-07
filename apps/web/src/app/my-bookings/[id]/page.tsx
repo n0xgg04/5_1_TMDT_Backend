@@ -237,7 +237,7 @@ export default function BookingDetailPage() {
     "PAYING",
   ];
   const canPayLaterAtDesk =
-    b.status === "PENDING_PAYMENT" && !b.payment?.gatewayUrl;
+    (b.status === "PENDING_PAYMENT" || b.status === "PAYING") && b.payment?.method !== "VNPAY";
   const canReview = b.status === "CHECKED_OUT" && !b.review;
   const fallbackImg = hotelFallbackImage(b.room?.roomType?.name ?? "");
   const roomImg = b.room?.roomType?.images?.[0] ?? fallbackImg;
