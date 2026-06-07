@@ -12,9 +12,8 @@ import {
   Tag,
   Clock,
   CreditCard,
+  Banknote,
   AlertCircle,
-  Receipt,
-  Upload,
   Star,
   MessageSquare,
 } from "lucide-react";
@@ -46,7 +45,6 @@ const STATUSES:
   { value: "", label: "Tất cả" },
   { value: "PENDING_HOST_APPROVAL", label: "Chờ duyệt yêu cầu" },
   { value: "PENDING_PAYMENT", label: "Chờ thanh toán" },
-  { value: "PENDING_APPROVAL", label: "Chờ duyệt biên lai" },
   { value: "CONFIRMED", label: "Đã xác nhận" },
   { value: "CHECKED_IN", label: "Đang lưu trú" },
   { value: "CHECKED_OUT", label: "Đã hoàn thành" },
@@ -91,7 +89,7 @@ export default function MyBookingsPage() {
     onError: (e) => toast.error("Hủy đơn thất bại", getApiErrorMessage(e)),
   });
 
-  const payM = useMutation({
+  const payNowM = useMutation({
     mutationFn: ({
       bookingId,
       couponCode,
@@ -108,21 +106,35 @@ export default function MyBookingsPage() {
         .then((r) => r.data),
     onSuccess: (data) => {
       if (data.gatewayUrl) window.location.href = data.gatewayUrl;
+      else {
+        toast.success("Thanh toán thành công");
+        qc.invalidateQueries({ queryKey: ["my-bookings"] });
+      }
     },
     onError: (e) =>
       toast.error("Không thể mở thanh toán", getApiErrorMessage(e)),
   });
 
-  const uploadM = useMutation({
-    mutationFn: ({ id, url }: { id: string; url: string }) =>
+  const payLaterM = useMutation({
+    mutationFn: ({
+      bookingId,
+      couponCode,
+    }: {
+      bookingId: string;
+      couponCode?: string;
+    }) =>
       api
-        .post(`/bookings/${id}/upload-receipt`, { receiptImageUrl: url })
+        .post("/payments/initiate", {
+          bookingId,
+          method: "CASH",
+          couponCode,
+        })
         .then((r) => r.data),
     onSuccess: () => {
-      toast.success("Đã upload biên lai");
+      toast.success("Đã chọn thanh toán tại quầy");
       qc.invalidateQueries({ queryKey: ["my-bookings"] });
     },
-    onError: (e) => toast.error("Upload thất bại", getApiErrorMessage(e)),
+    onError: (e) => toast.error("Không thể chọn thanh toán tại quầy", getApiErrorMessage(e)),
   });
 
   const reviewM = useMutation({
@@ -234,11 +246,13 @@ export default function MyBookingsPage() {
               booking={b}
               onCancel={() => setCancelTarget(b)}
               onPay={(couponCode) =>
-                payM.mutate({ bookingId: b.id, couponCode })
+                payNowM.mutate({ bookingId: b.id, couponCode })
               }
-              paying={payM.isPending}
-              onUpload={(id, url) => uploadM.mutate({ id, url })}
-              uploading={uploadM.isPending}
+              onPayLater={(couponCode) =>
+                payLaterM.mutate({ bookingId: b.id, couponCode })
+              }
+              paying={payNowM.isPending}
+              payingLater={payLaterM.isPending}
               onReview={() => setReviewTarget(b)}
             />
           ))}
@@ -407,17 +421,17 @@ function BookingItem({
   booking,
   onCancel,
   onPay,
+  onPayLater,
   paying,
-  onUpload,
-  uploading,
+  payingLater,
   onReview,
 }: {
   booking: Booking;
   onCancel: () => void;
   onPay: (couponCode?: string) => void;
+  onPayLater: (couponCode?: string) => void;
   paying: boolean;
-  onUpload: (id: string, url: string) => void;
-  uploading: boolean;
+  payingLater: boolean;
   onReview: () => void;
 }) {
   const router = useRouter();
@@ -427,11 +441,11 @@ function BookingItem({
     "PENDING_PAYMENT",
     "CONFIRMED",
   ];
-  const canPay: BookingStatus[] = ["PENDING_PAYMENT"];
-  const canUpload: BookingStatus[] = ["PENDING_PAYMENT"];
+  const canPayNow =
+    booking.status === "PENDING_PAYMENT" ||
+    (booking.status === "PAYING" && booking.payment?.method === "VNPAY");
+  const canPayLater = booking.status === "PENDING_PAYMENT";
   const canReview = booking.status === "CHECKED_OUT" && !booking.review;
-  const [receiptUrl, setReceiptUrl] = useState("");
-  const [showUpload, setShowUpload] = useState(false);
   const [couponCode, setCouponCode] = useState("");
 
   const fallbackImg = hotelFallbackImage(booking.room?.roomType?.name ?? "");
@@ -501,46 +515,10 @@ function BookingItem({
                 Lý do từ chối: {booking.rejectedReason}
               </p>
             )}
-            {canUpload.includes(booking.status) && !showUpload && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowUpload(true);
-                }}
-                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline"
-              >
-                <Receipt className="h-3.5 w-3.5" /> Upload biên lai chuyển khoản
-              </button>
-            )}
-            {showUpload && (
-              <div className="mt-2 flex gap-2" onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="text"
-                  placeholder="Dán link ảnh biên lai"
-                  value={receiptUrl}
-                  onChange={(e) => setReceiptUrl(e.target.value)}
-                  className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs outline-none focus:border-brand-500"
-                />
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (!receiptUrl.trim()) return;
-                    onUpload(booking.id, receiptUrl.trim());
-                    setShowUpload(false);
-                    setReceiptUrl("");
-                  }}
-                  loading={uploading}
-                >
-                  <Upload className="h-3.5 w-3.5" /> Gửi
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowUpload(false)}
-                >
-                  Hủy
-                </Button>
-              </div>
+            {booking.status === "CONFIRMED" && booking.payment?.status !== "COMPLETED" && (
+              <p className="mt-1 text-xs text-amber-700">
+                Thanh toán tại quầy: lễ tân sẽ thu tiền trước khi check-in. Nếu quá giờ nhận phòng 2 tiếng mà chưa check-in, đơn có thể bị hủy.
+              </p>
             )}
           </div>
         </div>
@@ -551,30 +529,44 @@ function BookingItem({
           </p>
           {booking.payment && (
             <p className="text-xs text-slate-500">
-              Đã thanh toán: {formatCurrency(booking.payment.amount)} (
-              {booking.payment.paymentType})
+              Thanh toán: {formatCurrency(booking.payment.amount)} (
+              {booking.payment.method})
             </p>
           )}
           <div
             className="flex w-full flex-col items-stretch gap-2 sm:w-auto lg:items-end"
             onClick={(e) => e.stopPropagation()}
           >
-            {canPay.includes(booking.status) && (
+            {(canPayNow || canPayLater) && (
               <div className="flex flex-col items-end gap-2">
-                <input
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  placeholder="Mã giảm giá"
-                  className="h-8 w-36 rounded-lg border border-slate-200 px-2 text-xs outline-none focus:border-brand-500"
-                />
-                <Button
-                  size="sm"
-                  variant="accent"
-                  onClick={() => onPay(couponCode.trim() || undefined)}
-                  loading={paying}
-                >
-                  <CreditCard className="h-4 w-4" /> Thanh toán
-                </Button>
+                {booking.status === "PENDING_PAYMENT" && (
+                  <input
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    placeholder="Mã giảm giá"
+                    className="h-8 w-36 rounded-lg border border-slate-200 px-2 text-xs outline-none focus:border-brand-500"
+                  />
+                )}
+                {canPayNow && (
+                  <Button
+                    size="sm"
+                    variant="accent"
+                    onClick={() => onPay(couponCode.trim() || undefined)}
+                    loading={paying}
+                  >
+                    <CreditCard className="h-4 w-4" /> {booking.status === "PAYING" ? "Thanh toán lại" : "Thanh toán"}
+                  </Button>
+                )}
+                {canPayLater && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onPayLater(couponCode.trim() || undefined)}
+                    loading={payingLater}
+                  >
+                    <Banknote className="h-4 w-4" /> Thanh toán tại quầy
+                  </Button>
+                )}
               </div>
             )}
             {canCancel.includes(booking.status) && (

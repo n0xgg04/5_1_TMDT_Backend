@@ -9,6 +9,10 @@ import {
   Calendar,
   User as UserIcon,
   BedDouble,
+  Phone,
+  Mail,
+  Receipt,
+  Wallet,
 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { Input } from "@/components/ui/input";
@@ -20,10 +24,29 @@ import { toast } from "@/lib/toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking } from "@/lib/types";
 
+type BookingSearchResponse = {
+  data: Booking[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
 export default function StaffCheckInPage() {
   const qc = useQueryClient();
-  const [code, setCode] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [bookingId, setBookingId] = useState<string | null>(null);
+
+  const search = useQuery<BookingSearchResponse>({
+    queryKey: ["front-desk-bookings", searchTerm],
+    enabled: Boolean(searchTerm),
+    queryFn: () =>
+      api
+        .get("/bookings", {
+          params: { search: searchTerm, limit: 10 },
+        })
+        .then((r) => r.data),
+  });
 
   const booking = useQuery<Booking>({
     queryKey: ["booking-detail", bookingId],
@@ -32,13 +55,13 @@ export default function StaffCheckInPage() {
   });
 
   const find = async () => {
-    if (!code.trim()) {
-      toast.warning("Vui lòng nhập mã đơn");
+    const normalized = keyword.trim();
+    if (!normalized) {
+      toast.warning("Vui lòng nhập thông tin khách hoặc mã đơn");
       return;
     }
-    // Try lookup by code: we don't have a dedicated search endpoint, but since
-    // bookingCode follows the id format in seed, we try as id directly.
-    setBookingId(code.trim());
+    setBookingId(null);
+    setSearchTerm(normalized);
   };
 
   const checkin = useMutation({
@@ -59,12 +82,22 @@ export default function StaffCheckInPage() {
     onError: (e) => toast.error("Check-out thất bại", getApiErrorMessage(e)),
   });
 
+  const collectCash = useMutation({
+    mutationFn: ({ id, method }: { id: string; method: "CASH" | "BANK_TRANSFER" }) =>
+      api.post(`/payments/booking/${id}/manual-confirm`, { method }),
+    onSuccess: () => {
+      toast.success("Đã xác nhận thu tiền");
+      qc.invalidateQueries({ queryKey: ["booking-detail"] });
+    },
+    onError: (e) => toast.error("Xác nhận thanh toán thất bại", getApiErrorMessage(e)),
+  });
+
   return (
     <div>
       <OperationHeader
         kicker="Front desk"
         title="Check-in / Check-out"
-        description="Nhập mã đơn đặt phòng để thực hiện thủ tục cho khách, chỉ check-in khi đơn đã xác nhận và check-out khi đang lưu trú."
+        description="Tìm booking theo mã đơn, tên khách, email hoặc số điện thoại trên bill để lễ tân làm thủ tục nhận/trả phòng."
       />
 
       <Card className="mt-6">
@@ -72,20 +105,110 @@ export default function StaffCheckInPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1">
               <Input
-                label="Mã đơn đặt phòng"
-                placeholder="Nhập mã đơn..."
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
+                label="Thông tin tra cứu"
+                placeholder="Nhập mã đơn, tên khách, email hoặc số điện thoại"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
                 leftIcon={<Search className="h-4 w-4" />}
                 onKeyDown={(e) => e.key === "Enter" && find()}
               />
             </div>
-            <Button onClick={find} loading={booking.isFetching}>
+            <Button onClick={find} loading={search.isFetching}>
               <Search className="h-4 w-4" /> Tìm đơn
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      {search.isError && (
+        <Card className="mt-5 border-rose-200 bg-rose-50">
+          <CardContent>
+            <p className="text-sm text-rose-700">
+              Không thể tìm booking: {getApiErrorMessage(search.error)}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {search.data && (
+        <Card className="mt-5">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle>Kết quả tìm kiếm</CardTitle>
+              <p className="text-sm text-slate-500">
+                {search.data.total} booking khớp thông tin
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {search.data.data.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                Không tìm thấy booking phù hợp. Hãy thử lại bằng tên khách,
+                email, số điện thoại hoặc mã đơn trên bill.
+              </p>
+            ) : (
+              search.data.data.map((item) => {
+                const activeStay =
+                  item.status === "CONFIRMED" || item.status === "CHECKED_IN";
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setBookingId(item.id)}
+                    className={`w-full rounded-xl border p-4 text-left transition ${
+                      bookingId === item.id
+                        ? "border-brand-500 bg-brand-50"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <BookingStatusBadge status={item.status} />
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-slate-700">
+                            <Receipt className="h-4 w-4" /> {item.bookingCode}
+                          </span>
+                        </div>
+                        <p className="text-base font-semibold text-slate-900">
+                          {(item.customer?.firstName ?? "").trim()} {(item.customer?.lastName ?? "").trim()}
+                        </p>
+                        <div className="grid gap-1 text-sm text-slate-600 sm:grid-cols-2">
+                          <span className="inline-flex items-center gap-1.5">
+                            <Phone className="h-4 w-4" /> {item.customer?.phone ?? "Chưa có số điện thoại"}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <Mail className="h-4 w-4" /> {item.customer?.email ?? "Chưa có email"}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <BedDouble className="h-4 w-4" />
+                            #{item.room?.roomNumber ?? ""} - {item.room?.roomType?.name ?? "Phòng"}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <Calendar className="h-4 w-4" />
+                            {formatDate(item.checkIn)} - {formatDate(item.checkOut)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-sm text-slate-600 lg:text-right">
+                        <p className="font-semibold text-brand-800">
+                          {formatCurrency(item.totalAmount)}
+                        </p>
+                        <p className="mt-1">
+                          {activeStay
+                            ? "Sẵn sàng thao tác tại lễ tân"
+                            : "Booking này không thuộc luồng nhận/trả phòng"}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {booking.isError && (
         <Card className="mt-5 border-rose-200 bg-rose-50">
@@ -114,6 +237,16 @@ export default function StaffCheckInPage() {
                 value={`${booking.data.customer?.firstName ?? ""} ${booking.data.customer?.lastName ?? ""}`}
               />
               <InfoRow
+                icon={<Phone className="h-4 w-4" />}
+                label="Số điện thoại"
+                value={booking.data.customer?.phone ?? "-"}
+              />
+              <InfoRow
+                icon={<Mail className="h-4 w-4" />}
+                label="Email"
+                value={booking.data.customer?.email ?? "-"}
+              />
+              <InfoRow
                 icon={<BedDouble className="h-4 w-4" />}
                 label="Phòng"
                 value={`#${booking.data.room?.roomNumber ?? ""} - ${booking.data.room?.roomType?.name ?? ""}`}
@@ -136,8 +269,31 @@ export default function StaffCheckInPage() {
                 <p className="text-2xl font-bold text-brand-800">
                   {formatCurrency(booking.data.totalAmount)}
                 </p>
+                {booking.data.payment && (
+                  <p className="mt-1 text-sm text-slate-600">
+                    Thanh toán: {booking.data.payment.status} ({booking.data.payment.method})
+                  </p>
+                )}
               </div>
               <div className="flex gap-2">
+                {booking.data.status === "CONFIRMED" &&
+                  booking.data.payment?.status !== "COMPLETED" && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        collectCash.mutate({
+                          id: booking.data!.id,
+                          method:
+                            booking.data.payment?.method === "BANK_TRANSFER"
+                              ? "BANK_TRANSFER"
+                              : "CASH",
+                        })
+                      }
+                      loading={collectCash.isPending}
+                    >
+                      <Wallet className="h-4 w-4" /> Xác nhận đã thu tiền
+                    </Button>
+                  )}
                 <Button
                   onClick={() => checkin.mutate(booking.data!.id)}
                   loading={checkin.isPending}

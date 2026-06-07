@@ -535,6 +535,136 @@ test("initiatePayment starts payment after approval and reserves coupon amount",
   assert.equal(bookingUpdates.at(-1).status, BookingStatus.PAYING);
 });
 
+test("initiatePayment allows PAYING bookings to re-initiate payment", async () => {
+  const bookingUpdates: any[] = [];
+  const paymentUpdates: any[] = [];
+  const booking = makeBooking({
+    status: BookingStatus.PAYING,
+    approvedAt: new Date(),
+    paymentDeadline: new Date(Date.now() + HOUR),
+    totalAmount: 1_000_000,
+  });
+  const prisma = {
+    booking: {
+      findUnique: async () => booking,
+      update: async (args: any) => {
+        bookingUpdates.push(args.data);
+        return { ...booking, ...args.data };
+      },
+    },
+    payment: {
+      findUnique: async () => ({
+        id: "payment-1",
+        status: PaymentStatus.PROCESSING,
+        amount: 1_000_000,
+      }),
+      update: async (args: any) => {
+        paymentUpdates.push(args.data);
+        return { id: "payment-1", ...args.data };
+      },
+    },
+  };
+  const service = new PaymentsService(
+    prisma as any,
+    {} as any,
+    {} as any,
+    {
+      createPaymentUrl: ({ amount }: { amount: number }) =>
+        `https://gateway.example/pay/${amount}`,
+    } as any,
+    {
+      reserveCouponForUser: async () => {
+        return { discount: 0, finalAmount: 1_000_000 };
+      },
+    } as any,
+  );
+
+  const result = await service.initiatePayment(
+    "booking-1",
+    "customer-1",
+    PaymentMethod.VNPAY,
+    "127.0.0.1",
+    PaymentType.FULL,
+  );
+
+  assert.equal(result.amount, 1_000_000);
+  assert.equal(paymentUpdates[0].status, PaymentStatus.PROCESSING);
+  assert.equal(paymentUpdates[0].gatewayUrl, "https://gateway.example/pay/1000000");
+  assert.equal(bookingUpdates.at(-1).status, BookingStatus.PAYING);
+});
+
+test("initiatePayment bypasses VNPay for localhost requests", async () => {
+  const bookingUpdates: any[] = [];
+  const paymentCreates: any[] = [];
+  const paymentUpdates: any[] = [];
+  const emitted: any[] = [];
+  const booking = makeBooking({
+    status: BookingStatus.PENDING_PAYMENT,
+    approvedAt: new Date(),
+    paymentDeadline: new Date(Date.now() + HOUR),
+    totalAmount: 1_000_000,
+  });
+  const prisma = {
+    booking: {
+      findUnique: async () => booking,
+      update: async (args: any) => {
+        bookingUpdates.push(args.data);
+        return { ...booking, ...args.data };
+      },
+    },
+    payment: {
+      findUnique: async () => null,
+      create: async (args: any) => {
+        paymentCreates.push(args.data);
+        return { id: "payment-1", ...args.data };
+      },
+      update: async (args: any) => {
+        paymentUpdates.push(args.data);
+        return {
+          id: "payment-1",
+          bookingId: "booking-1",
+          customerId: "customer-1",
+          ...args.data,
+        };
+      },
+    },
+  };
+  const service = new PaymentsService(
+    prisma as any,
+    {
+      emit: async (event: string, payload: object) =>
+        emitted.push({ event, payload }),
+    } as any,
+    {} as any,
+    {
+      createPaymentUrl: () => {
+        throw new Error("VNPay gateway should not be called");
+      },
+    } as any,
+    {
+      reserveCouponForUser: async () => ({ discount: 0, finalAmount: 1_000_000 }),
+    } as any,
+  );
+
+  const result = await service.initiatePayment(
+    "booking-1",
+    "customer-1",
+    PaymentMethod.VNPAY,
+    "127.0.0.1",
+    PaymentType.FULL,
+    undefined,
+    true,
+  );
+
+  assert.equal(result.gatewayUrl, undefined);
+  assert.equal(result.bypassed, true);
+  assert.equal(paymentCreates[0].status, PaymentStatus.PROCESSING);
+  assert.equal(paymentUpdates[0].status, PaymentStatus.COMPLETED);
+  assert.match(paymentUpdates[0].gatewayTransactionId, /^LOCAL-/);
+  assert.equal(bookingUpdates[0].status, BookingStatus.PAYING);
+  assert.equal(emitted[0].event, "payment.success");
+});
+
 test("coupon release restores booking amount and user coupon state", async () => {
   const couponUpdates: any[] = [];
   const bookingUpdates: any[] = [];

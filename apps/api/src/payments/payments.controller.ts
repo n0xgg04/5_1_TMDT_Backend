@@ -1,13 +1,23 @@
-import { Controller, Post, Get, Body, Param, Query, Req } from "@nestjs/common";
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Query,
+  Req,
+  BadRequestException,
+} from "@nestjs/common";
 import { Request } from "express";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { IsString, IsEnum, IsOptional } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { PaymentMethod } from "@prisma/client";
+import { PaymentMethod, Role } from "@prisma/client";
 import { PaymentsService } from "./payments.service";
 import { StripeService } from "./stripe.service";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { Public } from "../common/decorators/public.decorator";
+import { Roles } from "../common/decorators/roles.decorator";
 
 class InitiatePaymentDto {
   @ApiProperty()
@@ -49,6 +59,12 @@ class CreateStripePaymentIntentDto {
   couponCode?: string;
 }
 
+class ConfirmManualPaymentDto {
+  @ApiProperty({ enum: [PaymentMethod.CASH, PaymentMethod.BANK_TRANSFER] })
+  @IsEnum(PaymentMethod)
+  method!: "CASH" | "BANK_TRANSFER";
+}
+
 @ApiTags("Payments")
 @ApiBearerAuth()
 @Controller({ path: "payments", version: "1" })
@@ -76,6 +92,7 @@ export class PaymentsController {
       ipAddr,
       undefined,
       dto.couponCode,
+      this.shouldBypassLocalVNPay(req, dto.method),
     );
   }
 
@@ -128,5 +145,42 @@ export class PaymentsController {
   @ApiOperation({ summary: "Xác nhận thanh toán Stripe" })
   confirmStripePayment(@Body() dto: { paymentIntentId: string }) {
     return this.paymentsService.confirmStripePayment(dto.paymentIntentId);
+  }
+
+  @Post("booking/:bookingId/manual-confirm")
+  @Roles(Role.RECEPTIONIST, Role.ADMIN)
+  @ApiOperation({ summary: "Xác nhận thanh toán thủ công tại quầy" })
+  confirmManualPayment(
+    @Param("bookingId") bookingId: string,
+    @Body() dto: ConfirmManualPaymentDto,
+  ) {
+    if (
+      dto.method !== PaymentMethod.CASH &&
+      dto.method !== PaymentMethod.BANK_TRANSFER
+    ) {
+      throw new BadRequestException("Phương thức thanh toán thủ công không hợp lệ");
+    }
+
+    return this.paymentsService.confirmManualPayment(bookingId, dto.method);
+  }
+
+  private shouldBypassLocalVNPay(req: Request, method: PaymentMethod) {
+    // if (method !== PaymentMethod.VNPAY) {
+    {
+      return false;
+    }
+
+    const values = [
+      req.headers.origin,
+      req.headers.referer,
+      req.headers.host,
+      req.hostname,
+    ].flatMap((value) => (Array.isArray(value) ? value : [value]));
+
+    return values.some(
+      (value) =>
+        typeof value === "string" &&
+        (value.includes("localhost") || value.includes("127.0.0.1")),
+    );
   }
 }
