@@ -257,11 +257,11 @@ export default function BookingDetailPage() {
             title={bookingStatusAction(b.status)}
             description={
               b.status === "PENDING_PAYMENT" || b.status === "PAYING"
-                ? "Đơn đã được duyệt. Bạn có thể thanh toán ngay hoặc chọn thanh toán tại quầy trước khi check-in."
+                ? "Yêu cầu của bạn đã được duyệt. Vui lòng thanh toán trong thời hạn để giữ phòng — bạn có thể chuyển khoản ngân hàng hoặc thanh toán tại quầy."
                 : b.status === "CONFIRMED" && b.payment?.status !== "COMPLETED"
-                  ? "Đơn đã được giữ chỗ. Lễ tân sẽ thu tiền trước khi check-in. Nếu quá giờ nhận phòng 2 tiếng mà chưa check-in, đơn sẽ bị hủy do no-show."
+                  ? "Phòng đã được giữ cho bạn. Vui lòng đến quầy lễ tân thanh toán trước khi check-in. Đơn sẽ tự động hủy nếu bạn không đến trong vòng 2 giờ kể từ giờ nhận phòng."
                 : b.status === "PENDING_HOST_APPROVAL"
-                  ? "Trong thời gian chờ duyệt, bạn có thể trao đổi với admin ngay trên đơn này."
+                  ? "Đội ngũ chúng tôi đang kiểm tra lịch phòng. Bạn có thể trao đổi trực tiếp với chúng tôi bên dưới nếu cần hỗ trợ gấp."
                   : undefined
             }
           />
@@ -318,13 +318,13 @@ export default function BookingDetailPage() {
               {b.status === "PENDING_HOST_APPROVAL" &&
                 b.approvalDeadline && (
                   <div className="rounded-xl bg-violet-50 p-3 text-sm text-violet-700">
-                    <span className="font-medium">Hạn duyệt:</span>{" "}
+                    <span className="font-medium">Thời hạn duyệt:</span>{" "}
                     {formatDateTime(b.approvalDeadline)}
                   </div>
                 )}
               {(b.status === "PENDING_PAYMENT" || b.status === "PAYING") && b.paymentDeadline && (
                 <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">
-                  <span className="font-medium">Hạn thanh toán:</span>{" "}
+                  <span className="font-medium">Thời hạn thanh toán:</span>{" "}
                   {formatDateTime(b.paymentDeadline)}
                 </div>
               )}
@@ -344,7 +344,7 @@ export default function BookingDetailPage() {
                     <MessageSquare className="h-5 w-5 text-brand-600" />
                     <div>
                       <h2 className="text-lg font-bold text-slate-900">
-                        Trao đổi về đơn #{b.bookingCode}
+                        Hỗ trợ đơn #{b.bookingCode}
                       </h2>
                       <p className="text-xs text-slate-500">
                         {b.room?.roomType?.name ?? "Phòng"} · #{b.room?.roomNumber}
@@ -354,10 +354,10 @@ export default function BookingDetailPage() {
                 </div>
                 <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl bg-slate-50 p-3">
                   {chatQ.isLoading ? (
-                    <p className="text-sm text-slate-500">Đang tải chat...</p>
+                    <p className="text-sm text-slate-500">Đang tải tin nhắn...</p>
                   ) : !chatQ.data?.messages?.length ? (
                     <p className="text-sm text-slate-500">
-                      Chưa có tin nhắn nào cho yêu cầu này.
+                      Hãy gửi tin nhắn nếu bạn cần hỗ trợ thêm về yêu cầu này.
                     </p>
                   ) : (
                     chatQ.data.messages.map((m) => {
@@ -385,7 +385,7 @@ export default function BookingDetailPage() {
                   <input
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Nhập tin nhắn..."
+                    placeholder="Nhập tin nhắn hỗ trợ..."
                     className="h-10 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-500"
                   />
                   <Button
@@ -434,7 +434,7 @@ export default function BookingDetailPage() {
               <div className="border-t border-slate-100 pt-3">
                 <div className="flex justify-between">
                   <span className="font-semibold text-slate-900">
-                    Trạng thái
+                    Tình trạng
                   </span>
                   <BookingStatusBadge status={b.status} />
                 </div>

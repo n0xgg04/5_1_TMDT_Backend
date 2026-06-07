@@ -123,7 +123,7 @@ export function BookingStatePanel({
         </div>
         {deadline && (
           <div className="rounded-lg bg-slate-50 px-3 py-2 text-right text-xs text-slate-600 ring-1 ring-slate-200">
-            <span className="block font-semibold text-slate-900">Deadline</span>
+            <span className="block font-semibold text-slate-900">Thời hạn</span>
             {deadline}
           </div>
         )}

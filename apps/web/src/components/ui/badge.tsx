@@ -70,7 +70,7 @@ export const bookingMap: Record<
   PENDING_HOST_APPROVAL: {
     tone: "violet",
     label: "Chờ duyệt yêu cầu",
-    action: "Admin kiểm tra lịch phòng và phản hồi trong 24 giờ.",
+    action: "Đội ngũ chúng tôi đang kiểm tra và sẽ phản hồi trong 24 giờ.",
     icon: <Hourglass className="h-3.5 w-3.5" />,
   },
   PENDING_PAYMENT: {
