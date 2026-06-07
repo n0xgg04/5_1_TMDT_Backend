@@ -113,27 +113,28 @@ export default function HomePage() {
           priority
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-ink-950/86 via-ink-950/58 to-ink-950/26" />
+        <div className="absolute inset-0 bg-gradient-to-r from-ink-950/96 via-ink-950/82 to-ink-950/48" />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink-950/50 via-transparent to-ink-950/18" />
         <div className="container-page relative py-14 sm:py-16 lg:py-20">
-          <div className="max-w-3xl pt-2">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1 text-xs font-semibold ring-1 ring-white/25 backdrop-blur">
+          <div className="max-w-3xl rounded-3xl border border-white/14 bg-ink-950/62 p-6 pt-7 shadow-[0_24px_80px_rgba(0,0,0,0.45)] ring-1 ring-black/20 backdrop-blur-xl sm:p-8 lg:p-10">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-ink-950 shadow-sm ring-1 ring-white/70">
               <MapPin className="h-3.5 w-3.5" /> Toàn quốc · Việt Nam
             </span>
-            <h1 className="mt-4 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="mt-5 max-w-3xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
               Sapphire Stay
             </h1>
-            <p className="mt-4 max-w-2xl text-lg leading-8 text-white/88">
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-white sm:text-[1.15rem]">
               Đặt phòng khách sạn trực tuyến với lịch phòng rõ ràng, yêu cầu
               duyệt minh bạch và thanh toán chỉ mở sau khi phòng được xác nhận.
             </p>
-            <div className="mt-6 flex flex-wrap gap-2 text-sm text-white/86">
-              <span className="rounded-full bg-white/12 px-3 py-1 ring-1 ring-white/20">
+            <div className="mt-7 flex flex-wrap gap-2 text-sm text-white">
+              <span className="rounded-full bg-white/14 px-3 py-1.5 font-semibold ring-1 ring-white/24 backdrop-blur-sm">
                 24h duyệt yêu cầu
               </span>
-              <span className="rounded-full bg-white/12 px-3 py-1 ring-1 ring-white/20">
+              <span className="rounded-full bg-white/14 px-3 py-1.5 font-semibold ring-1 ring-white/24 backdrop-blur-sm">
                 Lịch trống/bận realtime
               </span>
-              <span className="rounded-full bg-white/12 px-3 py-1 ring-1 ring-white/20">
+              <span className="rounded-full bg-white/14 px-3 py-1.5 font-semibold ring-1 ring-white/24 backdrop-blur-sm">
                 Ưu đãi sau khi duyệt
               </span>
             </div>
@@ -248,6 +249,7 @@ export default function HomePage() {
                 <RoomCommerceCard
                   key={rt.id}
                   href={`/rooms/${rt.id}`}
+                  showAction={false}
                   image={rt.images?.[0]}
                   title={rt.name}
                   subtitle={rt.branch?.city || "Việt Nam"}
@@ -266,6 +268,7 @@ export default function HomePage() {
                 <RoomCommerceCard
                   key={rt.id}
                   href={`/rooms/${rt.id}`}
+                  showAction={false}
                   image={rt.images?.[0]}
                   title={rt.name}
                   subtitle={rt.branch?.city || "Việt Nam"}
@@ -332,6 +335,7 @@ export default function HomePage() {
             <RoomCommerceCard
               key={rt.id}
               href={`/rooms/${rt.id}`}
+              showAction={false}
               image={rt.images?.[0]}
               title={rt.name}
               subtitle={rt.branch?.city || "Việt Nam"}

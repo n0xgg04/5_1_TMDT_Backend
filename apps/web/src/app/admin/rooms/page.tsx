@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2 } from "lucide-react";
+import { BedDouble, Building2, ClipboardList, Layers3, Plus, Trash2 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,18 +33,25 @@ export default function AdminRoomsPage() {
   const [floor, setFloor] = useState<string>("");
   const [roomTypeId, setRoomTypeId] = useState<string>("");
   const [branchId, setBranchId] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const rooms = useQuery({
-    queryKey: ["admin-rooms", floor, roomTypeId],
+    queryKey: ["admin-rooms", floor, roomTypeId, branchId, currentPage],
     queryFn: () =>
       api
-        .get<Room[]>("/rooms", {
+        .get<{ data: Room[]; total: number; page: number; limit: number }>("/rooms", {
           params: {
+            page: currentPage,
+            limit: 10,
             ...(floor ? { floor } : {}),
             ...(roomTypeId ? { roomTypeId } : {}),
+            ...(branchId ? { branchId } : {}),
           },
         })
-        .then((r) => r.data),
+        .then((r) => {
+          console.log("[AdminRoomsPage] API response:", r.data);
+          return r.data;
+        }),
   });
 
   const types = useQuery({
@@ -98,10 +105,14 @@ export default function AdminRoomsPage() {
     },
   });
 
-  const filteredRooms = rooms.data?.filter((r) => {
-    if (branchId && r.branchId !== branchId) return false;
-    return true;
-  });
+  const selectedRoomType = types.data?.find(
+    (type: any) => type.id === form.watch("roomTypeId"),
+  );
+  const selectedBranch = branches.data?.find(
+    (branch) => branch.id === form.watch("branchId"),
+  );
+
+  const filteredRooms = rooms.data?.data ?? [];
 
   return (
     <div>
@@ -120,7 +131,10 @@ export default function AdminRoomsPage() {
         <Select
           label="Loại phòng"
           value={roomTypeId}
-          onChange={(e) => setRoomTypeId(e.target.value)}
+          onChange={(e) => {
+            setRoomTypeId(e.target.value);
+            setCurrentPage(1);
+          }}
         >
           <option value="">Tất cả</option>
           {types.data?.map((t: any) => (
@@ -134,12 +148,18 @@ export default function AdminRoomsPage() {
           type="number"
           placeholder="Tất cả"
           value={floor}
-          onChange={(e) => setFloor(e.target.value)}
+          onChange={(e) => {
+            setFloor(e.target.value);
+            setCurrentPage(1);
+          }}
         />
         <Select
           label="Chi nhánh"
           value={branchId}
-          onChange={(e) => setBranchId(e.target.value)}
+          onChange={(e) => {
+            setBranchId(e.target.value);
+            setCurrentPage(1);
+          }}
         >
           <option value="">Tất cả</option>
           {branches.data?.map((b) => (
@@ -233,13 +253,39 @@ export default function AdminRoomsPage() {
             </tbody>
           </table>
         </div>
+        {rooms.data && rooms.data.total > 10 && (
+          <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-6 py-4">
+            <p className="text-sm text-slate-500">
+              Hiển thị {(currentPage - 1) * 10 + 1} - {Math.min(currentPage * 10, rooms.data.total)} trong tổng số {rooms.data.total} phòng
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                Trước
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage * 10 >= rooms.data.total}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                Sau
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Modal
         open={open}
         onClose={() => setOpen(false)}
         title="Thêm phòng mới"
-        size="md"
+        size="lg"
+        description="Tạo một phòng vật lý mới để đưa vào luồng vận hành và đặt phòng. Hãy chọn đúng chi nhánh, loại phòng và số phòng theo quy ước quản lý nội bộ."
         footer={
           <>
             <Button variant="ghost" onClick={() => setOpen(false)}>
@@ -255,42 +301,101 @@ export default function AdminRoomsPage() {
         }
       >
         <div className="space-y-4">
-          <Input
-            label="Số phòng"
-            {...form.register("roomNumber")}
-            error={form.formState.errors.roomNumber?.message}
-          />
-          <Input
-            label="Tầng"
-            type="number"
-            {...form.register("floor")}
-            error={form.formState.errors.floor?.message}
-          />
-          <Select
-            label="Loại phòng"
-            {...form.register("roomTypeId")}
-            error={form.formState.errors.roomTypeId?.message}
-          >
-            <option value="">-- Chọn loại phòng --</option>
-            {types.data?.map((t: any) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </Select>
-          <Select
-            label="Chi nhánh"
-            {...form.register("branchId")}
-            error={form.formState.errors.branchId?.message}
-          >
-            <option value="">-- Chọn chi nhánh --</option>
-            {branches.data?.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </Select>
-          <Input label="Ghi chú" {...form.register("notes")} />
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center gap-2">
+              <BedDouble className="h-4 w-4 text-brand-600" />
+              <p className="text-sm font-semibold text-slate-900">Thông tin nhận diện phòng</p>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Đây là các thông tin để hệ thống phân biệt phòng vật lý, hiển thị lên sơ đồ phòng và phục vụ check-in/check-out.
+            </p>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="Số phòng"
+                placeholder="Ví dụ: 503 hoặc A12"
+                hint="Nên theo đúng quy ước đánh số nội bộ của khách sạn."
+                {...form.register("roomNumber")}
+                error={form.formState.errors.roomNumber?.message}
+              />
+              <Input
+                label="Tầng"
+                type="number"
+                placeholder="Ví dụ: 5"
+                hint="Tầng dùng để hiển thị sơ đồ phòng và hỗ trợ vận hành lễ tân/housekeeping."
+                {...form.register("floor")}
+                error={form.formState.errors.floor?.message}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-brand-600" />
+              <p className="text-sm font-semibold text-slate-900">Liên kết vận hành</p>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Gắn phòng với chi nhánh và loại phòng để hệ thống biết cách tính giá, hiển thị trên trang tìm kiếm và theo dõi tồn phòng.
+            </p>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Select
+                label="Loại phòng"
+                {...form.register("roomTypeId")}
+                error={form.formState.errors.roomTypeId?.message}
+              >
+                <option value="">-- Chọn loại phòng --</option>
+                {types.data?.map((t: any) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label="Chi nhánh"
+                {...form.register("branchId")}
+                error={form.formState.errors.branchId?.message}
+              >
+                <option value="">-- Chọn chi nhánh --</option>
+                {branches.data?.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <SummaryCard
+                icon={<Layers3 className="h-4 w-4" />}
+                label="Loại phòng đang chọn"
+                value={selectedRoomType?.name ?? "Chưa chọn loại phòng"}
+              />
+              <SummaryCard
+                icon={<Building2 className="h-4 w-4" />}
+                label="Chi nhánh đang chọn"
+                value={selectedBranch?.name ?? "Chưa chọn chi nhánh"}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-brand-600" />
+              <p className="text-sm font-semibold text-slate-900">Ghi chú vận hành</p>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Ghi chú này dành cho nội bộ, ví dụ vị trí góc, gần thang máy, hoặc lưu ý đặc biệt cho housekeeping/lễ tân.
+            </p>
+
+            <div className="mt-4">
+              <Input
+                label="Ghi chú"
+                placeholder="Ví dụ: Phòng gần thang máy, cần kiểm tra điều hòa định kỳ"
+                {...form.register("notes")}
+              />
+            </div>
+          </div>
         </div>
       </Modal>
     </div>
@@ -323,5 +428,24 @@ function Td({
     <td className={`px-4 py-3 text-sm text-slate-700 ${className}`}>
       {children}
     </td>
+  );
+}
+
+function SummaryCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+        {icon} {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
+    </div>
   );
 }
