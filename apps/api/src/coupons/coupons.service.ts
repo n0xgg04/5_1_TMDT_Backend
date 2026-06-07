@@ -5,19 +5,29 @@ import {
 } from "@nestjs/common";
 import { PaymentStatus } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
+import { RedisService } from "../common/redis/redis.service";
 import { CreateCouponDto, ApplyCouponDto } from "./coupons.dto";
+
+const COUPONS_CACHE_KEY = "coupons:active";
+const COUPONS_CACHE_TTL = 60;
 
 @Injectable()
 export class CouponsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+  ) {}
 
   async findAll() {
     return this.prisma.coupon.findMany({ orderBy: { createdAt: "desc" } });
   }
 
   async findActive() {
+    const cached = await this.redis.get(COUPONS_CACHE_KEY);
+    if (cached) return JSON.parse(cached);
+
     const now = new Date();
-    return this.prisma.coupon.findMany({
+    const result = await this.prisma.coupon.findMany({
       where: {
         isActive: true,
         startDate: { lte: now },
@@ -26,9 +36,12 @@ export class CouponsService {
       },
       orderBy: { createdAt: "desc" },
     });
+    await this.redis.set(COUPONS_CACHE_KEY, JSON.stringify(result), COUPONS_CACHE_TTL);
+    return result;
   }
 
   async create(dto: CreateCouponDto) {
+    await this.redis.del(COUPONS_CACHE_KEY);
     return this.prisma.coupon.create({
       data: {
         code: dto.code.toUpperCase(),
@@ -88,6 +101,7 @@ export class CouponsService {
   }
 
   async incrementUsage(code: string) {
+    await this.redis.del(COUPONS_CACHE_KEY);
     return this.prisma.coupon.update({
       where: { code: code.toUpperCase() },
       data: { usageCount: { increment: 1 } },

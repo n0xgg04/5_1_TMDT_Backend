@@ -324,22 +324,33 @@ function RoomsSearchInner() {
             </div>
             <div>
               <p className="text-sm font-medium text-slate-700">Số sao</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {[5, 4, 3, 2, 1].map((s) => (
+              <div className="mt-2 flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((s) => (
                   <button
                     key={s}
                     onClick={() =>
                       setStarRating((prev) => (prev === s ? undefined : s))
                     }
-                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm font-medium ${
-                      starRating === s
-                        ? "border-amber-400 bg-amber-50 text-amber-700"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
+                    className="p-0.5 transition-colors"
+                    title={`${s} sao`}
                   >
-                    <Star className="h-3.5 w-3.5 fill-current" /> {s}
+                    <Star
+                      className={`h-6 w-6 ${
+                        starRating && s <= starRating
+                          ? "fill-amber-400 text-amber-400"
+                          : "fill-none text-slate-300 hover:text-amber-300"
+                      }`}
+                    />
                   </button>
                 ))}
+                {starRating && (
+                  <button
+                    onClick={() => setStarRating(undefined)}
+                    className="ml-2 text-xs text-slate-400 hover:text-slate-600"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             </div>
             <div className="sm:col-span-2">

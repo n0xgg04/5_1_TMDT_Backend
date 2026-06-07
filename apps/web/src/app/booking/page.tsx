@@ -561,9 +561,13 @@ function BookingInner() {
           <Card className="sticky top-24 overflow-hidden">
             <div className="bg-ink-950 p-5 text-white">
               <p className="text-sm text-white/70">Tổng chi phí dự kiến</p>
-              <p className="mt-1 text-2xl font-bold">
-                {formatCurrency(total)}
-              </p>
+              {priceQ.isLoading && !priceQ.data ? (
+                <div className="mt-2 h-8 w-40 animate-pulse rounded bg-white/20" />
+              ) : (
+                <p className="mt-1 text-2xl font-bold">
+                  {formatCurrency(total)}
+                </p>
+              )}
               <p className="mt-1 text-xs text-white/70">
                 Giá cuối cùng sẽ được xác nhận sau khi duyệt
               </p>
@@ -636,17 +640,26 @@ function BookingInner() {
               </div>
 
               <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-                <Row
-                  label={`${rt.data?.name ?? "Phòng"} · ${nights} đêm`}
-                  value={formatCurrency(total)}
-                />
-                <div className="border-t border-slate-100 pt-2">
-                  <Row
-                    bold
-                    label="Tổng dự kiến"
-                    value={formatCurrency(total)}
-                  />
-                </div>
+                {priceQ.isLoading && !priceQ.data ? (
+                  <div className="space-y-2">
+                    <div className="h-5 w-full animate-pulse rounded bg-slate-100" />
+                    <div className="h-5 w-3/4 animate-pulse rounded bg-slate-100" />
+                  </div>
+                ) : (
+                  <>
+                    <Row
+                      label={`${rt.data?.name ?? "Phòng"} · ${nights} đêm`}
+                      value={formatCurrency(total)}
+                    />
+                    <div className="border-t border-slate-100 pt-2">
+                      <Row
+                        bold
+                        label="Tổng dự kiến"
+                        value={formatCurrency(total)}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <p className="mt-4 rounded-lg border border-brand-200 bg-brand-50 p-3 text-xs leading-5 text-brand-800">
