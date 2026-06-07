@@ -31,7 +31,9 @@ export class SearchService {
   async searchAvailableRooms(params: SearchParams) {
     const cacheKey = `search:${JSON.stringify(params)}`;
     const cached = await this.redis.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      try { return JSON.parse(cached); } catch { /* stale cache, refetch */ }
+    }
 
     const checkIn = new Date(params.checkIn);
     const checkOut = new Date(params.checkOut);
@@ -176,7 +178,9 @@ export class SearchService {
   async getProvinces() {
     const cacheKey = "provinces";
     const cached = await this.redis.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      try { return JSON.parse(cached); } catch { /* stale cache, refetch */ }
+    }
 
     const branches = await this.prisma.hotelBranch.findMany({
       where: { isActive: true },
@@ -197,7 +201,9 @@ export class SearchService {
   async getFeaturedRooms() {
     const cacheKey = "featured-rooms";
     const cached = await this.redis.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      try { return JSON.parse(cached); } catch { /* stale cache, refetch */ }
+    }
 
     const roomTypes = await this.prisma.roomType.findMany({
       where: { isActive: true },
@@ -229,7 +235,9 @@ export class SearchService {
   async getFlashSales() {
     const cacheKey = "flash-sales";
     const cached = await this.redis.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      try { return JSON.parse(cached); } catch { /* stale cache, refetch */ }
+    }
 
     const now = new Date();
     const flashSales = await this.prisma.flashSale.findMany({
