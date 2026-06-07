@@ -147,7 +147,7 @@ export default function BookingDetailPage() {
 
   const chatQ = useQuery({
     queryKey: ["booking-chat", id],
-    enabled: q.data?.status === "PENDING_HOST_APPROVAL",
+    enabled: !!q.data,
     refetchInterval: chatStreamConnected ? false : 5000,
     queryFn: () =>
       api
@@ -166,8 +166,7 @@ export default function BookingDetailPage() {
   );
 
   useChatRealtime({
-    enabled:
-      q.data?.status === "PENDING_HOST_APPROVAL" && Boolean(chatQ.data?.id),
+    enabled: Boolean(q.data && chatQ.data?.id),
     onMessage: handleChatMessage,
     onReconnect: () => {
       qc.invalidateQueries({ queryKey: ["booking-chat", id] });
@@ -337,14 +336,21 @@ export default function BookingDetailPage() {
             </CardContent>
           </Card>
 
-          {b.status === "PENDING_HOST_APPROVAL" && (
+          {b && (
             <Card>
               <CardContent className="p-5 space-y-4">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-brand-600" />
-                  <h2 className="text-lg font-bold text-slate-900">
-                    Trao đổi với admin
-                  </h2>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5 text-brand-600" />
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900">
+                        Trao đổi về đơn #{b.bookingCode}
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        {b.room?.roomType?.name ?? "Phòng"} · #{b.room?.roomNumber}
+                      </p>
+                    </div>
+                  </div>
                 </div>
                 <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl bg-slate-50 p-3">
                   {chatQ.isLoading ? (

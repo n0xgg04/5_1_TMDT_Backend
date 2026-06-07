@@ -29,7 +29,7 @@ export class ChatService {
 
   async getOrCreateConversation(customerId: string, subject?: string) {
     let conversation = await this.prisma.conversation.findFirst({
-      where: { customerId, status: "open" },
+      where: { customerId, status: "open", bookingId: null },
       include: { messages: { orderBy: { createdAt: "asc" } } },
     });
     if (!conversation) {
@@ -67,10 +67,6 @@ export class ChatService {
       : null;
     if (conversation.bookingId && !booking) {
       throw new NotFoundException("Đơn đặt phòng không tồn tại");
-    }
-
-    if (booking && booking.status !== BookingStatus.PENDING_HOST_APPROVAL) {
-      throw new BadRequestException("Chỉ chat theo đơn khi đơn đang chờ duyệt");
     }
 
     const senderIsCustomer = conversation.customerId === sender.id;
@@ -131,9 +127,6 @@ export class ChatService {
     if (booking.customerId !== customerId) {
       throw new ForbiddenException("Không có quyền truy cập chat đơn này");
     }
-    if (booking.status !== BookingStatus.PENDING_HOST_APPROVAL) {
-      throw new BadRequestException("Chỉ chat theo đơn khi đơn đang chờ duyệt");
-    }
 
     return this.getOrCreateConversationForBooking(
       booking.customerId,
@@ -150,9 +143,6 @@ export class ChatService {
       where: { id: bookingId },
     });
     if (!booking) throw new NotFoundException("Đơn đặt phòng không tồn tại");
-    if (booking.status !== BookingStatus.PENDING_HOST_APPROVAL) {
-      throw new BadRequestException("Chỉ chat theo đơn khi đơn đang chờ duyệt");
-    }
 
     const conversation = await this.getOrCreateConversationForBooking(
       booking.customerId,
@@ -170,7 +160,7 @@ export class ChatService {
   }
 
   async getConversationsForStaff(status?: string) {
-    return this.prisma.conversation.findMany({
+    const conversations = await this.prisma.conversation.findMany({
       where: status ? { status } : {},
       include: {
         customer: {
@@ -180,10 +170,36 @@ export class ChatService {
       },
       orderBy: { updatedAt: "desc" },
     });
+
+    const bookingIds = conversations
+      .map((c) => c.bookingId)
+      .filter(Boolean) as string[];
+
+    if (bookingIds.length > 0) {
+      const bookings = await this.prisma.booking.findMany({
+        where: { id: { in: bookingIds } },
+        select: {
+          id: true,
+          bookingCode: true,
+          room: {
+            select: { roomNumber: true, roomType: { select: { name: true } } },
+          },
+          checkIn: true,
+          checkOut: true,
+        },
+      });
+      const bookingMap = new Map(bookings.map((b) => [b.id, b]));
+      return conversations.map((c) => ({
+        ...c,
+        booking: c.bookingId ? bookingMap.get(c.bookingId) ?? null : null,
+      }));
+    }
+
+    return conversations.map((c) => ({ ...c, booking: null }));
   }
 
   async getConversation(id: string) {
-    return this.prisma.conversation.findUnique({
+    const conversation = await this.prisma.conversation.findUnique({
       where: { id },
       include: {
         customer: {
@@ -192,6 +208,26 @@ export class ChatService {
         messages: { orderBy: { createdAt: "asc" } },
       },
     });
+
+    if (!conversation) return null;
+
+    let booking = null;
+    if (conversation.bookingId) {
+      booking = await this.prisma.booking.findUnique({
+        where: { id: conversation.bookingId },
+        select: {
+          id: true,
+          bookingCode: true,
+          room: {
+            select: { roomNumber: true, roomType: { select: { name: true } } },
+          },
+          checkIn: true,
+          checkOut: true,
+        },
+      });
+    }
+
+    return { ...conversation, booking };
   }
 
   async assignStaff(conversationId: string, staffId: string) {

@@ -149,6 +149,7 @@ export function RoomCommerceCard({
   actionLabel = "Xem phòng",
   onAction,
   className,
+  showAction = true,
 }: {
   href?: string;
   image?: string;
@@ -165,6 +166,7 @@ export function RoomCommerceCard({
   actionLabel?: string;
   onAction?: () => void;
   className?: string;
+  showAction?: boolean;
 }) {
   const imageSrc = image || hotelFallbackImage(title);
   const content = (
@@ -217,7 +219,7 @@ export function RoomCommerceCard({
             </p>
             <p className="text-xs text-slate-500">{priceHint}</p>
           </div>
-          {onAction ? (
+          {showAction && onAction ? (
             <Button
               type="button"
               onClick={onAction}
@@ -227,7 +229,7 @@ export function RoomCommerceCard({
               {actionLabel}
               <ArrowRight className="h-4 w-4" />
             </Button>
-          ) : href ? (
+          ) : showAction && href ? (
             <span className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white transition-colors group-hover:bg-brand-800 sm:w-auto">
               {actionLabel}
               <ArrowRight className="h-4 w-4" />
