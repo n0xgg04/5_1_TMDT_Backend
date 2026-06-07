@@ -6,9 +6,9 @@ export default function StaffLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="operation-page flex min-h-screen">
+    <div className="operation-page flex h-screen overflow-hidden">
       <Sidebar section="staff" />
-      <div className="flex-1 overflow-x-hidden">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           {children}
         </main>

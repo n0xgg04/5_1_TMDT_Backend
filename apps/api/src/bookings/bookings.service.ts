@@ -311,7 +311,7 @@ export class BookingsService {
   async expireBooking(bookingId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { payment: true },
+      include: { payment: true, room: true },
     });
     if (!booking) return;
 
@@ -330,8 +330,34 @@ export class BookingsService {
 
     if (
       booking.status !== BookingStatus.PENDING_PAYMENT &&
-      booking.status !== BookingStatus.PAYING
+      booking.status !== BookingStatus.PAYING &&
+      booking.status !== BookingStatus.CONFIRMED
     ) {
+      return;
+    }
+
+    if (booking.status === BookingStatus.CONFIRMED) {
+      const noShowDeadline = this.getNoShowDeadline(booking);
+      if (new Date() <= noShowDeadline) {
+        return;
+      }
+
+      await this.prisma.$transaction([
+        this.prisma.booking.update({
+          where: { id: bookingId },
+          data: { status: BookingStatus.CANCELLED },
+        }),
+        this.prisma.room.update({
+          where: { id: booking.roomId },
+          data: { status: "AVAILABLE" },
+        }),
+      ]);
+
+      await this.events.emit("booking.cancelled", {
+        bookingId,
+        customerId: booking.customerId,
+        reason: "No-show after check-in cutoff",
+      });
       return;
     }
 
@@ -380,12 +406,17 @@ export class BookingsService {
   async checkin(bookingId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { room: true },
+      include: { room: true, payment: true },
     });
     if (!booking) throw new NotFoundException("Đơn không tồn tại");
     if (booking.status !== BookingStatus.CONFIRMED) {
       throw new BadRequestException(
         "Đơn phải ở trạng thái CONFIRMED để check-in",
+      );
+    }
+    if (booking.payment && booking.payment.status !== PaymentStatus.COMPLETED) {
+      throw new BadRequestException(
+        "Lễ tân phải xác nhận đã thu tiền trước khi check-in",
       );
     }
 
@@ -457,9 +488,26 @@ export class BookingsService {
             },
             paymentDeadline: { lt: new Date() },
           },
+          {
+            status: BookingStatus.CONFIRMED,
+            checkIn: { lte: new Date() },
+          },
         ],
       },
     });
+  }
+
+  private getNoShowDeadline(booking: {
+    checkIn: Date;
+    checkInTime?: string | null;
+  }) {
+    const base = new Date(booking.checkIn);
+    const [hours, minutes] = (booking.checkInTime ?? "14:00")
+      .split(":")
+      .map((value) => Number(value) || 0);
+    base.setHours(hours, minutes, 0, 0);
+    base.setHours(base.getHours() + 2);
+    return base;
   }
 
   async uploadReceipt(
