@@ -33,6 +33,7 @@ export class PaymentsService {
     ipAddr: string,
     paymentType: PaymentType = PaymentType.FULL,
     couponCode?: string,
+    bypassGateway = false,
   ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
@@ -44,7 +45,10 @@ export class PaymentsService {
     if (booking.status === BookingStatus.PENDING_HOST_APPROVAL) {
       throw new BadRequestException("Đơn chưa được duyệt để thanh toán");
     }
-    if (booking.status !== BookingStatus.PENDING_PAYMENT) {
+    if (
+      booking.status !== BookingStatus.PENDING_PAYMENT &&
+      booking.status !== BookingStatus.PAYING
+    ) {
       throw new BadRequestException("Đơn không ở trạng thái chờ thanh toán");
     }
     if (!booking.approvedAt || !booking.paymentDeadline) {
@@ -71,8 +75,10 @@ export class PaymentsService {
       amount = Math.floor(amount * 0.3);
     }
 
+    const shouldBypassVNPay = method === PaymentMethod.VNPAY && bypassGateway;
+
     let gatewayUrl: string | undefined;
-    if (method === PaymentMethod.VNPAY) {
+    if (method === PaymentMethod.VNPAY && !shouldBypassVNPay) {
       gatewayUrl = this.vnpay.createPaymentUrl({
         bookingId,
         amount,
@@ -80,6 +86,11 @@ export class PaymentsService {
         ipAddr,
       });
     }
+
+    const paymentStatus =
+      method === PaymentMethod.CASH
+        ? PaymentStatus.PENDING
+        : PaymentStatus.PROCESSING;
 
     if (!payment) {
       payment = await this.prisma.payment.create({
@@ -89,21 +100,47 @@ export class PaymentsService {
           method,
           paymentType,
           amount: amount,
-          status: PaymentStatus.PROCESSING,
-          gatewayUrl,
+          status: paymentStatus,
+          gatewayUrl: gatewayUrl ?? null,
         },
       });
     } else {
       payment = await this.prisma.payment.update({
         where: { bookingId },
         data: {
-          status: PaymentStatus.PROCESSING,
+          status: paymentStatus,
           method,
           paymentType,
           amount,
-          gatewayUrl,
+          gatewayUrl: gatewayUrl ?? null,
+          failureReason: null,
         },
       });
+    }
+
+    if (method === PaymentMethod.CASH) {
+      await this.prisma.$transaction([
+        this.prisma.booking.update({
+          where: { id: bookingId },
+          data: { status: BookingStatus.CONFIRMED },
+        }),
+        this.prisma.room.update({
+          where: { id: booking.roomId },
+          data: { status: "RESERVED" },
+        }),
+      ]);
+
+      await this.events.emit("booking.confirmed", {
+        bookingId,
+        customerId,
+      });
+
+      return {
+        payment,
+        gatewayUrl: undefined,
+        amount,
+        paymentDeferred: true,
+      };
     }
 
     if (method === PaymentMethod.BANK_TRANSFER) {
@@ -122,7 +159,102 @@ export class PaymentsService {
       data: { status: BookingStatus.PAYING },
     });
 
+    if (shouldBypassVNPay) {
+      payment = await this.prisma.payment.update({
+        where: { bookingId },
+        data: {
+          status: PaymentStatus.COMPLETED,
+          paidAt: new Date(),
+          gatewayTransactionId: `LOCAL-${bookingId.slice(-8)}-${Date.now()}`,
+          gatewayUrl: null,
+          failureReason: null,
+        },
+      });
+
+      await this.events.emit("payment.success", {
+        bookingId,
+        amount,
+        gatewayTransactionId: payment.gatewayTransactionId,
+      });
+
+      return { payment, gatewayUrl: undefined, amount, bypassed: true };
+    }
+
     return { payment, gatewayUrl, amount };
+  }
+
+  async confirmManualPayment(
+    bookingId: string,
+    method: "CASH" | "BANK_TRANSFER",
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { payment: true },
+    });
+    if (!booking) {
+      throw new NotFoundException("Đơn đặt phòng không tồn tại");
+    }
+    if (
+      booking.status !== BookingStatus.PENDING_PAYMENT &&
+      booking.status !== BookingStatus.PAYING &&
+      booking.status !== BookingStatus.CONFIRMED
+    ) {
+      throw new BadRequestException("Đơn không ở trạng thái có thể xác nhận thanh toán");
+    }
+    if (booking.payment?.status === PaymentStatus.COMPLETED) {
+      throw new ConflictException("Đơn đã được thanh toán");
+    }
+
+    const amount = Number(booking.totalAmount);
+    let payment = booking.payment;
+
+    if (!payment) {
+      payment = await this.prisma.payment.create({
+        data: {
+          bookingId,
+          customerId: booking.customerId,
+          method,
+          paymentType: PaymentType.FULL,
+          amount,
+          status: PaymentStatus.COMPLETED,
+          paidAt: new Date(),
+        },
+      });
+    } else {
+      payment = await this.prisma.payment.update({
+        where: { bookingId },
+        data: {
+          method,
+          amount,
+          status: PaymentStatus.COMPLETED,
+          paidAt: new Date(),
+          gatewayUrl: null,
+          failureReason: null,
+        },
+      });
+    }
+
+    let updatedBooking = booking;
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      const [confirmedBooking] = await this.prisma.$transaction([
+        this.prisma.booking.update({
+          where: { id: bookingId },
+          data: { status: BookingStatus.CONFIRMED },
+        }),
+        this.prisma.room.update({
+          where: { id: booking.roomId },
+          data: { status: "RESERVED" },
+        }),
+      ]);
+      updatedBooking = confirmedBooking as typeof booking;
+
+      await this.events.emit("booking.confirmed", {
+        bookingId,
+        customerId: booking.customerId,
+      });
+    }
+
+    return { payment, booking: updatedBooking };
   }
 
   async handleWebhook(query: Record<string, string>) {
@@ -210,7 +342,10 @@ export class PaymentsService {
     if (booking.status === BookingStatus.PENDING_HOST_APPROVAL) {
       throw new BadRequestException("Đơn chưa được duyệt để thanh toán");
     }
-    if (booking.status !== BookingStatus.PENDING_PAYMENT) {
+    if (
+      booking.status !== BookingStatus.PENDING_PAYMENT &&
+      booking.status !== BookingStatus.PAYING
+    ) {
       throw new BadRequestException("Đơn không ở trạng thái chờ thanh toán");
     }
     if (!booking.approvedAt || !booking.paymentDeadline) {

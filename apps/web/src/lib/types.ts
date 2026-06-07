@@ -114,6 +114,7 @@ export interface Payment {
   receiptImageUrl?: string | null;
   gatewayUrl?: string | null;
   paidAt?: string | null;
+  failureReason?: string | null;
 }
 
 export interface Notification {
