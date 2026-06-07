@@ -10,6 +10,7 @@ import { ApiExcludeController } from "@nestjs/swagger";
 import { Public } from "../common/decorators/public.decorator";
 import { BookingsService } from "../bookings/bookings.service";
 import { RedisService } from "../common/redis/redis.service";
+import { SepayReconciliationService } from "../sepay/sepay-reconciliation.service";
 
 /**
  * Cron-friendly endpoints. Authenticated by a static bearer secret so it can
@@ -27,6 +28,7 @@ export class CronController {
     private readonly config: ConfigService,
     private readonly bookings: BookingsService,
     private readonly redis: RedisService,
+    private readonly sepayReconciliationService: SepayReconciliationService,
   ) {}
 
   @Public()
@@ -58,6 +60,13 @@ export class CronController {
     } finally {
       await this.redis.del(lockKey);
     }
+  }
+
+  @Public()
+  @Post("sepay-reconciliation")
+  async sepayReconciliation(@Headers("authorization") auth?: string) {
+    this.assertCronSecret(auth);
+    return this.sepayReconciliationService.reconcile();
   }
 
   private assertCronSecret(auth?: string): void {

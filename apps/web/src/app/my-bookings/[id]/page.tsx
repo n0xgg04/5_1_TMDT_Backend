@@ -12,10 +12,15 @@ import {
   MapPin,
   BedDouble,
   CreditCard,
+  Banknote,
   XCircle,
   Star,
   MessageSquare,
   Send,
+  Copy,
+  CheckCircle2,
+  QrCode,
+  X,
 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
@@ -51,6 +56,15 @@ export default function BookingDetailPage() {
   const [couponCode, setCouponCode] = useState("");
   const [message, setMessage] = useState("");
   const [chatStreamConnected, setChatStreamConnected] = useState(false);
+  const [bankTransferResult, setBankTransferResult] = useState<{
+    paymentCode: string;
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+    amount: number;
+    paymentDeadline?: string;
+  } | null>(null);
+  const [showQr, setShowQr] = useState(false);
 
   const q = useQuery({
     queryKey: ["booking", id],
@@ -81,6 +95,23 @@ export default function BookingDetailPage() {
       if (data.gatewayUrl) {
         window.location.href = data.gatewayUrl;
       }
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err)),
+  });
+
+  const bankTransferM = useMutation({
+    mutationFn: () =>
+      api
+        .post(`/payments/initiate`, {
+          bookingId: id,
+          method: "BANK_TRANSFER",
+          couponCode: couponCode.trim() || undefined,
+        })
+        .then((r) => r.data),
+    onSuccess: (data) => {
+      setBankTransferResult(data);
+      toast.success("Vui lòng chuyển khoản theo thông tin bên dưới");
+      qc.invalidateQueries({ queryKey: ["booking", id] });
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
   });
@@ -381,8 +412,78 @@ export default function BookingDetailPage() {
                       onClick={() => payM.mutate()}
                       loading={payM.isPending}
                     >
-                      <CreditCard className="mr-2 h-4 w-4" /> Thanh toán ngay
+                      <CreditCard className="mr-2 h-4 w-4" /> Thanh toán VNPay
                     </Button>
+                    {!bankTransferResult && (
+                      <Button
+                        className="w-full"
+                        variant="outline"
+                        onClick={() => bankTransferM.mutate()}
+                        loading={bankTransferM.isPending}
+                      >
+                        <Banknote className="mr-2 h-4 w-4" /> Chuyển khoản ngân hàng
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {bankTransferResult && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                      <span className="font-semibold text-emerald-800">
+                        Thông tin chuyển khoản
+                      </span>
+                    </div>
+                    <div className="space-y-1.5 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Ngân hàng:</span>
+                        <span className="font-medium">{bankTransferResult.bankName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Số tài khoản:</span>
+                        <span className="font-mono font-medium">
+                          {bankTransferResult.accountNumber}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Chủ tài khoản:</span>
+                        <span className="font-medium">{bankTransferResult.accountHolder}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Số tiền:</span>
+                        <span className="font-bold text-emerald-700">
+                          {formatCurrency(bankTransferResult.amount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-600">Nội dung CK:</span>
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono font-bold text-brand-700 bg-white px-2 py-0.5 rounded border">
+                            {bankTransferResult.paymentCode}
+                          </span>
+                          <button
+                            type="button"
+                            className="text-brand-600 hover:text-brand-800"
+                            onClick={() => {
+                              navigator.clipboard.writeText(bankTransferResult.paymentCode);
+                              toast.success("Đã sao mã", "Dán vào nội dung chuyển khoản");
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      className="w-full"
+                      variant="accent"
+                      onClick={() => setShowQr(true)}
+                    >
+                      <QrCode className="mr-2 h-4 w-4" /> Xem mã QR chuyển khoản
+                    </Button>
+                    <p className="text-xs text-slate-500 text-center">
+                      Hệ thống sẽ tự động xác nhận khi nhận được chuyển khoản với mã trên.
+                    </p>
                   </div>
                 )}
                 {canCancel.includes(b.status) && (
@@ -410,6 +511,60 @@ export default function BookingDetailPage() {
         </div>
       </div>
       </div>
+
+      {/* QR Popup Modal */}
+      {showQr && bankTransferResult && (() => {
+        const qrAmount = Number(bankTransferResult.amount);
+        const qrCode = encodeURIComponent(bankTransferResult.paymentCode);
+        const qrAccountName = encodeURIComponent(bankTransferResult.accountHolder);
+        const qrUrl = `https://img.vietqr.io/image/mb-${bankTransferResult.accountNumber}-qr.png?amount=${qrAmount}&addInfo=${qrCode}&accountName=${qrAccountName}`;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl relative">
+              <button
+                className="absolute top-3 right-3 text-slate-400 hover:text-slate-600"
+                onClick={() => setShowQr(false)}
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <h3 className="text-center text-lg font-bold text-slate-900">
+                Quét mã QR để thanh toán
+              </h3>
+              <p className="mt-1 text-center text-sm text-slate-500">
+                {bankTransferResult.bankName} - {bankTransferResult.accountNumber}
+              </p>
+              <div className="mt-4 flex flex-col items-center gap-3">
+                <img
+                  src={qrUrl}
+                  alt="QR Code"
+                  className="h-56 w-56 rounded-xl border border-slate-200"
+                />
+                <div className="text-center space-y-1">
+                  <p className="text-lg font-bold text-slate-900">
+                    {formatCurrency(bankTransferResult.amount)}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    Nội dung: <span className="font-mono font-bold text-brand-700">{bankTransferResult.paymentCode}</span>
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    Chủ TK: {bankTransferResult.accountHolder}
+                  </p>
+                </div>
+              </div>
+              <Button
+                className="mt-4 w-full"
+                variant="outline"
+                onClick={() => setShowQr(false)}
+              >
+                Đóng
+              </Button>
+              <p className="mt-2 text-xs text-slate-400 text-center">
+                Mở app ngân hàng, quét mã QR để chuyển khoản nhanh
+              </p>
+            </div>
+          </div>
+        );
+      })()}
     </main>
   );
 }

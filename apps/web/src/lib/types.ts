@@ -98,6 +98,7 @@ export interface Booking {
   room?: Room & { roomType?: RoomType };
   customer?: AuthUser;
   payment?: Payment;
+  bill?: Bill | null;
   review?: Review | null;
   attachments?: BookingAttachment[];
   hasActiveOverlap?: boolean;
@@ -113,6 +114,19 @@ export interface Payment {
   status: string;
   receiptImageUrl?: string | null;
   gatewayUrl?: string | null;
+  paidAt?: string | null;
+}
+
+export interface Bill {
+  id: string;
+  bookingId: string;
+  paymentCode: string;
+  amount: string | number;
+  status: "PENDING" | "PAID" | "EXPIRED" | "CANCELLED";
+  paymentDeadline?: string | null;
+  accountNumber: string;
+  bankName: string;
+  accountHolder: string;
   paidAt?: string | null;
 }
 
