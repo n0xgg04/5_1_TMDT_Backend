@@ -460,7 +460,7 @@ export default function HomePage() {
 
       <button
         onClick={scrollToTop}
-        className="fixed bottom-6 right-6 flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700"
+        className="fixed bottom-6 left-6 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700"
       >
         <ArrowUp className="h-5 w-5" />
       </button>

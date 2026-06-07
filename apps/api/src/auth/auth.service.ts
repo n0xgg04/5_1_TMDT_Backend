@@ -2,20 +2,35 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  Logger,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as bcrypt from "bcryptjs";
+import { Resend } from "resend";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { RegisterDto, LoginDto } from "./dto/auth.dto";
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+  private readonly resend: Resend | null;
+  private readonly fromAddress: string;
+  private readonly appUrl: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
-  ) {}
+  ) {
+    const apiKey = this.config.get<string>("RESEND_API_KEY");
+    this.resend = apiKey ? new Resend(apiKey) : null;
+    this.fromAddress = this.config.get<string>(
+      "EMAIL_FROM",
+      "Sapphire Stay <onboarding@resend.dev>",
+    );
+    this.appUrl = this.config.get<string>("APP_URL", "http://localhost:3001");
+  }
 
   async register(dto: RegisterDto) {
     const existing = await this.prisma.user.findUnique({
@@ -43,6 +58,10 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user.id, user.email, user.role);
     await this.saveRefreshToken(user.id, tokens.refreshToken);
+
+    // Gửi email chào mừng (fire-and-forget)
+    this.sendWelcomeEmail(user.email, `${user.firstName} ${user.lastName}`);
+
     return { user, ...tokens };
   }
 
@@ -190,5 +209,56 @@ export class AuthService {
       where: { id: userId },
       data: { refreshToken: hashed },
     });
+  }
+
+  private sendWelcomeEmail(email: string, name: string) {
+    if (!this.resend) return;
+
+    const html = `<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;">
+  <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;padding:20px;">
+    <div style="background:#0f172a;padding:24px;text-align:center;border-radius:8px 8px 0 0;">
+      <h1 style="color:#fff;margin:0;font-size:22px;">Sapphire Stay</h1>
+      <p style="color:#94a3b8;margin:6px 0 0;">Chào mừng bạn đến với trải nghiệm đặt phòng đẳng cấp</p>
+    </div>
+    <div style="background:#fff;padding:24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;">
+      <p>Kính chào <strong>${name}</strong>,</p>
+      <p>Cảm ơn bạn đã đăng ký tài khoản tại <strong>Sapphire Stay</strong> — nền tảng đặt phòng khách sạn trực tuyến hàng đầu Việt Nam.</p>
+      <div style="background:#f8fafc;padding:16px;border-radius:8px;margin:16px 0;">
+        <p style="margin:0 0 8px;font-weight:600;color:#0f172a;">Tài khoản của bạn đã sẵn sàng:</p>
+        <ul style="margin:0;padding-left:20px;color:#475569;">
+          <li>Tìm kiếm và đặt phòng nhanh chóng</li>
+          <li>Thanh toán an toàn qua chuyển khoản ngân hàng</li>
+          <li>Quản lý đơn đặt phòng mọi lúc, mọi nơi</li>
+          <li>Nhận ưu đãi đặc biệt dành riêng cho thành viên</li>
+        </ul>
+      </div>
+      <div style="text-align:center;margin-top:20px;">
+        <a href="${this.appUrl}/rooms" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">
+          Khám phá phòng ngay
+        </a>
+      </div>
+      <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:20px;">
+        © 2026 Sapphire Stay. Vui lòng không trả lời email tự động này.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    this.resend.emails
+      .send({
+        from: this.fromAddress,
+        to: email,
+        subject: `[Sapphire Stay] Chào mừng ${name} — Tài khoản đã được tạo thành công!`,
+        html,
+        headers: { "Content-Type": "text/html; charset=UTF-8" },
+      })
+      .then(() => this.logger.log(`Welcome email sent to ${email}`))
+      .catch((err) =>
+        this.logger.error(`Welcome email failed for ${email}: ${err.message}`),
+      );
   }
 }

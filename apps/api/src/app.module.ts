@@ -25,6 +25,8 @@ import { ChatModule } from "./chat/chat.module";
 import { UserPaymentMethodsModule } from "./user-payment-methods/user-payment-methods.module";
 import { WishlistModule } from "./wishlist/wishlist.module";
 import { AvailabilityModule } from "./availability/availability.module";
+import { SepayModule } from "./sepay/sepay.module";
+import { BillsModule } from "./bills/bills.module";
 
 @Module({
   imports: [
@@ -51,6 +53,8 @@ import { AvailabilityModule } from "./availability/availability.module";
     StaffModule,
     ReportsModule,
     CronModule,
+    SepayModule,
+    BillsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

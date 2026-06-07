@@ -68,6 +68,7 @@ export async function configureApp(
 
 export async function createNestApp(): Promise<NestExpressApplication> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
     logger:
       process.env.NODE_ENV === "production"
         ? ["error", "warn", "log"]

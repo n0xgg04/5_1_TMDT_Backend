@@ -58,6 +58,20 @@ enum PaymentType {
   BALANCE
 }
 
+enum BillStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
+enum TxnMatchStatus {
+  MATCHED
+  MISMATCH
+  UNMATCHED
+  LATE_PAYMENT
+}
+
 enum PaymentStatus {
   PENDING
   PROCESSING
@@ -205,11 +219,12 @@ model Booking {
   customer    User                @relation(fields: [customerId], references: [id])
   room        Room                @relation(fields: [roomId], references: [id])
   approvedBy  User?               @relation(fields: [approvedById], references: [id], name: "approvedBookings")
-  addons      BookingAddon[]
-  review       Review?
-  payment      Payment?
-  attachments  BookingAttachment[]
-  refundRequest RefundRequest?
+  addons         BookingAddon[]
+  review         Review?
+  payment        Payment?
+  bill           Bill?
+  attachments    BookingAttachment[]
+  refundRequest  RefundRequest?
 
   @@index([customerId, status])
   @@index([checkIn, checkOut, status])
@@ -306,6 +321,52 @@ model PaymentMethodInfo {
   updatedAt      DateTime @updatedAt
 
   @@map("payment_method_infos")
+}
+
+model Bill {
+  id              String      @id @default(cuid())
+  bookingId       String      @unique
+  paymentCode     String      @unique
+  amount          Decimal     @db.Decimal(12, 2)
+  status          BillStatus  @default(PENDING)
+  paymentDeadline DateTime?
+  accountNumber   String
+  bankName        String
+  accountHolder   String
+  paidAt          DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  booking      Booking           @relation(fields: [bookingId], references: [id])
+  transactions BankTransaction[]
+
+  @@map("bills")
+}
+
+model BankTransaction {
+  id                    String         @id @default(cuid())
+  gatewayTransactionId  String         @unique
+  gateway               String
+  transactionDate       DateTime
+  accountNumber         String
+  subAccount            String?
+  code                  String?
+  content               String
+  transferType          String
+  description           String?
+  transferAmount        Int
+  accumulated           Int            @default(0)
+  referenceCode         String?
+  rawPayload            Json
+  matchStatus           TxnMatchStatus @default(UNMATCHED)
+  matchedBillId         String?
+  createdAt             DateTime       @default(now())
+
+  matchedBill Bill? @relation(fields: [matchedBillId], references: [id])
+
+  @@index([matchStatus, createdAt])
+  @@index([matchedBillId])
+  @@map("bank_transactions")
 }
 
 model BookingAttachment {

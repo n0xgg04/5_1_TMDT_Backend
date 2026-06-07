@@ -2,6 +2,7 @@ import { Controller, Post, Get, Body, Param, Query } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { Role, BookingStatus } from "@prisma/client";
 import { BookingsService } from "./bookings.service";
+import { BillsService } from "../bills/bills.service";
 import {
   CreateBookingDto,
   CancelBookingDto,
@@ -16,7 +17,10 @@ import { Roles } from "../common/decorators/roles.decorator";
 @ApiBearerAuth()
 @Controller({ path: "bookings", version: "1" })
 export class BookingsController {
-  constructor(private readonly bookingsService: BookingsService) {}
+  constructor(
+    private readonly bookingsService: BookingsService,
+    private readonly billsService: BillsService,
+  ) {}
 
   @Post()
   @Roles(Role.CUSTOMER, Role.RECEPTIONIST, Role.ADMIN)
@@ -118,6 +122,18 @@ export class BookingsController {
   @ApiOperation({ summary: "Check-out (Staff)" })
   checkout(@Param("id") id: string) {
     return this.bookingsService.checkout(id);
+  }
+
+  @Get(":id/bill")
+  @ApiOperation({ summary: "Xem hóa đơn thanh toán của đơn" })
+  getBill(
+    @Param("id") id: string,
+    @CurrentUser() user: { id: string; role: Role },
+  ) {
+    // Reuse booking auth check via getBookingById
+    return this.bookingsService.getBookingById(id, user).then(() =>
+      this.billsService.getBillByBookingId(id)
+    );
   }
 
   @Post(":id/reopen")

@@ -12,6 +12,7 @@ import { PricingService } from "../rooms/pricing.service";
 import { CouponsService } from "../coupons/coupons.service";
 import { FlashSalesService } from "../flash-sales/flash-sales.service";
 import { AvailabilityService } from "../availability/availability.service";
+import { BillsService } from "../bills/bills.service";
 import {
   CreateBookingDto,
   UploadReceiptDto,
@@ -34,6 +35,7 @@ export class BookingsService {
     private readonly couponsService: CouponsService,
     private readonly flashSalesService: FlashSalesService,
     private readonly availability: AvailabilityService,
+    private readonly billsService: BillsService,
   ) {}
 
   async createBooking(customerId: string, dto: CreateBookingDto) {
@@ -274,6 +276,8 @@ export class BookingsService {
       data: { status: BookingStatus.CANCELLED },
     });
 
+    await this.billsService.syncBillStatusByBooking(bookingId, "CANCELLED");
+
     if (
       booking.status === BookingStatus.CONFIRMED ||
       booking.status === BookingStatus.PENDING_HOST_APPROVAL
@@ -300,7 +304,8 @@ export class BookingsService {
     if (!booking) throw new NotFoundException("Đơn không tồn tại");
 
     if (
-      booking.status !== BookingStatus.PAYING
+      booking.status !== BookingStatus.PAYING &&
+      booking.status !== BookingStatus.PENDING_PAYMENT
     ) {
       return booking;
     }
@@ -383,6 +388,8 @@ export class BookingsService {
       where: { id: bookingId },
       data: { status: BookingStatus.EXPIRED },
     });
+
+    await this.billsService.syncBillStatusByBooking(bookingId, "EXPIRED");
 
     await this.events.emit("booking.payment.expired", {
       bookingId,
@@ -688,6 +695,11 @@ export class BookingsService {
       staffId,
       customerId: booking.customerId,
       paymentDeadline,
+    });
+
+    // Tạo bill cho thanh toán chuyển khoản (fire-and-forget, không block flow)
+    this.billsService.createBill(bookingId).catch(() => {
+      // Bill creation failure should not block the approval flow
     });
 
     return updated;

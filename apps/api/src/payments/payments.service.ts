@@ -9,6 +9,7 @@ import { EventsService } from "../common/events/events.service";
 import { StripeService } from "./stripe.service";
 import { VNPayGateway } from "./gateway/vnpay.gateway";
 import { CouponsService } from "../coupons/coupons.service";
+import { BillsService } from "../bills/bills.service";
 import {
   PaymentMethod,
   PaymentStatus,
@@ -24,6 +25,7 @@ export class PaymentsService {
     private readonly stripe: StripeService,
     private readonly vnpay: VNPayGateway,
     private readonly coupons: CouponsService,
+    private readonly billsService: BillsService,
   ) {}
 
   async initiatePayment(
@@ -148,10 +150,17 @@ export class PaymentsService {
         where: { id: bookingId },
         data: { status: BookingStatus.PENDING_PAYMENT },
       });
-      const bankInfo = await this.prisma.paymentMethodInfo.findFirst({
-        where: { isActive: true },
-      });
-      return { payment, gatewayUrl, bankInfo, amount };
+      // Tạo bill nếu chưa có
+      const bill = await this.billsService.createBill(bookingId);
+      return {
+        payment,
+        amount,
+        paymentCode: bill.paymentCode,
+        bankName: bill.bankName,
+        accountNumber: bill.accountNumber,
+        accountHolder: bill.accountHolder,
+        paymentDeadline: bill.paymentDeadline,
+      };
     }
 
     await this.prisma.booking.update({
@@ -316,7 +325,7 @@ export class PaymentsService {
   async getPaymentByBookingId(bookingId: string, userId: string) {
     const payment = await this.prisma.payment.findUnique({
       where: { bookingId },
-      include: { booking: true },
+      include: { booking: { include: { bill: true } } },
     });
     if (!payment)
       throw new NotFoundException("Thông tin thanh toán không tồn tại");
