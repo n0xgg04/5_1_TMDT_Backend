@@ -284,7 +284,8 @@ export class BookingsService {
     if (!booking) throw new NotFoundException("Đơn không tồn tại");
 
     if (
-      booking.status !== BookingStatus.PAYING
+      booking.status !== BookingStatus.PAYING &&
+      booking.status !== BookingStatus.PENDING_PAYMENT
     ) {
       return booking;
     }

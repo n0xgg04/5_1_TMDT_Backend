@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ChevronLeft,
   Calendar,
@@ -65,39 +65,45 @@ export default function BookingDetailPage() {
     paymentDeadline?: string;
   } | null>(null);
   const [showQr, setShowQr] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const q = useQuery({
     queryKey: ["booking", id],
     enabled: !!id,
     queryFn: () => api.get<Booking>(`/bookings/${id}`).then((r) => r.data),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "PENDING_HOST_APPROVAL" || status === "PENDING_PAYMENT"
+        ? 5000
+        : false;
+    },
   });
+
+  // Tự động đóng QR + hiện thông báo khi booking được confirm
+  const [prevStatus, setPrevStatus] = useState(q.data?.status);
+  useEffect(() => {
+    const prev = prevStatus;
+    const curr = q.data?.status;
+    if (prev !== curr) {
+      setPrevStatus(curr);
+      if (
+        prev === "PENDING_PAYMENT" &&
+        (curr === "CONFIRMED" || curr === "CHECKED_IN")
+      ) {
+        setShowQr(false);
+        setBankTransferResult(null);
+        setShowSuccess(true);
+      }
+      if (prev === "PENDING_HOST_APPROVAL" && curr === "PENDING_PAYMENT") {
+        toast.success("Yêu cầu đã được duyệt!", "Bạn có thể thanh toán ngay.");
+      }
+    }
+  }, [q.data?.status, prevStatus]);
 
   const cancelM = useMutation({
     mutationFn: () => api.post(`/bookings/${id}/cancel`).then((r) => r.data),
     onSuccess: () => {
       toast.success("Đã hủy đơn");
-      qc.invalidateQueries({ queryKey: ["booking", id] });
-      qc.invalidateQueries({ queryKey: ["my-bookings"] });
-    },
-    onError: (err) => toast.error(getApiErrorMessage(err)),
-  });
-
-  const payNowM = useMutation({
-    mutationFn: () =>
-      api
-        .post(`/payments/initiate`, {
-          bookingId: id,
-          method: "VNPAY",
-          couponCode: couponCode.trim() || undefined,
-        })
-        .then((r) => r.data),
-    onSuccess: (data) => {
-      if (data.gatewayUrl) {
-        window.location.href = data.gatewayUrl;
-        return;
-      }
-
-      toast.success("Thanh toán thành công");
       qc.invalidateQueries({ queryKey: ["booking", id] });
       qc.invalidateQueries({ queryKey: ["my-bookings"] });
     },
@@ -132,7 +138,8 @@ export default function BookingDetailPage() {
         .then((r) => r.data),
     onSuccess: (data) => {
       setBankTransferResult(data);
-      toast.success("Vui lòng chuyển khoản theo thông tin bên dưới");
+      setShowQr(true);
+      toast.success("Quét mã QR để chuyển khoản");
       qc.invalidateQueries({ queryKey: ["booking", id] });
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
@@ -199,11 +206,7 @@ export default function BookingDetailPage() {
     "PENDING_HOST_APPROVAL",
     "PENDING_PAYMENT",
     "PAYING",
-    "CONFIRMED",
   ];
-  const canPayNow =
-    b.status === "PENDING_PAYMENT" ||
-    (b.status === "PAYING" && b.payment?.method === "VNPAY");
   const canPayLaterAtDesk =
     b.status === "PENDING_PAYMENT" && !b.payment?.gatewayUrl;
   const canReview = b.status === "CHECKED_OUT" && !b.review;
@@ -432,7 +435,7 @@ export default function BookingDetailPage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                {(canPayNow || canPayLaterAtDesk) && (
+                {canPayLaterAtDesk && !bankTransferResult && (
                   <div className="space-y-2">
                     {b.status === "PENDING_PAYMENT" && (
                       <input
@@ -442,47 +445,22 @@ export default function BookingDetailPage() {
                         className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-500"
                       />
                     )}
-                    {b.status === "PAYING" && b.payment?.gatewayUrl && (
-                      <Button
-                        className="w-full"
-                        variant="accent"
-                        onClick={() => {
-                          window.location.href = b.payment!.gatewayUrl!;
-                        }}
-                      >
-                        <CreditCard className="mr-2 h-4 w-4" /> Tiếp tục thanh toán
-                      </Button>
-                    )}
-                    {canPayNow && (
-                      <Button
-                        className="w-full"
-                        variant={b.status === "PAYING" && b.payment?.gatewayUrl ? "outline" : "accent"}
-                        onClick={() => payNowM.mutate()}
-                        loading={payNowM.isPending}
-                      >
-                        <CreditCard className="mr-2 h-4 w-4" /> {b.status === "PAYING" ? "Thanh toán lại" : "Thanh toán VNPay"}
-                      </Button>
-                    )}
-                    {canPayLaterAtDesk && !bankTransferResult && (
-                      <>
-                        <Button
-                          className="w-full"
-                          variant="outline"
-                          onClick={() => bankTransferM.mutate()}
-                          loading={bankTransferM.isPending}
-                        >
-                          <Banknote className="mr-2 h-4 w-4" /> Chuyển khoản ngân hàng
-                        </Button>
-                        <Button
-                          className="w-full"
-                          variant="ghost"
-                          onClick={() => payLaterM.mutate()}
-                          loading={payLaterM.isPending}
-                        >
-                          <Banknote className="mr-2 h-4 w-4" /> Thanh toán tại quầy
-                        </Button>
-                      </>
-                    )}
+                    <Button
+                      className="w-full"
+                      variant="accent"
+                      onClick={() => bankTransferM.mutate()}
+                      loading={bankTransferM.isPending}
+                    >
+                      <Banknote className="mr-2 h-4 w-4" /> Chuyển khoản ngân hàng
+                    </Button>
+                    <Button
+                      className="w-full"
+                      variant="ghost"
+                      onClick={() => payLaterM.mutate()}
+                      loading={payLaterM.isPending}
+                    >
+                      <Banknote className="mr-2 h-4 w-4" /> Thanh toán tại quầy
+                    </Button>
                   </div>
                 )}
                 {bankTransferResult && (
@@ -616,6 +594,34 @@ export default function BookingDetailPage() {
           </div>
         );
       })()}
+
+      {/* Success Dialog */}
+      {showSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex flex-col items-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <CheckCircle2 className="h-8 w-8" />
+              </div>
+              <h3 className="mt-4 text-lg font-bold text-slate-900">
+                Thanh toán thành công!
+              </h3>
+              <p className="mt-1 text-center text-sm text-slate-500">
+                Đơn đặt phòng của bạn đã được xác nhận.
+              </p>
+            </div>
+            <Button
+              className="mt-6 w-full"
+              onClick={() => {
+                setShowSuccess(false);
+                qc.invalidateQueries({ queryKey: ["booking", id] });
+              }}
+            >
+              Xem đơn đã xác nhận
+            </Button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

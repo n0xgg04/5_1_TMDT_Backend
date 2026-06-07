@@ -3,7 +3,7 @@ import { PrismaService } from "../common/prisma/prisma.service";
 import { EventsService } from "../common/events/events.service";
 import type { SepayWebhookPayload } from "./sepay.types";
 
-const PAYMENT_CODE_REGEX = /SS-[A-Z0-9]+/;
+const PAYMENT_CODE_REGEX = /SS-?[A-Za-z0-9]+/;
 
 @Injectable()
 export class MatchService {
@@ -20,9 +20,19 @@ export class MatchService {
    * Fallback regex từ `content`.
    */
   parsePaymentCode(content: string, code: string | null): string | null {
-    if (code) return code;
+    if (code) return this.normalizeCode(code);
     const match = PAYMENT_CODE_REGEX.exec(content);
-    return match ? match[0] : null;
+    return match ? this.normalizeCode(match[0]) : null;
+  }
+
+  /**
+   * Chuẩn hóa mã thanh toán: đảm bảo có dấu "-" sau "SS".
+   * "SScmq3ma..." → "SS-cmq3ma..."
+   */
+  private normalizeCode(raw: string): string {
+    if (raw.startsWith("SS-")) return raw;
+    if (raw.startsWith("SS")) return `SS-${raw.slice(2)}`;
+    return raw;
   }
 
   /**
