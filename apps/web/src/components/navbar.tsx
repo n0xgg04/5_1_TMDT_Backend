@@ -120,8 +120,7 @@ export function Navbar() {
                 </Link>
               )}
               {(user.role === "RECEPTIONIST" ||
-                user.role === "HOUSEKEEPING" ||
-                user.role === "ADMIN") && (
+                user.role === "HOUSEKEEPING") && (
                 <Link href="/staff/room-map">
                   <Button variant="outline" size="sm">
                     Staff

@@ -21,12 +21,16 @@ import {
   CheckCircle2,
   QrCode,
   X,
+  RefreshCw,
+  Building2,
 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import {
   BookingStatusBadge,
   bookingStatusAction,
@@ -100,14 +104,40 @@ export default function BookingDetailPage() {
     }
   }, [q.data?.status, prevStatus]);
 
+  const [cancelDialog, setCancelDialog] = useState<{
+    refundPercent: number;
+    refundAmount: number;
+  } | null>(null);
+  const [refundAutoShow, setRefundAutoShow] = useState(false);
+
+  const prefetchRefund = useMutation({
+    mutationFn: () =>
+      api
+        .get<{ refundPercent: number; refundAmount: number }>(
+          `/bookings/${id}/refund`,
+        )
+        .then((r) => r.data),
+    onSuccess: (data) => {
+      setCancelDialog(data);
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err)),
+  });
+
   const cancelM = useMutation({
     mutationFn: () => api.post(`/bookings/${id}/cancel`).then((r) => r.data),
     onSuccess: () => {
       toast.success("Đã hủy đơn");
+      if (cancelDialog && cancelDialog.refundAmount > 0) {
+        setRefundAutoShow(true);
+      }
+      setCancelDialog(null);
       qc.invalidateQueries({ queryKey: ["booking", id] });
       qc.invalidateQueries({ queryKey: ["my-bookings"] });
     },
-    onError: (err) => toast.error(getApiErrorMessage(err)),
+    onError: (err) => {
+      setCancelDialog(null);
+      toast.error(getApiErrorMessage(err));
+    },
   });
 
   const payLaterM = useMutation({
@@ -525,8 +555,14 @@ export default function BookingDetailPage() {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => cancelM.mutate()}
-                    loading={cancelM.isPending}
+                    onClick={() => {
+                      if (b.payment?.status === "COMPLETED") {
+                        prefetchRefund.mutate();
+                      } else {
+                        cancelM.mutate();
+                      }
+                    }}
+                    loading={prefetchRefund.isPending || cancelM.isPending}
                   >
                     <XCircle className="mr-2 h-4 w-4" /> Hủy đơn
                   </Button>
@@ -541,10 +577,66 @@ export default function BookingDetailPage() {
                   </Button>
                 )}
               </div>
+
+              {b.status === "CANCELLED" &&
+                b.payment?.status === "COMPLETED" && (
+                  <RefundSection booking={b} autoShow={refundAutoShow} onAutoShowDone={() => setRefundAutoShow(false)} />
+                )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <Modal
+        open={!!cancelDialog}
+        onClose={() => setCancelDialog(null)}
+        title="Xác nhận hủy đơn"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setCancelDialog(null)}>
+              Không hủy
+            </Button>
+            <Button
+              variant="danger"
+              loading={cancelM.isPending}
+              onClick={() => cancelM.mutate()}
+            >
+              Xác nhận hủy đơn
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3 text-sm text-slate-700">
+          {cancelDialog && cancelDialog.refundAmount > 0 ? (
+            <>
+              <div className="rounded-xl bg-blue-50 p-4 text-center">
+                <p className="text-base font-bold text-blue-900">
+                  Bạn sẽ được hoàn{" "}
+                  <span className="text-xl">{formatCurrency(cancelDialog.refundAmount)}</span>
+                </p>
+                <p className="mt-1 text-xs text-blue-700">
+                  Tỷ lệ hoàn: {cancelDialog.refundPercent}% · Chính sách: trên 7 ngày 100%, 3-7 ngày 70%, 1-3 ngày 50%, dưới 1 ngày 30%
+                </p>
+              </div>
+              <p className="text-center">
+                Sau khi hủy, bạn sẽ được yêu cầu nhập thông tin tài khoản ngân hàng để nhận tiền hoàn.
+              </p>
+              <p className="text-center font-medium text-rose-600">
+                Vẫn muốn hủy đơn chứ?
+              </p>
+            </>
+          ) : (
+            <>
+              <p>
+                Bạn sắp hủy đơn này. Đơn của bạn hiện không đủ điều kiện hoàn tiền (đã sát giờ check-in hoặc chưa thanh toán).
+              </p>
+              <p className="font-medium text-rose-600">
+                Vẫn muốn hủy đơn chứ?
+              </p>
+            </>
+          )}
+        </div>
+      </Modal>
       </div>
 
       {/* QR Popup Modal */}
@@ -621,6 +713,157 @@ function InfoRow({
         <p className="text-xs text-slate-500">{label}</p>
         <p className="text-sm font-medium text-slate-900">{value}</p>
       </div>
+    </div>
+  );
+}
+
+function RefundSection({
+  booking,
+  autoShow,
+  onAutoShowDone,
+}: {
+  booking: Booking;
+  autoShow?: boolean;
+  onAutoShowDone?: () => void;
+}) {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [accountHolder, setAccountHolder] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [bankBranch, setBankBranch] = useState("");
+  const [refundInfo, setRefundInfo] = useState<{
+    refundPercent: number;
+    refundAmount: number;
+  } | null>(null);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+
+  const checkRefund = useMutation({
+    mutationFn: () =>
+      api
+        .get<{ refundPercent: number; refundAmount: number }>(
+          `/bookings/${booking.id}/refund`,
+        )
+        .then((r) => r.data),
+    onSuccess: (data) => {
+      setRefundInfo(data);
+      setShowForm(true);
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err)),
+  });
+
+  const submitRefund = useMutation({
+    mutationFn: () =>
+      api.post(`/bookings/${booking.id}/refund-request`, {
+        accountHolder,
+        accountNumber,
+        bankName,
+        bankBranch: bankBranch || undefined,
+      }),
+    onSuccess: () => {
+      toast.success(
+        "Đã gửi yêu cầu hoàn tiền",
+        "Ban quản lý sẽ xử lý trong 1-3 ngày làm việc",
+      );
+      setAlreadySubmitted(true);
+      qc.invalidateQueries({ queryKey: ["booking", booking.id] });
+      setShowForm(false);
+    },
+    onError: (err) => {
+      const msg = getApiErrorMessage(err);
+      if (msg.includes("Đã gửi yêu cầu")) {
+        setAlreadySubmitted(true);
+        toast.info("Yêu cầu hoàn tiền đã được gửi trước đó");
+      } else {
+        toast.error(msg);
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (autoShow && !showForm) {
+      checkRefund.mutate(undefined, {
+        onSettled: () => onAutoShowDone?.(),
+      });
+    }
+  }, [autoShow]);
+
+  if (!showForm) {
+    return (
+      <div className="border-t border-slate-100 pt-3">
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => checkRefund.mutate()}
+          loading={checkRefund.isPending}
+        >
+          <RefreshCw className="mr-2 h-4 w-4" /> Tính số tiền hoàn trả
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-t border-slate-100 pt-3">
+      {refundInfo && (
+        <div className="mb-4 rounded-xl bg-blue-50 p-3 text-sm">
+          <p className="font-semibold text-blue-900">
+            Số tiền dự kiến hoàn trả: {formatCurrency(refundInfo.refundAmount)}
+          </p>
+          <p className="mt-1 text-xs text-blue-700">
+            Tỷ lệ hoàn: {refundInfo.refundPercent}% · Chính sách: trên 7 ngày 100%, 3-7 ngày 70%, 1-3 ngày 50%, dưới 1 ngày 30%, sau check-in 0%
+          </p>
+        </div>
+      )}
+
+      {alreadySubmitted ? (
+        <div className="rounded-xl bg-green-50 p-4 text-center text-sm">
+          <p className="font-semibold text-green-900">
+            Yêu cầu hoàn tiền đã được gửi
+          </p>
+          <p className="mt-1 text-xs text-green-700">
+            Ban quản lý sẽ xử lý trong 1-3 ngày làm việc. Vui lòng kiểm tra lại sau.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <Input
+            label="Chủ tài khoản"
+            placeholder="NGUYEN VAN A"
+          value={accountHolder}
+          onChange={(e) => setAccountHolder(e.target.value)}
+        />
+        <Input
+          label="Số tài khoản"
+          placeholder="0123456789"
+          value={accountNumber}
+          onChange={(e) => setAccountNumber(e.target.value)}
+        />
+        <Input
+          label="Ngân hàng"
+          placeholder="Vietcombank"
+          value={bankName}
+          onChange={(e) => setBankName(e.target.value)}
+        />
+        <Input
+          label="Chi nhánh"
+          placeholder="Hà Nội"
+          value={bankBranch}
+          onChange={(e) => setBankBranch(e.target.value)}
+        />
+        <Button
+          className="w-full"
+          variant="accent"
+          disabled={
+            !accountHolder || !accountNumber || !bankName || submitRefund.isPending
+          }
+          loading={submitRefund.isPending}
+          onClick={() => submitRefund.mutate()}
+        >
+          <Building2 className="mr-2 h-4 w-4" /> Gửi yêu cầu hoàn tiền
+        </Button>
+      </div>
+      )}
     </div>
   );
 }

@@ -23,7 +23,7 @@ export class BookingsController {
   ) {}
 
   @Post()
-  @Roles(Role.CUSTOMER)
+  @Roles(Role.CUSTOMER, Role.RECEPTIONIST, Role.ADMIN)
   @ApiOperation({ summary: "Tạo đơn đặt phòng" })
   createBooking(
     @CurrentUser() user: { id: string },
@@ -71,6 +71,26 @@ export class BookingsController {
     );
   }
 
+  @Get("refunds")
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: "Danh sách yêu cầu hoàn tiền (Admin)" })
+  getRefundRequests(
+    @Query("page") page = 1,
+    @Query("limit") limit = 20,
+  ) {
+    return this.bookingsService.getRefundRequests(+page, +limit);
+  }
+
+  @Post("refunds/:refundId/process")
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: "Xác nhận đã hoàn tiền (Admin)" })
+  processRefund(
+    @Param("refundId") refundId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.bookingsService.processRefund(refundId, user.id);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Chi tiết đơn đặt phòng" })
   getBooking(
@@ -116,8 +136,15 @@ export class BookingsController {
     );
   }
 
+  @Post(":id/reopen")
+  @Roles(Role.RECEPTIONIST, Role.ADMIN)
+  @ApiOperation({ summary: "Mở lại đơn đã hủy (Staff)" })
+  reopenBooking(@Param("id") id: string) {
+    return this.bookingsService.reopenBooking(id);
+  }
+
   @Post(":id/upload-receipt")
-  @Roles(Role.CUSTOMER)
+  @Roles(Role.CUSTOMER, Role.RECEPTIONIST, Role.ADMIN)
   @ApiOperation({ summary: "Upload biên lai chuyển khoản" })
   uploadReceipt(
     @Param("id") id: string,
@@ -175,5 +202,33 @@ export class BookingsController {
     @Body() dto: RejectBookingDto,
   ) {
     return this.bookingsService.rejectBooking(id, user.id, dto);
+  }
+
+  @Get(":id/refund")
+  @Roles(Role.CUSTOMER, Role.RECEPTIONIST, Role.ADMIN)
+  @ApiOperation({ summary: "Tính số tiền hoàn trả khi hủy đơn" })
+  async getRefundCalculation(
+    @Param("id") id: string,
+    @CurrentUser() user: { id: string; role: Role },
+  ) {
+    const booking = await this.bookingsService.getBookingById(id, user);
+    return this.bookingsService.calculateRefund(booking);
+  }
+
+  @Post(":id/refund-request")
+  @Roles(Role.CUSTOMER, Role.RECEPTIONIST, Role.ADMIN)
+  @ApiOperation({ summary: "Gửi yêu cầu hoàn tiền" })
+  submitRefundRequest(
+    @Param("id") id: string,
+    @CurrentUser() user: { id: string },
+    @Body()
+    dto: {
+      accountHolder: string;
+      accountNumber: string;
+      bankName: string;
+      bankBranch?: string;
+    },
+  ) {
+    return this.bookingsService.submitRefundRequest(id, user.id, dto);
   }
 }
