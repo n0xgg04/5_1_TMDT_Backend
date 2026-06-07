@@ -180,11 +180,16 @@ export class SearchService {
 
     const branches = await this.prisma.hotelBranch.findMany({
       where: { isActive: true },
-      select: { province: true },
-      distinct: ["province"],
       orderBy: { province: "asc" },
     });
-    const result = branches.map((b) => b.province);
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const b of branches) {
+      if (!seen.has(b.province)) {
+        seen.add(b.province);
+        result.push(b.province);
+      }
+    }
     await this.redis.set(cacheKey, JSON.stringify(result), 3600);
     return result;
   }
