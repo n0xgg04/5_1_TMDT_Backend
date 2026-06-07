@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   User,
-  CreditCard,
   Lock,
   Mail,
   Phone,
@@ -14,22 +13,21 @@ import {
   Save,
   Eye,
   EyeOff,
-  Plus,
+  Shield,
+  UserCircle,
 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
-import { Modal } from "@/components/ui/modal";
-import { StripeProvider } from "@/components/stripe-provider";
-import { VisaCardForm } from "@/components/visa-card-form";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/lib/toast";
 import { formatDate } from "@/lib/utils";
-import type { AuthUser, UserPaymentMethod } from "@/lib/types";
+import type { AuthUser, Role } from "@/lib/types";
 
-type Tab = "profile" | "payment" | "password";
+type Tab = "profile" | "password";
 
 export default function ProfilePage() {
   const [tab, setTab] = useState<Tab>("profile");
@@ -38,7 +36,7 @@ export default function ProfilePage() {
     <main className="container-page py-8">
       <h1 className="text-2xl font-bold text-slate-900">Tài khoản của tôi</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Quản lý thông tin cá nhân, phương thức thanh toán và bảo mật
+        Quản lý thông tin cá nhân và bảo mật
       </p>
 
       <div className="mt-6 flex flex-col gap-6 lg:flex-row">
@@ -51,12 +49,6 @@ export default function ProfilePage() {
               label="Thông tin cá nhân"
             />
             <TabButton
-              active={tab === "payment"}
-              onClick={() => setTab("payment")}
-              icon={<CreditCard className="h-4 w-4" />}
-              label="Phương thức thanh toán"
-            />
-            <TabButton
               active={tab === "password"}
               onClick={() => setTab("password")}
               icon={<Lock className="h-4 w-4" />}
@@ -67,7 +59,6 @@ export default function ProfilePage() {
 
         <div className="flex-1">
           {tab === "profile" && <ProfileSection />}
-          {tab === "payment" && <PaymentSection />}
           {tab === "password" && <PasswordSection />}
         </div>
       </div>
@@ -101,6 +92,20 @@ function TabButton({
   );
 }
 
+const roleLabel: Record<Role, string> = {
+  CUSTOMER: "Khách hàng",
+  RECEPTIONIST: "Lễ tân",
+  HOUSEKEEPING: "Dọn phòng",
+  ADMIN: "Quản trị viên",
+};
+
+const roleTone: Record<Role, "brand" | "sky" | "amber" | "violet"> = {
+  CUSTOMER: "brand",
+  RECEPTIONIST: "sky",
+  HOUSEKEEPING: "amber",
+  ADMIN: "violet",
+};
+
 function ProfileSection() {
   const qc = useQueryClient();
   const setUser = useAuthStore((s) => s.setUser);
@@ -115,21 +120,13 @@ function ProfileSection() {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
 
-  useState(() => {
+  useEffect(() => {
     if (me.data) {
       setFirstName(me.data.firstName);
       setLastName(me.data.lastName);
       setPhone(me.data.phone ?? "");
     }
-  });
-
-  const data = me.data;
-  const isLoaded = !!data && firstName === "";
-  if (isLoaded) {
-    setFirstName(data.firstName);
-    setLastName(data.lastName);
-    setPhone(data.phone ?? "");
-  }
+  }, [me.data]);
 
   const update = useMutation({
     mutationFn: (body: {
@@ -145,10 +142,23 @@ function ProfileSection() {
     onError: (err) => toast.error("Lỗi", getApiErrorMessage(err)),
   });
 
+  const canSave =
+    me.data &&
+    (firstName !== me.data.firstName ||
+      lastName !== me.data.lastName ||
+      phone !== (me.data.phone ?? ""));
+
   if (me.isLoading) {
     return (
       <Card>
         <CardContent className="space-y-4 p-5">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-16 w-16 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          </div>
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
@@ -167,271 +177,137 @@ function ProfileSection() {
     );
   }
 
+  const data = me.data!;
+  const initials = (data.lastName?.charAt(0) ?? "") + (data.firstName?.charAt(0) ?? "");
+
   return (
-    <Card>
-      <CardContent className="p-5">
-        <h2 className="text-lg font-semibold text-slate-900">
-          Thông tin cá nhân
-        </h2>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input
-            label="Họ"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            leftIcon={<User className="h-4 w-4" />}
-          />
-          <Input
-            label="Tên"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            leftIcon={<User className="h-4 w-4" />}
-          />
-          <Input
-            label="Email"
-            value={data?.email ?? ""}
-            disabled
-            leftIcon={<Mail className="h-4 w-4" />}
-          />
-          <Input
-            label="Số điện thoại"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            leftIcon={<Phone className="h-4 w-4" />}
-          />
-        </div>
-        <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
-          <Calendar className="h-3.5 w-3.5" />
-          Tham gia từ {data?.createdAt ? formatDate(data.createdAt) : "-"}
-        </div>
-        <div className="mt-5 flex justify-end">
+    <div className="space-y-5">
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 ring-4 ring-brand-50">
+              <span className="text-xl font-bold uppercase">
+                {initials || <UserCircle className="h-7 w-7" />}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold text-slate-900">
+                {data.lastName} {data.firstName}
+              </h2>
+              <div className="mt-1 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                <Badge tone={roleTone[data.role]}>
+                  <Shield className="h-3 w-3" />
+                  {roleLabel[data.role]}
+                </Badge>
+                <span className="text-xs text-slate-400">
+                  <Calendar className="-mt-0.5 mr-1 inline-block h-3 w-3" />
+                  Tham gia {formatDate(data.createdAt)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Thông tin tài khoản</CardTitle>
+          <CardDescription>
+            Thông tin cơ bản về tài khoản của bạn
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3">
+              <p className="text-xs font-medium text-slate-500">Email</p>
+              <div className="mt-1 flex items-center gap-2">
+                <Mail className="h-4 w-4 text-slate-400" />
+                <p className="text-sm font-medium text-slate-900">{data.email}</p>
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3">
+              <p className="text-xs font-medium text-slate-500">Vai trò</p>
+              <div className="mt-1 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-slate-400" />
+                <Badge tone={roleTone[data.role]}>{roleLabel[data.role]}</Badge>
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3">
+              <p className="text-xs font-medium text-slate-500">Ngày tham gia</p>
+              <div className="mt-1 flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-slate-400" />
+                <p className="text-sm font-medium text-slate-900">
+                  {formatDate(data.createdAt)}
+                </p>
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3">
+              <p className="text-xs font-medium text-slate-500">Mã tài khoản</p>
+              <div className="mt-1 flex items-center gap-2">
+                <User className="h-4 w-4 text-slate-400" />
+                <p className="text-sm font-mono text-slate-600">
+                  {data.id.slice(0, 12)}...
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Thông tin cá nhân</CardTitle>
+          <CardDescription>
+            Cập nhật thông tin cá nhân của bạn
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input
+              label="Họ"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              leftIcon={<User className="h-4 w-4" />}
+              placeholder="Nhập họ của bạn"
+            />
+            <Input
+              label="Tên"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              leftIcon={<User className="h-4 w-4" />}
+              placeholder="Nhập tên của bạn"
+            />
+            <div>
+              <Input
+                label="Email"
+                value={data.email}
+                disabled
+                leftIcon={<Mail className="h-4 w-4" />}
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                Email không thể thay đổi
+              </p>
+            </div>
+            <Input
+              label="Số điện thoại"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              leftIcon={<Phone className="h-4 w-4" />}
+              placeholder="Nhập số điện thoại"
+            />
+          </div>
+        </CardContent>
+        <CardFooter>
           <Button
             onClick={() => update.mutate({ firstName, lastName, phone })}
             loading={update.isPending}
+            disabled={!canSave}
           >
             <Save className="mr-1 h-4 w-4" /> Lưu thay đổi
           </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function PaymentSection() {
-  const qc = useQueryClient();
-  const [showAdd, setShowAdd] = useState(false);
-  const [showVisaModal, setShowVisaModal] = useState(false);
-  const [type, setType] = useState("VNPAY");
-  const [label, setLabel] = useState("");
-
-  const q = useQuery({
-    queryKey: ["user-payment-methods"],
-    queryFn: () =>
-      api.get<UserPaymentMethod[]>("/user-payment-methods").then((r) => r.data),
-  });
-
-  const create = useMutation({
-    mutationFn: (body: {
-      type: string;
-      label: string;
-      details?: Record<string, unknown>;
-    }) => api.post("/user-payment-methods", body).then((r) => r.data),
-    onSuccess: () => {
-      toast.success("Đã thêm phương thức thanh toán");
-      setShowAdd(false);
-      setShowVisaModal(false);
-      setLabel("");
-      qc.invalidateQueries({ queryKey: ["user-payment-methods"] });
-    },
-    onError: (err) => toast.error("Lỗi", getApiErrorMessage(err)),
-  });
-
-  const del = useMutation({
-    mutationFn: (id: string) =>
-      api.delete(`/user-payment-methods/${id}`).then((r) => r.data),
-    onSuccess: () => {
-      toast.success("Đã xóa");
-      qc.invalidateQueries({ queryKey: ["user-payment-methods"] });
-    },
-    onError: (err) => toast.error("Lỗi", getApiErrorMessage(err)),
-  });
-
-  const setDefault = useMutation({
-    mutationFn: (id: string) =>
-      api
-        .patch(`/user-payment-methods/${id}`, { isDefault: true })
-        .then((r) => r.data),
-    onSuccess: () => {
-      toast.success("Đã đặt mặc định");
-      qc.invalidateQueries({ queryKey: ["user-payment-methods"] });
-    },
-    onError: (err) => toast.error("Lỗi", getApiErrorMessage(err)),
-  });
-
-  const types = [
-    { value: "VNPAY", label: "VNPay" },
-    { value: "MOMO", label: "Momo" },
-    { value: "VISA", label: "VISA" },
-    { value: "SHOPEEPAY", label: "ShopeePay" },
-    { value: "CASH", label: "Tiền mặt" },
-  ];
-
-  const handleAddClick = () => {
-    if (type === "VISA") {
-      setShowVisaModal(true);
-    }
-  };
-
-  const handleVisaSuccess = (paymentMethodId: string, last4: string) => {
-    create.mutate({
-      type: "VISA",
-      label: label || `VISA ****${last4}`,
-      details: { paymentMethodId, last4 },
-    });
-  };
-
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              Phương thức thanh toán
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Quản lý các phương thức thanh toán của bạn
-            </p>
-          </div>
-          <Button size="sm" onClick={() => setShowAdd(true)}>
-            <Plus className="h-4 w-4" /> Thêm
-          </Button>
-        </div>
-
-        <div className="mt-4 space-y-3">
-          {q.isLoading && (
-            <>
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
-            </>
-          )}
-          {q.data?.map((pm) => (
-            <div
-              key={pm.id}
-              className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600">
-                <CreditCard className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-slate-900">
-                  {pm.label}
-                </p>
-                <p className="text-xs text-slate-500">{pm.type}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {pm.isDefault ? (
-                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-600">
-                    Mặc định
-                  </span>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setDefault.mutate(pm.id)}
-                    loading={setDefault.isPending}
-                  >
-                    Đặt mặc định
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={() =>
-                    confirm("Xóa phương thức này?") && del.mutate(pm.id)
-                  }
-                >
-                  Xóa
-                </Button>
-              </div>
-            </div>
-          ))}
-          {q.data?.length === 0 && (
-            <EmptyState
-              icon={<CreditCard className="h-5 w-5" />}
-              title="Chưa có phương thức thanh toán"
-              description="Thêm VNPay, Momo, VISA, ShopeePay để thanh toán nhanh hơn."
-            />
-          )}
-        </div>
-
-        {showAdd && (
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <h3 className="text-sm font-semibold text-slate-900">
-              Thêm phương thức mới
-            </h3>
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-700">
-                  Loại
-                </label>
-                <select
-                  value={type}
-                  onChange={(e) => {
-                    setType(e.target.value);
-                    setLabel(e.target.value);
-                  }}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
-                >
-                  {types.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Input
-                label="Tên hiển thị"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="VD: Thẻ VISA của tôi"
-              />
-            </div>
-            <div className="mt-3 flex gap-2">
-              <Button variant="ghost" onClick={() => setShowAdd(false)}>
-                Hủy
-              </Button>
-              {type === "VISA" ? (
-                <Button onClick={handleAddClick} disabled={!label.trim()}>
-                  <CreditCard className="mr-1 h-4 w-4" /> Nhập thông tin thẻ
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => create.mutate({ type, label: label || type })}
-                  loading={create.isPending}
-                  disabled={!label.trim()}
-                >
-                  <Save className="mr-1 h-4 w-4" /> Lưu
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
-
-        <Modal
-          open={showVisaModal}
-          onClose={() => setShowVisaModal(false)}
-          title="Thêm thẻ Visa"
-          description="Nhập thông tin thẻ để lưu phương thức thanh toán"
-          size="md"
-        >
-          <StripeProvider>
-            <VisaCardForm
-              onSuccess={handleVisaSuccess}
-              onCancel={() => setShowVisaModal(false)}
-            />
-          </StripeProvider>
-        </Modal>
-      </CardContent>
-    </Card>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }
 
