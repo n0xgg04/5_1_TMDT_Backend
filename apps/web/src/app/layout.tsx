@@ -3,6 +3,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
 import { ChatWrapper } from "@/components/chat/chat-wrapper";
+import { AuthLoader } from "@/components/auth-loader";
 
 export const metadata: Metadata = {
   title: "Sapphire Stay – Hệ thống đặt phòng khách sạn",
@@ -19,9 +20,11 @@ export default function RootLayout({
     <html lang="vi">
       <body className="min-h-screen bg-slate-50">
         <Providers>
-          <Navbar />
-          {children}
-          <ChatWrapper />
+          <AuthLoader>
+            <Navbar />
+            {children}
+            <ChatWrapper />
+          </AuthLoader>
         </Providers>
       </body>
     </html>
