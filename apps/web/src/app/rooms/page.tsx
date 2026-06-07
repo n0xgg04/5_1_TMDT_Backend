@@ -300,15 +300,25 @@ function RoomsSearchInner() {
                 <Input
                   type="number"
                   placeholder="Từ"
+                  min={10000}
+                  step={1000}
                   value={minPrice}
-                  onChange={(e) => setMinPrice(e.target.value)}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (v >= 10000 || e.target.value === "") setMinPrice(e.target.value);
+                  }}
                 />
                 <span className="text-slate-400">-</span>
                 <Input
                   type="number"
                   placeholder="Đến"
+                  min={10000}
+                  step={1000}
                   value={maxPrice}
-                  onChange={(e) => setMaxPrice(e.target.value)}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (v >= 10000 || e.target.value === "") setMaxPrice(e.target.value);
+                  }}
                 />
               </div>
             </div>

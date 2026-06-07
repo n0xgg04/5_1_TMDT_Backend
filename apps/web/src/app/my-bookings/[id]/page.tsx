@@ -345,6 +345,17 @@ export default function BookingDetailPage() {
                   {b.rejectedReason}
                 </div>
               )}
+              {b.status === "CANCELLED" && (
+                <div className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
+                  <span className="font-medium">Đơn đã bị hủy</span>
+                  {b.rejectedReason && <> — {b.rejectedReason}</>}
+                </div>
+              )}
+              {b.status === "REJECTED" && !b.rejectedReason && (
+                <div className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
+                  <span className="font-medium">Đơn đã bị từ chối</span>
+                </div>
+              )}
               {b.status === "PENDING_HOST_APPROVAL" &&
                 b.approvalDeadline && (
                   <div className="rounded-xl bg-violet-50 p-3 text-sm text-violet-700">
@@ -366,7 +377,7 @@ export default function BookingDetailPage() {
             </CardContent>
           </Card>
 
-          {b && (
+          {b && b.status === "PENDING_HOST_APPROVAL" && (
             <Card>
               <CardContent className="p-5 space-y-4">
                 <div className="flex items-center justify-between gap-2">
