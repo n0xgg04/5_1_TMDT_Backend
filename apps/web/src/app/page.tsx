@@ -12,21 +12,23 @@ import {
   Shield,
   Sparkles,
   Wifi,
-  Star,
   Phone,
   Mail,
   ArrowUp,
-  Clock,
-  Flame,
-  Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  RoomCommerceCard,
+  SearchFieldShell,
+  SectionHeading,
+  hotelFallbackImage,
+} from "@/components/hotel/commercial";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useAuthStore } from "@/lib/auth-store";
-import type { HotelBranch, Coupon } from "@/lib/types";
+import type { Coupon } from "@/lib/types";
 
 const HERO_IMG =
   "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1920&auto=format&fit=crop&q=80";
@@ -102,8 +104,8 @@ export default function HomePage() {
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
   return (
-    <main>
-      <section className="relative overflow-hidden border-b border-slate-200 text-white">
+    <main className="customer-page">
+      <section className="relative overflow-hidden text-white">
         <Image
           src={HERO_IMG}
           alt="Sapphire Stay Hotel"
@@ -111,26 +113,36 @@ export default function HomePage() {
           priority
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/60 to-slate-900/40" />
-        <div className="container-page relative py-20 lg:py-28">
-          <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium ring-1 ring-white/20 backdrop-blur">
+        <div className="absolute inset-0 bg-gradient-to-r from-ink-950/86 via-ink-950/58 to-ink-950/26" />
+        <div className="container-page relative py-14 sm:py-16 lg:py-20">
+          <div className="max-w-3xl pt-2">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1 text-xs font-semibold ring-1 ring-white/25 backdrop-blur">
               <MapPin className="h-3.5 w-3.5" /> Toàn quốc · Việt Nam
             </span>
-            <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Kỳ nghỉ đáng nhớ bắt đầu tại{" "}
-              <span className="text-sky-200">Sapphire Stay</span>
+            <h1 className="mt-4 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+              Sapphire Stay
             </h1>
-            <p className="mt-4 max-w-2xl text-lg text-sky-100/90">
-              Đặt phòng khách sạn trực tuyến nhanh chóng, an toàn. Hơn 200 phòng
-              hạng sang với đầy đủ tiện nghi và dịch vụ tận tâm 24/7.
+            <p className="mt-4 max-w-2xl text-lg leading-8 text-white/88">
+              Đặt phòng khách sạn trực tuyến với lịch phòng rõ ràng, yêu cầu
+              duyệt minh bạch và thanh toán chỉ mở sau khi phòng được xác nhận.
             </p>
+            <div className="mt-6 flex flex-wrap gap-2 text-sm text-white/86">
+              <span className="rounded-full bg-white/12 px-3 py-1 ring-1 ring-white/20">
+                24h duyệt yêu cầu
+              </span>
+              <span className="rounded-full bg-white/12 px-3 py-1 ring-1 ring-white/20">
+                Lịch trống/bận realtime
+              </span>
+              <span className="rounded-full bg-white/12 px-3 py-1 ring-1 ring-white/20">
+                Ưu đãi sau khi duyệt
+              </span>
+            </div>
           </div>
           <form
             onSubmit={submit}
-            className="mt-10 grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 shadow-2xl ring-1 ring-black/5 sm:grid-cols-5"
+            className="mt-8 grid grid-cols-1 gap-3 rounded-lg bg-white p-3 shadow-2xl ring-1 ring-white/30 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_0.8fr_1fr_auto]"
           >
-            <Field
+            <SearchFieldShell
               icon={<CalendarDays className="h-4 w-4" />}
               label="Nhận phòng"
             >
@@ -141,8 +153,8 @@ export default function HomePage() {
                 onChange={(e) => setCheckIn(e.target.value)}
                 className="w-full border-0 bg-transparent p-0 text-sm text-slate-900 focus:ring-0"
               />
-            </Field>
-            <Field
+            </SearchFieldShell>
+            <SearchFieldShell
               icon={<CalendarDays className="h-4 w-4" />}
               label="Trả phòng"
             >
@@ -153,8 +165,8 @@ export default function HomePage() {
                 onChange={(e) => setCheckOut(e.target.value)}
                 className="w-full border-0 bg-transparent p-0 text-sm text-slate-900 focus:ring-0"
               />
-            </Field>
-            <Field icon={<Users className="h-4 w-4" />} label="Số khách">
+            </SearchFieldShell>
+            <SearchFieldShell icon={<Users className="h-4 w-4" />} label="Số khách">
               <select
                 value={guests}
                 onChange={(e) => setGuests(+e.target.value)}
@@ -166,8 +178,8 @@ export default function HomePage() {
                   </option>
                 ))}
               </select>
-            </Field>
-            <Field icon={<MapPin className="h-4 w-4" />} label="Khu vực">
+            </SearchFieldShell>
+            <SearchFieldShell icon={<MapPin className="h-4 w-4" />} label="Khu vực">
               <select
                 value={province}
                 onChange={(e) => setProvince(e.target.value)}
@@ -180,8 +192,8 @@ export default function HomePage() {
                   </option>
                 ))}
               </select>
-            </Field>
-            <Button type="submit" size="lg" className="sm:h-auto">
+            </SearchFieldShell>
+            <Button type="submit" size="lg" variant="accent" className="h-16 w-full lg:w-auto">
               <Search className="h-4 w-4" /> Tìm phòng
             </Button>
           </form>
@@ -189,9 +201,16 @@ export default function HomePage() {
       </section>
 
       <section className="container-page py-16">
-        <h2 className="text-2xl font-bold text-slate-900">
-          Khám phá theo địa điểm
-        </h2>
+        <SectionHeading
+          kicker="Điểm đến"
+          title="Khám phá theo địa điểm"
+          description="Chọn nhanh khu vực lưu trú, sau đó tinh chỉnh ngày và số khách ở trang tìm phòng."
+          action={
+            <Link href="/rooms">
+              <Button variant="outline">Xem tất cả phòng</Button>
+            </Link>
+          }
+        />
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {PROVINCES.map((p) => (
             <button
@@ -199,7 +218,7 @@ export default function HomePage() {
               onClick={() =>
                 router.push(`/rooms?province=${encodeURIComponent(p.name)}`)
               }
-              className="group relative aspect-[3/4] overflow-hidden rounded-2xl"
+              className="group relative aspect-[3/4] overflow-hidden rounded-lg shadow-card"
             >
               <img
                 src={p.img}
@@ -207,7 +226,7 @@ export default function HomePage() {
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 to-transparent" />
-              <p className="absolute bottom-3 left-3 text-sm font-bold text-white">
+              <p className="absolute bottom-3 left-3 right-3 text-sm font-bold text-white">
                 {p.name}
               </p>
             </button>
@@ -215,113 +234,75 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-amber-50 py-16">
+      <section className="bg-[#fff8e7] py-16">
         <div className="container-page">
-          <div className="flex items-center gap-2">
-            <Star className="h-6 w-6 fill-amber-500 text-amber-500" />
-            <h2 className="text-2xl font-bold text-slate-900">Phòng 5 sao</h2>
-          </div>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <SectionHeading
+            kicker="Signature"
+            title="Phòng 5 sao được chọn nhiều"
+            description="Không chỉ là chỗ ngủ: mỗi lựa chọn đều thể hiện rõ tiện nghi, vị trí và mức giá trước khi bạn gửi yêu cầu đặt."
+          />
+          <div className="mt-6 grid gap-5 lg:grid-cols-3">
             {featuredQ.data
               ?.filter((rt: any) => rt.starRating === 5)
               .map((rt: any) => (
-                <Link
+                <RoomCommerceCard
                   key={rt.id}
                   href={`/rooms/${rt.id}`}
-                  className="group overflow-hidden rounded-2xl bg-white shadow-card transition-all hover:-translate-y-1 hover:shadow-lg"
-                >
-                  <div className="relative aspect-[4/3] overflow-hidden">
-                    <img
-                      src={
-                        rt.images?.[0] ||
-                        "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&auto=format&fit=crop&q=80"
-                      }
-                      alt={rt.name}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-bold text-amber-600">
-                      <Star className="h-3 w-3 fill-current" /> 5.0
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-slate-900">{rt.name}</h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {rt.branch?.city || "Việt Nam"} · {rt.bedType}
-                    </p>
-                    <p className="mt-2 text-lg font-bold text-brand-700">
-                      {formatCurrency(rt.pricePerNight)}{" "}
-                      <span className="text-xs font-normal text-slate-400">
-                        / đêm
-                      </span>
-                    </p>
-                  </div>
-                </Link>
+                  image={rt.images?.[0]}
+                  title={rt.name}
+                  subtitle={rt.branch?.city || "Việt Nam"}
+                  description={rt.description}
+                  price={rt.pricePerNight}
+                  rating={rt.starRating ?? 5}
+                  capacity={rt.maxGuests}
+                  areaSqm={rt.areaSqm}
+                  bedType={rt.bedType}
+                />
               ))}
             {(!featuredQ.data ||
               featuredQ.data.filter((rt: any) => rt.starRating === 5).length ===
                 0) &&
               featuredQ.data?.slice(0, 3).map((rt: any) => (
-                <Link
+                <RoomCommerceCard
                   key={rt.id}
                   href={`/rooms/${rt.id}`}
-                  className="group overflow-hidden rounded-2xl bg-white shadow-card transition-all hover:-translate-y-1 hover:shadow-lg"
-                >
-                  <div className="relative aspect-[4/3] overflow-hidden">
-                    <img
-                      src={
-                        rt.images?.[0] ||
-                        "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&auto=format&fit=crop&q=80"
-                      }
-                      alt={rt.name}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-bold text-amber-600">
-                      <Star className="h-3 w-3 fill-current" />{" "}
-                      {rt.starRating ?? 5}.0
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-slate-900">{rt.name}</h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {rt.branch?.city || "Việt Nam"} · {rt.bedType}
-                    </p>
-                    <p className="mt-2 text-lg font-bold text-brand-700">
-                      {formatCurrency(rt.pricePerNight)}{" "}
-                      <span className="text-xs font-normal text-slate-400">
-                        / đêm
-                      </span>
-                    </p>
-                  </div>
-                </Link>
+                  image={rt.images?.[0]}
+                  title={rt.name}
+                  subtitle={rt.branch?.city || "Việt Nam"}
+                  description={rt.description}
+                  price={rt.pricePerNight}
+                  rating={rt.starRating ?? 5}
+                  capacity={rt.maxGuests}
+                  areaSqm={rt.areaSqm}
+                  bedType={rt.bedType}
+                />
               ))}
           </div>
         </div>
       </section>
 
       {flashQ.data && flashQ.data.length > 0 && (
-        <section className="bg-rose-50 py-16">
+        <section className="bg-coral-50 py-16">
           <div className="container-page">
-            <div className="flex items-center gap-2">
-              <Flame className="h-6 w-6 text-rose-500" />
-              <h2 className="text-2xl font-bold text-slate-900">Flash Sale</h2>
-            </div>
+            <SectionHeading
+              kicker="Ưu đãi"
+              title="Flash Sale"
+              description="Những phòng đang có số lượng ưu đãi giới hạn cho lịch lưu trú phù hợp."
+            />
             <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {flashQ.data.map((fs: any) => (
                 <Link
                   key={fs.id}
                   href={`/rooms/${fs.roomTypeId}`}
-                  className="group overflow-hidden rounded-2xl bg-white shadow-card transition-all hover:-translate-y-1 hover:shadow-lg"
+                  className="group overflow-hidden rounded-lg bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lift"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden">
                     <img
-                      src={
-                        fs.roomTypeImages?.[0] ||
-                        "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&auto=format&fit=crop&q=80"
-                      }
+                      src={fs.roomTypeImages?.[0] || hotelFallbackImage(fs.roomTypeName)}
                       alt={fs.roomTypeName}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
-                    <div className="absolute top-2 left-2 rounded-lg bg-rose-500 px-2 py-1 text-xs font-bold text-white">
+                    <div className="absolute top-2 left-2 rounded-lg bg-coral-600 px-2 py-1 text-xs font-bold text-white">
                       -{fs.discount}%
                     </div>
                   </div>
@@ -341,53 +322,38 @@ export default function HomePage() {
       )}
 
       <section className="container-page py-16">
-        <h2 className="text-2xl font-bold text-slate-900">Phòng nổi bật</h2>
-        <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <SectionHeading
+          kicker="Browse"
+          title="Phòng nổi bật"
+          description="So sánh nhanh giá, sức chứa, tiện nghi và vị trí trước khi xem lịch trống/bận chi tiết."
+        />
+        <div className="mt-6 grid gap-5 lg:grid-cols-3">
           {featuredQ.data?.map((rt: any) => (
-            <Link
+            <RoomCommerceCard
               key={rt.id}
               href={`/rooms/${rt.id}`}
-              className="group overflow-hidden rounded-2xl bg-white shadow-card transition-all hover:-translate-y-1 hover:shadow-lg"
-            >
-              <div className="relative aspect-[4/3] overflow-hidden">
-                <img
-                  src={
-                    rt.images?.[0] ||
-                    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&auto=format&fit=crop&q=80"
-                  }
-                  alt={rt.name}
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-                <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-bold text-amber-600">
-                  <Star className="h-3 w-3 fill-current" /> 5.0
-                </div>
-              </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-slate-900">{rt.name}</h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  {rt.branch?.city || "Việt Nam"} · {rt.bedType}
-                </p>
-                <p className="mt-2 text-lg font-bold text-brand-700">
-                  {formatCurrency(rt.pricePerNight)}{" "}
-                  <span className="text-xs font-normal text-slate-400">
-                    / đêm
-                  </span>
-                </p>
-              </div>
-            </Link>
+              image={rt.images?.[0]}
+              title={rt.name}
+              subtitle={rt.branch?.city || "Việt Nam"}
+              description={rt.description}
+              price={rt.pricePerNight}
+              rating={rt.starRating ?? 5}
+              capacity={rt.maxGuests}
+              areaSqm={rt.areaSqm}
+              bedType={rt.bedType}
+            />
           ))}
         </div>
       </section>
 
       {couponsQ.data && couponsQ.data.length > 0 && (
-        <section className="bg-slate-50 py-16">
+        <section className="bg-white py-16">
           <div className="container-page">
-            <div className="flex items-center gap-2">
-              <Ticket className="h-6 w-6 text-brand-600" />
-              <h2 className="text-2xl font-bold text-slate-900">
-                Các chương trình ưu đãi
-              </h2>
-            </div>
+            <SectionHeading
+              kicker="Coupon"
+              title="Các chương trình ưu đãi"
+              description="Lưu mã trước, áp dụng sau khi yêu cầu đặt phòng được duyệt và bước thanh toán được mở."
+            />
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {couponsQ.data.slice(0, 4).map((c) => (
                 <CouponCard
@@ -405,10 +371,13 @@ export default function HomePage() {
       )}
 
       <section className="container-page py-16">
-        <div className="mx-auto mb-10 max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">
-            Vì sao chọn Sapphire Stay?
-          </h2>
+        <div className="mb-10">
+          <SectionHeading
+            kicker="Tin cậy"
+            title="Vì sao chọn Sapphire Stay?"
+            description="Luồng đặt chỗ được thiết kế để tránh overbooking: khách gửi yêu cầu, admin kiểm tra lịch phòng, rồi mới mở thanh toán."
+            align="center"
+          />
         </div>
         <div className="grid gap-6 md:grid-cols-3">
           <Feature
@@ -429,7 +398,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="border-t border-slate-200 bg-slate-900 py-12 text-slate-300">
+      <footer className="border-t border-slate-200 bg-ink-950 py-12 text-slate-300">
         <div className="container-page grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p className="text-lg font-bold text-white">Sapphire Stay</p>
@@ -495,30 +464,6 @@ export default function HomePage() {
   );
 }
 
-function Field({
-  icon,
-  label,
-  children,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition-colors focus-within:border-brand-500 focus-within:bg-white">
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-brand-600 shadow-sm ring-1 ring-slate-200">
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          {label}
-        </p>
-        <div className="mt-0.5">{children}</div>
-      </div>
-    </label>
-  );
-}
-
 function CouponCard({
   coupon,
   user,
@@ -539,7 +484,7 @@ function CouponCard({
   });
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-card">
       <div className="flex items-center justify-between">
         <p className="text-lg font-bold text-brand-700">
           {coupon.type === "percentage"
@@ -568,7 +513,7 @@ function CouponCard({
           claimM.mutate(coupon.id);
         }}
         disabled={claimM.isPending}
-        className="mt-3 w-full rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+        className="mt-3 w-full rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
       >
         {claimM.isPending ? "Đang lưu..." : "Lưu"}
       </button>
@@ -586,8 +531,8 @@ function Feature({
   desc: string;
 }) {
   return (
-    <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition-colors group-hover:bg-brand-600 group-hover:text-white">
+    <div className="group rounded-lg border border-slate-200 bg-white p-6 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lift">
+      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand-700 transition-colors group-hover:bg-brand-700 group-hover:text-white">
         {icon}
       </div>
       <h3 className="mt-4 text-lg font-semibold text-slate-900">{title}</h3>

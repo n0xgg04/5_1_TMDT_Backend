@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { OperationHeader } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils";
 import type { RoomType } from "@/lib/types";
@@ -126,19 +127,18 @@ export default function AdminPricingPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Cấu hình giá</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Thiết lập giá phòng linh hoạt theo mùa, ngày lễ
-          </p>
-        </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4" /> Thêm quy tắc giá
-        </Button>
-      </div>
+      <OperationHeader
+        kicker="Pricing"
+        title="Cấu hình giá"
+        description="Thiết lập giá mặc định, theo mùa và ngày lễ để search/booking hiển thị giá đúng theo lịch lưu trú."
+        actions={
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4" /> Thêm quy tắc giá
+          </Button>
+        }
+      />
 
-      <div className="mt-4 w-60">
+      <div className="toolbar-panel mt-4 w-full sm:w-72">
         <Select
           label="Lọc theo loại phòng"
           value={selectedType}
@@ -155,7 +155,7 @@ export default function AdminPricingPage() {
 
       {grouped.map(({ roomType, rules }) => (
         <Card key={roomType.id} className="mt-4 overflow-hidden">
-          <div className="border-b bg-slate-50 px-4 py-3">
+          <div className="border-b bg-slate-100 px-4 py-3">
             <h3 className="font-semibold text-slate-900">{roomType.name}</h3>
           </div>
           {rules.length === 0 ? (

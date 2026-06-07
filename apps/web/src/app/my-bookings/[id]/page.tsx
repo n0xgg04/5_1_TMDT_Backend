@@ -22,7 +22,11 @@ import { useAuthStore } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
-import { BookingStatusBadge } from "@/components/ui/badge";
+import {
+  BookingStatusBadge,
+  bookingStatusAction,
+} from "@/components/ui/badge";
+import { BookingStatePanel, hotelFallbackImage } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import {
   formatCurrency,
@@ -116,22 +120,22 @@ export default function BookingDetailPage() {
   ];
   const canPay = b.status === "PENDING_PAYMENT";
   const canReview = b.status === "CHECKED_OUT" && !b.review;
-  const fallbackImg =
-    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&auto=format&fit=crop&q=80";
+  const fallbackImg = hotelFallbackImage(b.room?.roomType?.name ?? "");
   const roomImg = b.room?.roomType?.images?.[0] ?? fallbackImg;
 
   return (
-    <main className="container-page py-8">
-      <button
-        onClick={() => router.back()}
-        className="mb-4 flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900"
-      >
-        <ChevronLeft className="h-4 w-4" /> Quay lại
-      </button>
+    <main className="customer-page">
+      <div className="container-page py-8">
+        <button
+          onClick={() => router.back()}
+          className="mb-4 flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900"
+        >
+          <ChevronLeft className="h-4 w-4" /> Quay lại
+        </button>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <div className="relative aspect-[16/9] overflow-hidden rounded-2xl">
+          <div className="relative aspect-[16/9] overflow-hidden rounded-lg shadow-card">
             <img
               src={roomImg}
               alt={b.room?.roomType?.name ?? "Phòng"}
@@ -141,7 +145,7 @@ export default function BookingDetailPage() {
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900">
+              <h1 className="text-2xl font-bold text-ink-950">
                 {b.room?.roomType?.name ?? "Phòng"} · #{b.room?.roomNumber}
               </h1>
               <BookingStatusBadge status={b.status} />
@@ -151,6 +155,25 @@ export default function BookingDetailPage() {
               {b.bookingCode}
             </p>
           </div>
+
+          <BookingStatePanel
+            status={b.status}
+            deadline={
+              b.status === "PENDING_HOST_APPROVAL" && b.approvalDeadline
+                ? formatDateTime(b.approvalDeadline)
+                : b.status === "PENDING_PAYMENT" && b.paymentDeadline
+                  ? formatDateTime(b.paymentDeadline)
+                  : undefined
+            }
+            title={bookingStatusAction(b.status)}
+            description={
+              b.status === "PENDING_PAYMENT"
+                ? "Đơn đã được duyệt. Bạn có thể nhập mã giảm giá và thanh toán để xác nhận giữ chỗ."
+                : b.status === "PENDING_HOST_APPROVAL"
+                  ? "Trong thời gian chờ duyệt, bạn có thể trao đổi với admin ngay trên đơn này."
+                  : undefined
+            }
+          />
 
           <Card>
             <CardContent className="p-5 space-y-4">
@@ -279,9 +302,14 @@ export default function BookingDetailPage() {
         </div>
 
         <div>
-          <Card className="sticky top-24">
+          <Card className="sticky top-24 overflow-hidden">
+            <div className="bg-ink-950 p-5 text-white">
+              <p className="text-sm text-white/70">Chi tiết giá</p>
+              <p className="mt-1 text-2xl font-bold">
+                {formatCurrency(b.totalAmount)}
+              </p>
+            </div>
             <CardContent className="p-5 space-y-4">
-              <h2 className="text-lg font-bold text-slate-900">Chi tiết giá</h2>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Tổng tiền</span>
@@ -320,6 +348,7 @@ export default function BookingDetailPage() {
                     />
                     <Button
                       className="w-full"
+                      variant="accent"
                       onClick={() => payM.mutate()}
                       loading={payM.isPending}
                     >
@@ -350,6 +379,7 @@ export default function BookingDetailPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
     </main>
   );

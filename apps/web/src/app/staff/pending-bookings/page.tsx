@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookingStatusBadge, RoomStatusBadge } from "@/components/ui/badge";
+import { OperationHeader } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import type { Booking } from "@/lib/types";
@@ -71,12 +72,11 @@ export default function StaffPendingBookingsPage() {
 
   return (
     <div>
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Duyệt đặt phòng</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Xem xét yêu cầu đặt chỗ trước khi khách được thanh toán
-        </p>
-      </div>
+      <OperationHeader
+        kicker="Approval queue"
+        title="Duyệt đặt phòng"
+        description="Xem xét yêu cầu đặt chỗ, kiểm tra trạng thái phòng, trao đổi với khách và chỉ mở thanh toán sau khi duyệt."
+      />
 
       {isLoading ? (
         <div className="mt-6 space-y-4">
@@ -97,7 +97,7 @@ export default function StaffPendingBookingsPage() {
         <div className="mt-6 space-y-4">
           {data.items.map((b) => (
             <Card key={b.id} className="overflow-hidden">
-              <CardHeader className="border-b border-slate-100 pb-4">
+              <CardHeader className="border-b border-slate-100 bg-white pb-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-semibold text-slate-900">
@@ -109,6 +109,7 @@ export default function StaffPendingBookingsPage() {
                     {!showRejectInput[b.id] && (
                       <Button
                         size="sm"
+                        variant="accent"
                         onClick={() => approve.mutate(b.id)}
                         loading={
                           approve.isPending && approve.variables === b.id
@@ -132,7 +133,7 @@ export default function StaffPendingBookingsPage() {
                     {!showRejectInput[b.id] ? (
                       <Button
                         size="sm"
-                        variant="secondary"
+                        variant="danger"
                         onClick={() =>
                           setShowRejectInput((p) => ({ ...p, [b.id]: true }))
                         }
@@ -142,7 +143,7 @@ export default function StaffPendingBookingsPage() {
                     ) : (
                       <Button
                         size="sm"
-                        variant="secondary"
+                        variant="danger"
                         onClick={() => {
                           const reason = rejectReason[b.id]?.trim();
                           if (!reason) {
@@ -208,7 +209,7 @@ export default function StaffPendingBookingsPage() {
                   />
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 p-4 text-sm">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
                   <span className="text-slate-500">Trạng thái phòng:</span>
                   {b.room?.status && <RoomStatusBadge status={b.room.status} />}
                   {b.hasActiveOverlap && (
@@ -223,10 +224,10 @@ export default function StaffPendingBookingsPage() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
+                <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4">
                   <div>
                     <p className="text-xs text-slate-500">Tổng tiền</p>
-                    <p className="text-xl font-bold text-brand-700">
+                    <p className="text-xl font-bold text-brand-800">
                       {formatCurrency(b.totalAmount)}
                     </p>
                     {b.payment && b.payment.amount !== b.totalAmount && (

@@ -2,25 +2,32 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
-type Variant = "primary" | "secondary" | "outline" | "ghost" | "danger";
+type Variant =
+  | "primary"
+  | "secondary"
+  | "outline"
+  | "ghost"
+  | "danger"
+  | "accent";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
+  "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 shadow-sm",
-  secondary: "bg-slate-900 text-white hover:bg-slate-800",
+  primary: "bg-brand-700 text-white shadow-sm hover:bg-brand-800",
+  secondary: "bg-ink-950 text-white shadow-sm hover:bg-ink-900",
+  accent: "bg-gold-500 text-ink-950 shadow-sm hover:bg-gold-400",
   outline:
-    "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-sm",
-  ghost: "text-slate-700 hover:bg-slate-100",
-  danger: "bg-rose-600 text-white hover:bg-rose-700 shadow-sm",
+    "border border-slate-300 bg-white text-slate-800 shadow-sm hover:border-brand-300 hover:bg-brand-50 hover:text-brand-900",
+  ghost: "text-slate-700 hover:bg-slate-100 hover:text-slate-950",
+  danger: "bg-coral-600 text-white shadow-sm hover:bg-coral-700",
 };
 
 const sizes: Record<Size, string> = {
   sm: "h-9 px-3 text-sm",
   md: "h-10 px-4 text-sm",
-  lg: "h-11 px-5 text-base",
+  lg: "h-12 px-5 text-base",
 };
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { OperationHeader } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Coupon } from "@/lib/types";
@@ -69,17 +70,16 @@ export default function AdminCouponsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Khuyến mãi</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Quản lý mã giảm giá và chương trình khuyến mãi
-          </p>
-        </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4" /> Tạo coupon
-        </Button>
-      </div>
+      <OperationHeader
+        kicker="Promotions"
+        title="Khuyến mãi"
+        description="Quản lý mã giảm giá để khách áp dụng ở bước thanh toán sau khi yêu cầu đặt phòng được duyệt."
+        actions={
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4" /> Tạo coupon
+          </Button>
+        }
+      />
 
       <Card className="mt-5 overflow-hidden">
         <div className="overflow-x-auto">

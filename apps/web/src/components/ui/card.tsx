@@ -8,7 +8,7 @@ export const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-2xl border border-slate-200 bg-white shadow-card",
+      "rounded-lg border border-slate-200/90 bg-white shadow-card ring-1 ring-ink-950/[0.02]",
       className,
     )}
     {...props}
@@ -23,7 +23,7 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        "flex flex-col gap-1.5 border-b border-slate-100 px-6 py-4",
+        "flex flex-col gap-1.5 border-b border-slate-100 px-5 py-4",
         className,
       )}
       {...props}
@@ -36,10 +36,7 @@ export function CardTitle({
   ...props
 }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3
-      className={cn("text-lg font-semibold text-slate-900", className)}
-      {...props}
-    />
+    <h3 className={cn("text-base font-semibold text-ink-950", className)} {...props} />
   );
 }
 
@@ -54,7 +51,7 @@ export function CardContent({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("px-6 py-5", className)} {...props} />;
+  return <div className={cn("px-5 py-5", className)} {...props} />;
 }
 
 export function CardFooter({
@@ -64,7 +61,7 @@ export function CardFooter({
   return (
     <div
       className={cn(
-        "flex items-center justify-end gap-2 border-t border-slate-100 px-6 py-4",
+        "flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-4",
         className,
       )}
       {...props}

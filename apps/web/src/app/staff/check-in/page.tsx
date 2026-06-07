@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookingStatusBadge } from "@/components/ui/badge";
+import { OperationHeader } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking } from "@/lib/types";
@@ -60,14 +61,11 @@ export default function StaffCheckInPage() {
 
   return (
     <div>
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Check-in / Check-out
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Nhập mã đơn đặt phòng để thực hiện thủ tục cho khách
-        </p>
-      </div>
+      <OperationHeader
+        kicker="Front desk"
+        title="Check-in / Check-out"
+        description="Nhập mã đơn đặt phòng để thực hiện thủ tục cho khách, chỉ check-in khi đơn đã xác nhận và check-out khi đang lưu trú."
+      />
 
       <Card className="mt-6">
         <CardContent>
@@ -132,10 +130,10 @@ export default function StaffCheckInPage() {
               />
             </div>
 
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
+            <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs text-slate-500">Tổng tiền</p>
-                <p className="text-2xl font-bold text-brand-700">
+                <p className="text-2xl font-bold text-brand-800">
                   {formatCurrency(booking.data.totalAmount)}
                 </p>
               </div>
@@ -181,7 +179,7 @@ function InfoRow({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
+    <div className="rounded-lg border border-slate-200 bg-white p-3">
       <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
         {icon} {label}
       </p>

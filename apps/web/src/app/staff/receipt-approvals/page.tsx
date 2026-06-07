@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { BookingStatusBadge } from "@/components/ui/badge";
+import { OperationHeader } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking } from "@/lib/types";
@@ -58,12 +59,11 @@ export default function StaffReceiptApprovalsPage() {
 
   return (
     <div>
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Duyệt biên lai</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Xác nhận biên lai chuyển khoản sau khi khách đã được duyệt đặt chỗ.
-        </p>
-      </div>
+      <OperationHeader
+        kicker="Payment review"
+        title="Duyệt biên lai"
+        description="Xác nhận biên lai chuyển khoản sau khi khách đã được duyệt đặt chỗ. Đây là bước khác với duyệt yêu cầu booking."
+      />
 
       {isLoading ? (
         <div className="mt-6 space-y-4">
@@ -93,6 +93,7 @@ export default function StaffReceiptApprovalsPage() {
                     {!showRejectInput[b.id] && (
                       <Button
                         size="sm"
+                        variant="accent"
                         onClick={() => approve.mutate(b.id)}
                         loading={approve.isPending && approve.variables === b.id}
                       >
@@ -101,7 +102,7 @@ export default function StaffReceiptApprovalsPage() {
                     )}
                     <Button
                       size="sm"
-                      variant="secondary"
+                      variant="danger"
                       onClick={() =>
                         showRejectInput[b.id]
                           ? reject.mutate({
@@ -181,7 +182,7 @@ function InfoRow({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
+    <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
       <span className="text-slate-400">{icon}</span>
       <div>
         <p className="text-xs text-slate-500">{label}</p>

@@ -9,6 +9,7 @@ import {
   XCircle,
   DoorOpen,
   DoorClosed,
+  MessageSquare,
 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
+import { Badge, bookingStatusLabel, bookingStatusTone } from "@/components/ui/badge";
+import { OperationHeader } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking, BookingStatus } from "@/lib/types";
@@ -41,35 +43,11 @@ const STATUS_OPTIONS: { value: string; label: string; tone: string }[] = [
 ];
 
 function statusBadgeTone(status: BookingStatus): any {
-  const map: Record<string, string> = {
-    PENDING_HOST_APPROVAL: "violet",
-    PENDING_PAYMENT: "amber",
-    PAYING: "sky",
-    PENDING_APPROVAL: "amber",
-    CONFIRMED: "emerald",
-    CHECKED_IN: "sky",
-    CHECKED_OUT: "slate",
-    CANCELLED: "rose",
-    REJECTED: "rose",
-    EXPIRED: "rose",
-  };
-  return map[status] ?? "slate";
+  return bookingStatusTone(status);
 }
 
 function statusLabel(status: BookingStatus): string {
-  const map: Record<BookingStatus, string> = {
-    PENDING_HOST_APPROVAL: "Chờ duyệt yêu cầu",
-    PENDING_PAYMENT: "Chờ thanh toán",
-    PAYING: "Đang thanh toán",
-    PENDING_APPROVAL: "Chờ duyệt biên lai",
-    CONFIRMED: "Đã xác nhận",
-    CHECKED_IN: "Đang ở",
-    CHECKED_OUT: "Đã trả phòng",
-    CANCELLED: "Đã hủy",
-    REJECTED: "Bị từ chối",
-    EXPIRED: "Hết hạn",
-  };
-  return map[status] ?? status;
+  return bookingStatusLabel(status);
 }
 
 interface BookingDetailModalProps {
@@ -101,9 +79,9 @@ function BookingDetailModal({
   if (!booking) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title={`Đơn #${booking.bookingCode}`} size="lg">
+    <Modal open={open} onClose={onClose} title={`Đơn #${booking.bookingCode}`} size="xl">
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <p className="text-xs font-semibold uppercase text-slate-500">Khách hàng</p>
             <p className="mt-1 font-medium text-slate-900">
@@ -166,6 +144,23 @@ function BookingDetailModal({
           </div>
         )}
 
+        {booking.conversation && (
+          <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">
+            <p className="flex items-center gap-2 font-semibold text-sky-900">
+              <MessageSquare className="h-4 w-4" />
+              Đơn này đã có hội thoại với khách hàng
+            </p>
+            <button
+              className="mt-2 text-sm font-semibold text-sky-700 hover:underline"
+              onClick={() => {
+                window.location.href = "/admin/conversations";
+              }}
+            >
+              Mở hộp thư hỗ trợ
+            </button>
+          </div>
+        )}
+
         {booking.rejectedReason && (
           <div>
             <p className="text-xs font-semibold uppercase text-slate-500">Lý do từ chối</p>
@@ -180,7 +175,7 @@ function BookingDetailModal({
                 <CheckCircle className="h-4 w-4" /> Duyệt yêu cầu
               </Button>
               <Button
-                variant="outline"
+                variant="danger"
                 onClick={() => setShowRejectForm(true)}
               >
                 <XCircle className="h-4 w-4" /> Từ chối yêu cầu
@@ -193,7 +188,7 @@ function BookingDetailModal({
                 <CheckCircle className="h-4 w-4" /> Duyệt biên lai
               </Button>
               <Button
-                variant="outline"
+                variant="danger"
                 onClick={() => setShowRejectForm(true)}
               >
                 <XCircle className="h-4 w-4" /> Từ chối biên lai
@@ -354,14 +349,11 @@ export default function AdminBookingsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Đặt phòng</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Quản lý tất cả đơn đặt phòng
-          </p>
-        </div>
-      </div>
+      <OperationHeader
+        kicker="Booking queue"
+        title="Đặt phòng"
+        description="Quản lý yêu cầu chờ duyệt, đơn chờ thanh toán, biên lai chờ duyệt và các bước vận hành lưu trú."
+      />
 
       <Card className="mt-4">
         <div className="flex flex-wrap items-end gap-3 p-4">

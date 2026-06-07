@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
 import { bookingStatusLabel } from "@/components/ui/badge";
+import { OperationHeader } from "@/components/hotel/commercial";
 import { cn, formatDate } from "@/lib/utils";
 import type {
   BookingStatus,
@@ -20,7 +21,7 @@ import type {
 
 const statusStyle: Record<BookingStatus, string> = {
   PENDING_HOST_APPROVAL: "border-violet-200 bg-violet-50 text-violet-800",
-  PENDING_PAYMENT: "border-amber-200 bg-amber-50 text-amber-800",
+  PENDING_PAYMENT: "border-gold-200 bg-gold-50 text-gold-800",
   PAYING: "border-sky-200 bg-sky-50 text-sky-800",
   PENDING_APPROVAL: "border-orange-200 bg-orange-50 text-orange-800",
   CONFIRMED: "border-emerald-200 bg-emerald-50 text-emerald-800",
@@ -99,17 +100,12 @@ export default function StaffBookingCalendarPage() {
 
   return (
     <div>
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Lịch đặt phòng
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Xem phòng đang trống, đang giữ và đã xác nhận theo từng ngày.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <OperationHeader
+        kicker="Room occupancy"
+        title="Lịch đặt phòng"
+        description="Xem phòng trống, đang giữ, chờ duyệt, chờ thanh toán và đã xác nhận theo từng ngày."
+        actions={
+          <div className="toolbar-panel grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <label className="text-sm font-medium text-slate-700">
             Từ ngày
             <input
@@ -160,10 +156,11 @@ export default function StaffBookingCalendarPage() {
           >
             <RefreshCw className="h-4 w-4" /> Tải lại
           </Button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
-      <div className="mt-4 flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-3 text-xs">
+      <div className="mt-4 flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-card">
         {(
           [
             "PENDING_HOST_APPROVAL",
@@ -213,16 +210,16 @@ export default function StaffBookingCalendarPage() {
               <div
                 className="grid min-w-[980px]"
                 style={{
-                  gridTemplateColumns: `180px repeat(${days.length}, minmax(110px, 1fr))`,
+                  gridTemplateColumns: `190px repeat(${days.length}, minmax(112px, 1fr))`,
                 }}
               >
-                <div className="sticky left-0 z-10 border-b border-r border-slate-200 bg-slate-50 p-3 text-xs font-semibold uppercase text-slate-500">
+                <div className="sticky left-0 z-10 border-b border-r border-slate-200 bg-slate-100 p-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                   Phòng
                 </div>
                 {days.map((day) => (
                   <div
                     key={day}
-                    className="border-b border-r border-slate-200 bg-slate-50 p-3 text-center"
+                    className="border-b border-r border-slate-200 bg-slate-100 p-3 text-center"
                   >
                     <p className="text-xs font-bold text-slate-900">
                       {parseISODate(day).toLocaleDateString("vi-VN", {
@@ -238,7 +235,7 @@ export default function StaffBookingCalendarPage() {
                 {rooms.map((room) => (
                   <div key={room.id} className="contents">
                     <div className="sticky left-0 z-10 min-w-0 border-b border-r border-slate-200 bg-white p-3">
-                      <p className="truncate text-sm font-bold text-slate-900">
+                      <p className="truncate text-sm font-bold text-slate-950">
                         Phòng {room.roomNumber}
                       </p>
                       <p className="mt-0.5 truncate text-xs text-slate-500">
@@ -255,7 +252,7 @@ export default function StaffBookingCalendarPage() {
                           className="min-h-[76px] border-b border-r border-slate-200 bg-white p-1.5"
                         >
                           {bookings.length === 0 ? (
-                            <div className="flex h-full min-h-[64px] items-center justify-center rounded-lg bg-emerald-50 text-[11px] font-medium text-emerald-700">
+                            <div className="flex h-full min-h-[64px] items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-[11px] font-semibold text-emerald-700">
                               Trống
                             </div>
                           ) : (
@@ -265,7 +262,7 @@ export default function StaffBookingCalendarPage() {
                                   key={booking.id}
                                   onClick={() => router.push(booking.action.href)}
                                   className={cn(
-                                    "block w-full min-w-0 rounded-lg border px-2 py-1.5 text-left transition hover:shadow-sm",
+                                    "block w-full min-w-0 rounded-lg border px-2 py-1.5 text-left transition hover:shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500",
                                     statusStyle[booking.status],
                                   )}
                                 >

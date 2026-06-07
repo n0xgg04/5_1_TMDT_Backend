@@ -45,38 +45,43 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-ink-950/60 backdrop-blur-sm"
         onClick={onClose}
       />
       <div
         className={cn(
-          "relative w-full rounded-2xl bg-white shadow-2xl animate-fade-in",
+          "relative max-h-[92vh] w-full overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-white/20 animate-fade-in",
           sizes[size],
         )}
       >
         {(title || description) && (
-          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-4">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/80 px-6 py-4">
             <div>
               {title && (
-                <h3 className="text-lg font-semibold text-slate-900">
+                <h3 className="text-lg font-semibold text-ink-950">
                   {title}
                 </h3>
               )}
               {description && (
-                <p className="mt-0.5 text-sm text-slate-500">{description}</p>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
+                  {description}
+                </p>
               )}
             </div>
             <button
               onClick={onClose}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="rounded-lg p-1 text-slate-500 hover:bg-white hover:text-slate-800"
+              aria-label="Đóng"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         )}
-        <div className="px-6 py-5">{children}</div>
+        <div className="max-h-[calc(92vh-9rem)] overflow-y-auto px-6 py-5">
+          {children}
+        </div>
         {footer && (
-          <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-white px-6 py-4">
             {footer}
           </div>
         )}

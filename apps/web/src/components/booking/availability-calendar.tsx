@@ -19,8 +19,8 @@ type CalendarDay = {
 
 const statusStyles: Record<string, string> = {
   available: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  held: "border-amber-200 bg-amber-50 text-amber-800",
-  booked: "border-rose-200 bg-rose-50 text-rose-800",
+  held: "border-gold-200 bg-gold-50 text-gold-800",
+  booked: "border-coral-200 bg-coral-50 text-coral-800",
 };
 
 const statusLabels: Record<string, string> = {
@@ -45,7 +45,7 @@ export function AvailabilityCalendar({
   loading?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
           <CalendarDays className="h-4 w-4 text-brand-600" />
@@ -53,8 +53,8 @@ export function AvailabilityCalendar({
         </div>
         <div className="flex flex-wrap justify-end gap-2 text-[11px] text-slate-500">
           <LegendDot className="bg-emerald-500" label="Trống" />
-          <LegendDot className="bg-amber-500" label="Giữ" />
-          <LegendDot className="bg-rose-500" label="Kín" />
+          <LegendDot className="bg-gold-500" label="Giữ" />
+          <LegendDot className="bg-coral-500" label="Kín" />
         </div>
       </div>
 
@@ -81,12 +81,12 @@ export function AvailabilityCalendar({
               <div
                 key={day.date}
                 className={cn(
-                  "flex h-16 min-w-0 flex-col justify-between rounded-lg border p-1.5 text-left",
+                  "flex h-16 min-w-0 flex-col justify-between rounded-lg border p-1.5 text-left transition-shadow",
                   statusStyles[day.status] ?? statusStyles.booked,
                   isSelected && "ring-2 ring-brand-500 ring-offset-1",
                 )}
               >
-                <span className="truncate text-xs font-bold">
+                <span className="truncate text-xs font-bold tabular-nums">
                   {dayNumber(day.date)}
                 </span>
                 <span className="truncate text-[10px] font-medium leading-tight">

@@ -14,6 +14,7 @@ import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
 import { RoomStatusBadge } from "@/components/ui/badge";
+import { OperationHeader } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import type { Room, RoomStatus, HotelBranch } from "@/lib/types";
 
@@ -104,19 +105,18 @@ export default function AdminRoomsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Quản lý phòng</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Thêm phòng mới và cập nhật trạng thái
-          </p>
-        </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4" /> Thêm phòng
-        </Button>
-      </div>
+      <OperationHeader
+        kicker="Inventory"
+        title="Quản lý phòng"
+        description="Theo dõi số phòng, tầng, loại phòng, chi nhánh và trạng thái vận hành."
+        actions={
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4" /> Thêm phòng
+          </Button>
+        }
+      />
 
-      <div className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-4">
+      <div className="toolbar-panel mt-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
         <Select
           label="Loại phòng"
           value={roomTypeId}

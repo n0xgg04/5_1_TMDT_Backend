@@ -9,7 +9,6 @@ import {
   Users,
   BedDouble,
   Wifi,
-  Coffee,
   CheckCircle,
   ChevronLeft,
   Share2,
@@ -18,7 +17,6 @@ import {
   MessageSquare,
   Clock,
   FileText,
-  HelpCircle,
   Navigation,
   ChevronDown,
   ChevronUp,
@@ -28,6 +26,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
 import { AvailabilityCalendar } from "@/components/booking/availability-calendar";
+import {
+  AvailabilityLegend,
+  SectionHeading,
+  hotelFallbackImage,
+} from "@/components/hotel/commercial";
 import {
   BookingConflictDialog,
   type BookingConflictDialogData,
@@ -252,7 +255,7 @@ export default function RoomDetailPage() {
   const pricePerNight = room.pricingRules[0]?.pricePerNight ?? 0;
   const mainImage =
     room.images[0] ||
-    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&auto=format&fit=crop&q=80";
+    hotelFallbackImage(room.name);
   const address = room.rooms[0]?.branch
     ? `${room.rooms[0].branch.address}, ${room.rooms[0].branch.city}`
     : "Việt Nam";
@@ -332,14 +335,14 @@ export default function RoomDetailPage() {
 
   const ratingLabel =
     room.avgRating >= 9
-      ? "Tuyệt vờ i"
+      ? "Tuyệt vời"
       : room.avgRating >= 7
         ? "Rất tốt"
         : "Tốt";
 
   return (
-    <main className="pb-20">
-      <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <main className="customer-page pb-20">
+      <div className="sticky top-16 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="container-page flex h-14 items-center justify-between">
           <button
             onClick={() => router.back()}
@@ -371,9 +374,9 @@ export default function RoomDetailPage() {
         </div>
       </div>
 
-      <section className="container-page mt-4">
+      <section className="container-page mt-5">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3 md:grid-rows-2">
-          <div className="relative aspect-[16/10] overflow-hidden rounded-2xl md:col-span-2 md:row-span-2">
+          <div className="relative aspect-[16/10] overflow-hidden rounded-lg shadow-card md:col-span-2 md:row-span-2">
             <img
               src={mainImage}
               alt={room.name}
@@ -383,7 +386,7 @@ export default function RoomDetailPage() {
           {room.images.slice(1, 3).map((img, i) => (
             <div
               key={i}
-              className="relative hidden aspect-[16/10] overflow-hidden rounded-2xl md:block"
+              className="relative hidden aspect-[16/10] overflow-hidden rounded-lg shadow-card md:block"
             >
               <img
                 src={img}
@@ -400,7 +403,7 @@ export default function RoomDetailPage() {
           <div className="lg:col-span-2">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">
+                <h1 className="text-3xl font-bold tracking-tight text-ink-950">
                   {room.name}
                 </h1>
                 <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
@@ -408,7 +411,7 @@ export default function RoomDetailPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <div className="rounded-lg bg-brand-50 px-2.5 py-1 text-sm font-bold text-brand-700">
+                <div className="rounded-lg bg-brand-50 px-2.5 py-1 text-sm font-bold text-brand-800 ring-1 ring-brand-100">
                   {room.avgRating.toFixed(1)}
                 </div>
                 <div className="text-xs text-slate-500">
@@ -428,6 +431,24 @@ export default function RoomDetailPage() {
               <span className="ml-1 text-xs text-slate-400">
                 {room.starRating} sao
               </span>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <ValueChip
+                icon={<Users className="h-4 w-4" />}
+                label="Sức chứa"
+                value={`Tối đa ${room.maxGuests} khách`}
+              />
+              <ValueChip
+                icon={<BedDouble className="h-4 w-4" />}
+                label="Giường"
+                value={room.bedType}
+              />
+              <ValueChip
+                icon={<Wifi className="h-4 w-4" />}
+                label="Tiện nghi"
+                value={`${room.amenities?.length ?? 0} tiện nghi`}
+              />
             </div>
 
             <div className="mt-6 border-b border-slate-200">
@@ -453,26 +474,24 @@ export default function RoomDetailPage() {
               {tab === "overview" && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      Giới thiệu
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                      {room.description ?? "Không có mô tả."}
-                    </p>
+                    <SectionHeading
+                      title="Giới thiệu"
+                      description={room.description ?? "Không có mô tả."}
+                    />
                   </div>
 
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900">
                       Tiện nghi
                     </h3>
-                    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {Array.isArray(room.amenities) &&
                         room.amenities.map((a) => (
                           <div
                             key={a}
-                            className="flex items-center gap-2 text-sm text-slate-600"
+                            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
                           >
-                            <CheckCircle className="h-4 w-4 text-emerald-500" />{" "}
+                            <CheckCircle className="h-4 w-4 text-emerald-600" />{" "}
                             {a}
                           </div>
                         ))}
@@ -530,8 +549,8 @@ export default function RoomDetailPage() {
                 <div className="space-y-4">
                   {Array.isArray(room.rooms) &&
                     room.rooms.map((r) => (
-                      <Card key={r.id} className="overflow-hidden">
-                        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
+                          <Card key={r.id} className="overflow-hidden">
+                            <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
                           <div className="flex-1">
                             <p className="font-semibold text-slate-900">
                               Phòng {r.roomNumber}
@@ -551,7 +570,7 @@ export default function RoomDetailPage() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-xl font-bold text-brand-700">
+                            <p className="text-xl font-bold text-brand-800">
                               {formatCurrency(pricePerNight)}
                             </p>
                             <p className="text-xs text-slate-400">/ đêm</p>
@@ -572,7 +591,7 @@ export default function RoomDetailPage() {
               {tab === "location" && (
                 <div className="space-y-4">
                   <p className="text-sm text-slate-600">{address}</p>
-                  <div className="aspect-video overflow-hidden rounded-2xl border border-slate-200">
+                <div className="aspect-video overflow-hidden rounded-lg border border-slate-200 shadow-card">
                     <iframe
                       title="Bản đồ"
                       className="h-full w-full"
@@ -815,13 +834,19 @@ export default function RoomDetailPage() {
           </div>
 
           <div className="hidden lg:block">
-            <div className="sticky top-20 space-y-4">
-              <Card>
-                <CardContent className="p-5">
-                  <p className="text-sm text-slate-500">Giá mỗi đêm</p>
-                  <p className="mt-1 text-3xl font-bold text-brand-700">
+            <div className="sticky top-32 space-y-4">
+              <Card className="overflow-hidden">
+                <div className="bg-ink-950 p-5 text-white">
+                  <p className="text-sm text-white/70">Giá mỗi đêm</p>
+                  <p className="mt-1 text-3xl font-bold">
                     {formatCurrency(pricePerNight)}
                   </p>
+                  <p className="mt-2 text-xs leading-5 text-white/70">
+                    Chọn ngày và phòng để kiểm tra lịch trống trước khi gửi yêu
+                    cầu đặt chỗ.
+                  </p>
+                </div>
+                <CardContent className="p-5">
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
                     <label className="text-sm font-medium text-slate-700">
                       Ngày nhận phòng
@@ -871,6 +896,9 @@ export default function RoomDetailPage() {
                     </label>
                   )}
                   <div className="mt-4">
+                    <div className="mb-2">
+                      <AvailabilityLegend />
+                    </div>
                     <AvailabilityCalendar
                       days={availabilityQ.data?.days ?? []}
                       selectedFrom={stayDates.checkIn}
@@ -878,7 +906,7 @@ export default function RoomDetailPage() {
                       loading={availabilityQ.isLoading}
                     />
                   </div>
-                  <Button className="mt-4 w-full" onClick={() => goBook()}>
+                  <Button variant="accent" className="mt-4 w-full" onClick={() => goBook()}>
                     Đặt phòng ngay
                   </Button>
                 </CardContent>
@@ -889,10 +917,10 @@ export default function RoomDetailPage() {
       </section>
 
       <section className="container-page mt-6 lg:hidden">
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="p-5">
             <p className="text-sm text-slate-500">Giá mỗi đêm</p>
-            <p className="mt-1 text-2xl font-bold text-brand-700">
+            <p className="mt-1 text-2xl font-bold text-brand-800">
               {formatCurrency(pricePerNight)}
             </p>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -963,13 +991,13 @@ export default function RoomDetailPage() {
               <div
                 key={sr.id}
                 onClick={() => router.push(`/rooms/${sr.id}`)}
-                className="cursor-pointer overflow-hidden rounded-2xl bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                className="cursor-pointer overflow-hidden rounded-lg bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lift"
               >
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <img
                     src={
                       sr.images?.[0] ||
-                      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&auto=format&fit=crop&q=80"
+                    hotelFallbackImage(sr.name)
                     }
                     alt={sr.name}
                     className="h-full w-full object-cover"
@@ -980,7 +1008,7 @@ export default function RoomDetailPage() {
                   <p className="mt-1 text-sm text-slate-500">
                     {sr.branch?.city ?? "Việt Nam"}
                   </p>
-                  <p className="mt-2 text-lg font-bold text-brand-700">
+                  <p className="mt-2 text-lg font-bold text-brand-800">
                     {formatCurrency(sr.pricePerNight)}
                   </p>
                 </div>
@@ -994,11 +1022,13 @@ export default function RoomDetailPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-slate-500">Giá mỗi đêm</p>
-            <p className="text-xl font-bold text-brand-700">
+            <p className="text-xl font-bold text-brand-800">
               {formatCurrency(pricePerNight)}
             </p>
           </div>
-          <Button onClick={() => goBook()}>Đặt phòng ngay</Button>
+          <Button variant="accent" onClick={() => goBook()}>
+            Đặt phòng ngay
+          </Button>
         </div>
       </div>
 
@@ -1037,5 +1067,27 @@ function RoomDetailSkeleton() {
         <Skeleton className="h-4 w-5/6" />
       </div>
     </main>
+  );
+}
+
+function ValueChip({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-card">
+      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+        {icon}
+        {label}
+      </p>
+      <p className="mt-2 truncate text-sm font-semibold text-ink-950">
+        {value}
+      </p>
+    </div>
   );
 }

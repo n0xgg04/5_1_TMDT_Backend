@@ -9,6 +9,7 @@ import { Skeleton, EmptyState } from "@/components/ui/skeleton";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { roomStatusLabel } from "@/components/ui/badge";
+import { OperationHeader } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { RoomStatus } from "@/lib/types";
@@ -85,14 +86,12 @@ export default function StaffRoomMapPage() {
 
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Sơ đồ phòng</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Theo dõi trạng thái phòng theo thời gian thực
-          </p>
-        </div>
-        <div className="flex items-end gap-3">
+      <OperationHeader
+        kicker="Room map"
+        title="Sơ đồ phòng"
+        description="Theo dõi và cập nhật trạng thái phòng theo tầng, hỗ trợ vận hành check-in/check-out và housekeeping."
+        actions={
+          <div className="toolbar-panel flex items-end gap-3">
           <div className="w-40">
             <Select
               label="Tầng"
@@ -110,11 +109,12 @@ export default function StaffRoomMapPage() {
           <Button variant="outline" onClick={() => q.refetch()}>
             <RefreshCw className="h-4 w-4" /> Tải lại
           </Button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* Legend */}
-      <div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs">
+      <div className="mt-4 flex flex-wrap gap-3 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-card">
         {(Object.keys(statusDot) as RoomStatus[]).map((s) => (
           <span key={s} className="inline-flex items-center gap-1.5">
             <span className={cn("h-2.5 w-2.5 rounded-full", statusDot[s])} />
@@ -147,7 +147,7 @@ export default function StaffRoomMapPage() {
                   key={r.id}
                   onClick={() => setSelected(r)}
                   className={cn(
-                    "rounded-xl border-2 p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-md",
+                    "rounded-lg border-2 p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-md",
                     statusStyle[r.status],
                   )}
                 >
@@ -210,7 +210,7 @@ function Detail({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/50" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+      <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-2xl">
         <h3 className="text-lg font-semibold text-slate-900">
           Phòng #{room.roomNumber}
         </h3>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import { Button } from "./ui/button";
+import { Modal } from "./ui/modal";
 import {
   Hotel,
   LogOut,
@@ -270,6 +271,7 @@ export function Navbar() {
 
 function NotificationBell({ accessToken }: { accessToken: string | null }) {
   const [open, setOpen] = useState(false);
+  const [featured, setFeatured] = useState<Notification | null>(null);
   const qc = useQueryClient();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -316,22 +318,44 @@ function NotificationBell({ accessToken }: { accessToken: string | null }) {
   const notifications = q.data ?? [];
   const unread = notifications.filter((n) => !n.readAt).length;
 
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
-      >
-        <Bell className="h-4 w-4" />
-        {unread > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
-            {unread}
-          </span>
-        )}
-      </button>
+  useEffect(() => {
+    if (!notifications.length || typeof window === "undefined") return;
+    const important = notifications.find(
+      (n) => !n.readAt && n.type.startsWith("booking."),
+    );
+    if (!important) return;
+    const key = `hotel_notification_dialog_${important.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "seen");
+    setFeatured(important);
+  }, [notifications]);
 
-      {open && (
-        <div className="absolute right-0 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+  const openBooking = (notification: Notification) => {
+    const data = notification.templateData ?? {};
+    if (!notification.readAt) markRead.mutate(notification.id);
+    const bookingId = data.bookingId;
+    if (typeof bookingId === "string") {
+      window.location.href = `/my-bookings/${bookingId}`;
+    }
+  };
+
+  return (
+    <>
+      <div className="relative" ref={ref}>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="relative flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+        >
+          <Bell className="h-4 w-4" />
+          {unread > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold-500 px-1 text-[10px] font-bold text-ink-950">
+              {unread}
+            </span>
+          )}
+        </button>
+
+        {open && (
+        <div className="absolute right-0 mt-2 w-80 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
           <div className="border-b border-slate-100 px-3 py-2">
             <p className="text-sm font-semibold text-slate-900">Thông báo</p>
           </div>
@@ -343,23 +367,12 @@ function NotificationBell({ accessToken }: { accessToken: string | null }) {
             ) : (
               notifications.slice(0, 8).map((n) => {
                 const data = n.templateData ?? {};
-                const title =
-                  n.type === "booking.request.approved"
-                    ? "Yêu cầu đã được duyệt"
-                    : n.type === "booking.request.rejected"
-                      ? "Yêu cầu bị từ chối"
-                      : n.type.includes("expired")
-                        ? "Đơn đã hết hạn"
-                        : "Cập nhật đặt phòng";
+                const title = notificationTitle(n.type);
                 return (
                   <button
                     key={n.id}
                     onClick={() => {
-                      if (!n.readAt) markRead.mutate(n.id);
-                      const bookingId = data.bookingId;
-                      if (typeof bookingId === "string") {
-                        window.location.href = `/my-bookings/${bookingId}`;
-                      }
+                      openBooking(n);
                     }}
                     className={cn(
                       "block w-full border-b border-slate-100 px-3 py-3 text-left text-sm hover:bg-slate-50",
@@ -383,7 +396,58 @@ function NotificationBell({ accessToken }: { accessToken: string | null }) {
             )}
           </div>
         </div>
-      )}
-    </div>
+        )}
+      </div>
+
+      <Modal
+        open={Boolean(featured)}
+        onClose={() => setFeatured(null)}
+        size="lg"
+        title={featured ? notificationTitle(featured.type) : "Cập nhật đặt phòng"}
+        description="Có cập nhật quan trọng cho đơn đặt phòng của bạn. Kiểm tra ngay để không bỏ lỡ thời hạn duyệt hoặc thanh toán."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setFeatured(null)}>
+              Để sau
+            </Button>
+            {featured && (
+              <Button
+                variant="accent"
+                onClick={() => {
+                  openBooking(featured);
+                  setFeatured(null);
+                }}
+              >
+                Xem đơn đặt phòng
+              </Button>
+            )}
+          </>
+        }
+      >
+        {featured && (
+          <div className="rounded-lg border border-gold-200 bg-gold-50 p-4">
+            <p className="text-sm font-semibold text-gold-950">
+              {typeof featured.templateData?.bookingCode === "string"
+                ? `Đơn ${featured.templateData.bookingCode}`
+                : featured.type}
+            </p>
+            {typeof featured.templateData?.paymentDeadline === "string" && (
+              <p className="mt-2 text-sm text-gold-900">
+                Hạn thanh toán:{" "}
+                {formatDateTime(featured.templateData.paymentDeadline)}
+              </p>
+            )}
+          </div>
+        )}
+      </Modal>
+    </>
   );
+}
+
+function notificationTitle(type: string) {
+  if (type === "booking.request.approved") return "Yêu cầu đã được duyệt";
+  if (type === "booking.request.rejected") return "Yêu cầu bị từ chối";
+  if (type.includes("expired")) return "Đơn đã hết hạn";
+  if (type.includes("payment")) return "Cập nhật thanh toán";
+  return "Cập nhật đặt phòng";
 }

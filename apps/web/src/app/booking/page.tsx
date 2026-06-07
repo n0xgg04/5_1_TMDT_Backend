@@ -33,6 +33,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  BookingStatePanel,
+  SectionHeading,
+  hotelFallbackImage,
+} from "@/components/hotel/commercial";
+import {
   BookingConflictDialog,
   type BookingConflictDialogData,
 } from "@/components/booking/booking-conflict-dialog";
@@ -426,22 +431,32 @@ function BookingInner() {
   };
 
   return (
-    <main className="container-page py-8">
-      <div className="mb-6 flex items-center gap-2 text-sm text-slate-500">
-        <span className="font-medium text-brand-600">1. Gửi yêu cầu</span>
-        <ArrowRight className="h-3.5 w-3.5" />
-        <span className="font-bold text-slate-900">2. Chờ duyệt</span>
-      </div>
+    <main className="customer-page">
+      <section className="border-b border-slate-200 bg-white">
+        <div className="container-page py-8">
+          <SectionHeading
+            kicker="Request to book"
+            title="Gửi yêu cầu đặt chỗ"
+            description="Bạn chưa cần thanh toán ở bước này. Sapphire Stay sẽ kiểm tra lịch phòng, duyệt trong 24 giờ, rồi mới mở bước thanh toán và áp mã giảm giá."
+          />
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <Step active title="1. Gửi yêu cầu" desc="Điền thông tin khách và lịch lưu trú." />
+            <Step active title="2. Chờ duyệt" desc="Admin kiểm tra lịch phòng trong 24 giờ." />
+            <Step title="3. Thanh toán" desc="Chỉ mở sau khi yêu cầu được duyệt." />
+          </div>
+        </div>
+      </section>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="container-page grid grid-cols-1 gap-6 py-8 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="p-5">
-              <h2 className="text-lg font-bold text-slate-900">
+              <h2 className="text-lg font-bold text-ink-950">
                 Thông tin đặt phòng
               </h2>
-              <p className="text-sm text-slate-500">
-                Vui lòng điền đầy đủ thông tin để nhận xác nhận đặt phòng.
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Thông tin này giúp admin liên hệ khi cần xác nhận lịch, yêu cầu
+                đặc biệt hoặc hỗ trợ trước khi duyệt.
               </p>
               <div className="mt-4 space-y-4">
                 <div>
@@ -481,10 +496,10 @@ function BookingInner() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="p-5">
-              <h2 className="text-lg font-bold text-slate-900">Yêu cầu</h2>
-              <p className="text-sm text-slate-500">
+              <h2 className="text-lg font-bold text-ink-950">Yêu cầu lưu trú</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
                 Điền thông tin khách lưu trú.
               </p>
               <div className="mt-4 space-y-4">
@@ -536,39 +551,33 @@ function BookingInner() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-5">
-              <h2 className="text-lg font-bold text-slate-900">
-                Quy trình xét duyệt
-              </h2>
-              <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
-                <p className="font-semibold text-sky-900">
-                  Bạn chưa cần thanh toán ở bước này
-                </p>
-                <p className="mt-1">
-                  Admin sẽ kiểm tra phòng và duyệt yêu cầu trong 24 giờ. Khi
-                  được duyệt, hệ thống sẽ gửi thông báo và email để bạn thanh
-                  toán trong thời hạn hiển thị trên đơn.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <BookingStatePanel
+            status="PENDING_HOST_APPROVAL"
+            title="Bạn chưa cần thanh toán ở bước này"
+            description="Admin sẽ kiểm tra phòng và duyệt yêu cầu trong 24 giờ. Khi được duyệt, hệ thống sẽ gửi thông báo và email để bạn thanh toán trong thời hạn hiển thị trên đơn."
+          />
         </div>
 
         <div>
-          <Card className="sticky top-24">
+          <Card className="sticky top-24 overflow-hidden">
+            <div className="bg-ink-950 p-5 text-white">
+              <p className="text-sm text-white/70">Tóm tắt lưu trú</p>
+              <p className="mt-1 text-2xl font-bold">
+                {formatCurrency(total)}
+              </p>
+              <p className="mt-1 text-xs text-white/70">
+                Giá dự kiến trước ưu đãi sau duyệt
+              </p>
+            </div>
             <CardContent className="p-5">
-              <h2 className="text-lg font-bold text-slate-900">
-                Hotel Summary
-              </h2>
               {rt.isLoading ? (
                 <Skeleton className="mt-3 h-24 w-full" />
               ) : rt.data ? (
-                <div className="mt-3 flex gap-3">
+                <div className="flex gap-3">
                   <img
                     src={
                       rt.data.images[0] ||
-                      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&auto=format&fit=crop&q=80"
+                      hotelFallbackImage(rt.data.name)
                     }
                     alt={rt.data.name}
                     className="h-20 w-20 rounded-lg object-cover"
@@ -627,7 +636,7 @@ function BookingInner() {
                 )}
               </div>
 
-              <div className="mt-4 border-t border-slate-100 pt-4 space-y-2">
+              <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
                 <Row
                   label={`Phòng × ${nights} đêm`}
                   value={formatCurrency(total)}
@@ -641,14 +650,14 @@ function BookingInner() {
                 </div>
               </div>
 
-              <p className="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+              <p className="mt-4 rounded-lg border border-gold-200 bg-gold-50 p-3 text-xs leading-5 text-gold-900">
                 Mã giảm giá và phương thức thanh toán sẽ được chọn sau khi yêu
                 cầu đặt chỗ được duyệt.
               </p>
 
               {rangeAvailabilityQ.data &&
                 !rangeAvailabilityQ.data.available && (
-                  <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+                  <div className="mt-4 rounded-lg border border-coral-200 bg-coral-50 p-3 text-sm text-coral-800">
                     Khoảng ngày này đã có người đặt hoặc đang được giữ. Vui lòng
                     chọn lại ngày.
                   </div>
@@ -656,6 +665,7 @@ function BookingInner() {
 
               <Button
                 size="lg"
+                variant="accent"
                 className="mt-4 w-full"
                 loading={create.isPending}
                 disabled={
@@ -752,6 +762,30 @@ function BookingInner() {
         }}
       />
     </main>
+  );
+}
+
+function Step({
+  active,
+  title,
+  desc,
+}: {
+  active?: boolean;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border p-3",
+        active
+          ? "border-brand-200 bg-brand-50 text-brand-950"
+          : "border-slate-200 bg-slate-50 text-slate-600",
+      )}
+    >
+      <p className="text-sm font-semibold">{title}</p>
+      <p className="mt-1 text-xs leading-5">{desc}</p>
+    </div>
   );
 }
 

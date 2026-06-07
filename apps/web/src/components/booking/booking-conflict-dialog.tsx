@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CalendarDays, Search } from "lucide-react";
+import { AlertTriangle, CalendarDays, Search, ShieldAlert } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
@@ -32,7 +32,7 @@ export function BookingConflictDialog({
     <Modal
       open={open}
       onClose={onClose}
-      size="lg"
+      size="xl"
       title={data?.title ?? "Khoảng ngày này chưa thể đặt"}
       description={
         data?.message ??
@@ -53,16 +53,19 @@ export function BookingConflictDialog({
     >
       {data && (
         <div className="space-y-4">
-          <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-              <AlertTriangle className="h-5 w-5" />
+          <div className="grid gap-4 rounded-lg border border-coral-200 bg-coral-50 p-5 sm:grid-cols-[auto_1fr]">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-white text-coral-700 shadow-sm ring-1 ring-coral-200">
+              <ShieldAlert className="h-7 w-7" />
             </div>
-            <div className="min-w-0 text-sm">
-              <p className="font-semibold text-amber-950">
-                Ngày đã chọn: {formatDate(data.selectedFrom)} -{" "}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-coral-700">
+                Không thể giữ phòng cho khoảng ngày này
+              </p>
+              <p className="mt-2 text-lg font-bold text-coral-950">
+                {formatDate(data.selectedFrom)} -{" "}
                 {formatDate(data.selectedTo)}
               </p>
-              <p className="mt-1 text-amber-800">
+              <p className="mt-2 text-sm leading-6 text-coral-800">
                 Vui lòng chọn khoảng ngày khác hoặc tìm phòng khác còn trống.
               </p>
             </div>
@@ -70,20 +73,21 @@ export function BookingConflictDialog({
 
           {data.conflicts && data.conflicts.length > 0 && (
             <div>
-              <p className="mb-2 text-sm font-semibold text-slate-900">
+              <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <AlertTriangle className="h-4 w-4 text-coral-600" />
                 Khoảng bị trùng
               </p>
-              <div className="space-y-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {data.conflicts.map((conflict, index) => (
                   <div
                     key={`${conflict.checkIn}-${conflict.checkOut}-${index}`}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm shadow-sm"
                   >
                     <span className="font-medium text-slate-800">
                       {formatDate(conflict.checkIn)} -{" "}
                       {formatDate(conflict.checkOut)}
                     </span>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
                       {conflict.status === "held" ? "Đang giữ" : "Đã kín"}
                     </span>
                   </div>

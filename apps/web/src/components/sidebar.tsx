@@ -160,17 +160,17 @@ export function Sidebar({ section }: { section: "admin" | "staff" }) {
   };
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
+    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-ink-950 text-white">
       <Link
         href="/"
-        className="flex h-16 items-center gap-2 border-b border-slate-200 px-5"
+        className="flex h-16 items-center gap-2 border-b border-white/10 px-5"
       >
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500 text-white">
           <Hotel className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-sm font-bold text-slate-900">Sapphire Stay</p>
-          <p className="text-xs uppercase tracking-wide text-slate-500">
+          <p className="text-sm font-bold text-white">Sapphire Stay</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-white/45">
             {section === "admin" ? "Admin Panel" : "Staff Panel"}
           </p>
         </div>
@@ -185,34 +185,34 @@ export function Sidebar({ section }: { section: "admin" | "staff" }) {
               key={it.href}
               href={it.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
                 active
-                  ? "bg-brand-50 text-brand-700"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                  ? "bg-white text-ink-950 shadow-sm"
+                  : "text-white/68 hover:bg-white/10 hover:text-white",
               )}
             >
-              <it.icon className="h-5 w-5" />
+              <it.icon className="h-4 w-4" />
               {it.label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-slate-200 p-3">
-        <div className="mb-2 flex items-center gap-3 rounded-lg p-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
+      <div className="border-t border-white/10 p-3">
+        <div className="mb-2 flex items-center gap-3 rounded-lg bg-white/5 p-2">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500 text-sm font-semibold text-white">
             {user?.firstName?.[0]?.toUpperCase()}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-900">
+            <p className="truncate text-sm font-semibold text-white">
               {user?.firstName} {user?.lastName}
             </p>
-            <p className="truncate text-xs text-slate-500">{user?.role}</p>
+            <p className="truncate text-xs text-white/50">{user?.role}</p>
           </div>
         </div>
         <button
           onClick={logout}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white/68 hover:bg-white/10 hover:text-white"
         >
           <LogOut className="h-4 w-4" /> Đăng xuất
         </button>

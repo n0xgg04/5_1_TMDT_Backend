@@ -25,6 +25,7 @@ import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { OperationHeader } from "@/components/hotel/commercial";
 import { formatCurrency } from "@/lib/utils";
 
 function firstOfMonth() {
@@ -94,14 +95,12 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Tổng quan</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Thống kê doanh thu và hiệu suất phòng
-          </p>
-        </div>
-        <div className="flex gap-3">
+      <OperationHeader
+        kicker="Operations"
+        title="Tổng quan"
+        description="Theo dõi doanh thu, tỷ lệ lấp phòng và các hàng đợi booking cần xử lý."
+        actions={
+          <div className="toolbar-panel grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input
             label="Từ ngày"
             type="date"
@@ -114,10 +113,11 @@ export default function AdminDashboard() {
             value={to}
             onChange={(e) => setTo(e.target.value)}
           />
-        </div>
-      </div>
+          </div>
+        }
+      />
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
         <Stat
           icon={<DollarSign className="h-5 w-5" />}
           label="Doanh thu"
@@ -276,15 +276,17 @@ function Stat({
     rose: "from-rose-500 to-rose-700",
   } as const;
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-card">
       <div className="flex items-center justify-between">
         <div
-          className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-white ${tones[tone]}`}
+          className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br text-white ${tones[tone]}`}
         >
           {icon}
         </div>
       </div>
-      <p className="mt-4 text-sm text-slate-500">{label}</p>
+      <p className="mt-4 truncate text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+        {label}
+      </p>
       {loading ? (
         <Skeleton className="mt-1 h-7 w-24" />
       ) : (

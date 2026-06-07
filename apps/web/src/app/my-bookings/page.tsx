@@ -24,8 +24,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
 import { Modal } from "@/components/ui/modal";
-import { BookingStatusBadge, bookingStatusLabel } from "@/components/ui/badge";
+import {
+  BookingStatusBadge,
+  bookingStatusAction,
+  bookingStatusLabel,
+} from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
+import { SectionHeading, hotelFallbackImage } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import {
   formatCurrency,
@@ -153,17 +158,19 @@ export default function MyBookingsPage() {
   });
 
   return (
-    <main className="container-page py-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Phòng đã đặt</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Xem và quản lý các đơn đặt phòng và phòng đã lưu
-          </p>
+    <main className="customer-page">
+      <section className="border-b border-slate-200 bg-white">
+        <div className="container-page py-8">
+          <SectionHeading
+            kicker="My stays"
+            title="Phòng đã đặt"
+            description="Theo dõi yêu cầu đặt chỗ, thời hạn duyệt, thời hạn thanh toán và các hành động tiếp theo trong một nơi."
+          />
         </div>
-      </div>
+      </section>
 
-      <div className="mt-6 border-b border-slate-200">
+      <div className="container-page py-8">
+      <div className="border-b border-slate-200">
         <div className="flex gap-6">
           <button
             onClick={() => setActiveTab("bookings")}
@@ -190,7 +197,7 @@ export default function MyBookingsPage() {
 
       {activeTab === "bookings" && (
         <div className="mt-6 space-y-4">
-          <div className="w-full sm:w-60">
+          <div className="toolbar-panel w-full sm:w-80">
             <Select
               label="Trạng thái"
               value={status}
@@ -263,13 +270,13 @@ export default function MyBookingsPage() {
               <div
                 key={w.id}
                 onClick={() => router.push(`/rooms/${w.roomTypeId}`)}
-                className="cursor-pointer overflow-hidden rounded-2xl bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                className="cursor-pointer overflow-hidden rounded-lg bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lift"
               >
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <img
                     src={
                       w.roomType.images?.[0] ||
-                      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&auto=format&fit=crop&q=80"
+                      hotelFallbackImage(w.roomType.name)
                     }
                     alt={w.roomType.name}
                     className="h-full w-full object-cover"
@@ -391,6 +398,7 @@ export default function MyBookingsPage() {
           </div>
         </div>
       </Modal>
+      </div>
     </main>
   );
 }
@@ -426,25 +434,24 @@ function BookingItem({
   const [showUpload, setShowUpload] = useState(false);
   const [couponCode, setCouponCode] = useState("");
 
-  const fallbackImg =
-    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&auto=format&fit=crop&q=80";
+  const fallbackImg = hotelFallbackImage(booking.room?.roomType?.name ?? "");
   const roomImg = booking.room?.roomType?.images?.[0] ?? fallbackImg;
 
   return (
     <Card
-      className="cursor-pointer transition-shadow hover:shadow-md"
+      className="cursor-pointer overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-lift"
       onClick={() => router.push(`/my-bookings/${booking.id}`)}
     >
-      <CardContent className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between py-5">
+      <CardContent className="flex flex-col gap-4 py-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex flex-1 items-start gap-4">
           <img
             src={roomImg}
             alt={booking.room?.roomType?.name ?? "Phòng"}
-            className="h-20 w-20 shrink-0 rounded-xl object-cover"
+            className="h-24 w-24 shrink-0 rounded-lg object-cover"
           />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="font-semibold text-slate-900">
+              <p className="line-clamp-2 font-semibold text-ink-950">
                 {booking.room?.roomType?.name ?? "Phòng"} · #
                 {booking.room?.roomNumber}
               </p>
@@ -478,6 +485,12 @@ function BookingItem({
                 </span>
               )}
             </div>
+            <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700 ring-1 ring-slate-200">
+              <span className="font-semibold">
+                {bookingStatusLabel(booking.status)}:
+              </span>{" "}
+              {bookingStatusAction(booking.status)}
+            </p>
             {booking.specialRequests && (
               <p className="mt-1 text-xs text-slate-500">
                 Yêu cầu: {booking.specialRequests}
@@ -532,8 +545,8 @@ function BookingItem({
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
-          <p className="text-xl font-bold text-brand-700">
+        <div className="flex flex-col items-start gap-2 lg:items-end">
+          <p className="text-xl font-bold text-brand-800">
             {formatCurrency(booking.totalAmount)}
           </p>
           {booking.payment && (
@@ -543,7 +556,7 @@ function BookingItem({
             </p>
           )}
           <div
-            className="flex flex-col items-end gap-2"
+            className="flex w-full flex-col items-stretch gap-2 sm:w-auto lg:items-end"
             onClick={(e) => e.stopPropagation()}
           >
             {canPay.includes(booking.status) && (
@@ -556,6 +569,7 @@ function BookingItem({
                 />
                 <Button
                   size="sm"
+                  variant="accent"
                   onClick={() => onPay(couponCode.trim() || undefined)}
                   loading={paying}
                 >

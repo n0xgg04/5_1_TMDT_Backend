@@ -1,7 +1,30 @@
+import {
+  AlertTriangle,
+  Banknote,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  Hourglass,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
+import type React from "react";
 import { cn } from "@/lib/utils";
 import type { BookingStatus, RoomStatus } from "@/lib/types";
 
-type Tone = "slate" | "green" | "amber" | "rose" | "sky" | "violet" | "emerald";
+export type Tone =
+  | "slate"
+  | "green"
+  | "amber"
+  | "rose"
+  | "sky"
+  | "violet"
+  | "emerald"
+  | "orange"
+  | "brand"
+  | "gold"
+  | "coral"
+  | "indigo";
 
 const tones: Record<Tone, string> = {
   slate: "bg-slate-100 text-slate-700 ring-slate-200",
@@ -11,6 +34,11 @@ const tones: Record<Tone, string> = {
   sky: "bg-sky-50 text-sky-700 ring-sky-200",
   violet: "bg-violet-50 text-violet-700 ring-violet-200",
   emerald: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  orange: "bg-orange-50 text-orange-700 ring-orange-200",
+  brand: "bg-brand-50 text-brand-800 ring-brand-200",
+  gold: "bg-gold-50 text-gold-800 ring-gold-200",
+  coral: "bg-coral-50 text-coral-700 ring-coral-200",
+  indigo: "bg-indigo-50 text-indigo-700 ring-indigo-200",
 };
 
 export function Badge({
@@ -25,7 +53,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset",
+        "inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset",
         tones[tone],
         className,
       )}
@@ -35,22 +63,80 @@ export function Badge({
   );
 }
 
-const bookingMap: Record<BookingStatus, { tone: Tone; label: string }> = {
-  PENDING_HOST_APPROVAL: { tone: "violet", label: "Chờ duyệt yêu cầu" },
-  PENDING_PAYMENT: { tone: "amber", label: "Chờ thanh toán" },
-  PAYING: { tone: "sky", label: "Đang thanh toán" },
-  PENDING_APPROVAL: { tone: "amber", label: "Chờ duyệt biên lai" },
-  CONFIRMED: { tone: "emerald", label: "Đã xác nhận" },
-  CHECKED_IN: { tone: "violet", label: "Đang lưu trú" },
-  CHECKED_OUT: { tone: "slate", label: "Đã trả phòng" },
-  CANCELLED: { tone: "rose", label: "Đã hủy" },
-  REJECTED: { tone: "rose", label: "Bị từ chối" },
-  EXPIRED: { tone: "rose", label: "Hết hạn" },
+export const bookingMap: Record<
+  BookingStatus,
+  { tone: Tone; label: string; action: string; icon: React.ReactNode }
+> = {
+  PENDING_HOST_APPROVAL: {
+    tone: "violet",
+    label: "Chờ duyệt yêu cầu",
+    action: "Admin kiểm tra lịch phòng và phản hồi trong 24 giờ.",
+    icon: <Hourglass className="h-3.5 w-3.5" />,
+  },
+  PENDING_PAYMENT: {
+    tone: "gold",
+    label: "Chờ thanh toán",
+    action: "Yêu cầu đã được duyệt. Vui lòng thanh toán trước hạn.",
+    icon: <CreditCard className="h-3.5 w-3.5" />,
+  },
+  PAYING: {
+    tone: "sky",
+    label: "Đang thanh toán",
+    action: "Hệ thống đang xử lý giao dịch thanh toán.",
+    icon: <Banknote className="h-3.5 w-3.5" />,
+  },
+  PENDING_APPROVAL: {
+    tone: "orange",
+    label: "Chờ duyệt biên lai",
+    action: "Biên lai đã gửi, nhân viên đang xác minh thanh toán.",
+    icon: <ShieldCheck className="h-3.5 w-3.5" />,
+  },
+  CONFIRMED: {
+    tone: "emerald",
+    label: "Đã xác nhận",
+    action: "Đặt chỗ đã hoàn tất, phòng được giữ cho lịch lưu trú.",
+    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+  },
+  CHECKED_IN: {
+    tone: "indigo",
+    label: "Đang lưu trú",
+    action: "Khách đã nhận phòng.",
+    icon: <Clock className="h-3.5 w-3.5" />,
+  },
+  CHECKED_OUT: {
+    tone: "slate",
+    label: "Đã trả phòng",
+    action: "Kỳ lưu trú đã hoàn tất.",
+    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+  },
+  CANCELLED: {
+    tone: "coral",
+    label: "Đã hủy",
+    action: "Đơn đã bị hủy và phòng đã được giải phóng.",
+    icon: <XCircle className="h-3.5 w-3.5" />,
+  },
+  REJECTED: {
+    tone: "coral",
+    label: "Bị từ chối",
+    action: "Yêu cầu không được duyệt. Hãy chọn ngày hoặc phòng khác.",
+    icon: <XCircle className="h-3.5 w-3.5" />,
+  },
+  EXPIRED: {
+    tone: "coral",
+    label: "Hết hạn",
+    action: "Đơn đã quá hạn xử lý hoặc quá hạn thanh toán.",
+    icon: <AlertTriangle className="h-3.5 w-3.5" />,
+  },
 };
 
 export function BookingStatusBadge({ status }: { status: BookingStatus }) {
   const s = bookingMap[status];
-  return <Badge tone={s.tone}>{s.label}</Badge>;
+  return (
+    <Badge tone={s.tone}>
+      {s.icon}
+      {s.label}
+    </Badge>
+  );
 }
 
 const roomMap: Record<RoomStatus, { tone: Tone; label: string }> = {
@@ -69,3 +155,5 @@ export function RoomStatusBadge({ status }: { status: RoomStatus }) {
 
 export const bookingStatusLabel = (s: BookingStatus) => bookingMap[s].label;
 export const roomStatusLabel = (s: RoomStatus) => roomMap[s].label;
+export const bookingStatusAction = (s: BookingStatus) => bookingMap[s].action;
+export const bookingStatusTone = (s: BookingStatus) => bookingMap[s].tone;

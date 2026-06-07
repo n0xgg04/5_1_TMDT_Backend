@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { OperationHeader, hotelFallbackImage } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils";
 
@@ -106,27 +107,26 @@ export default function AdminRoomTypesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Loại phòng</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Quản lý các loại phòng và thông tin chi tiết
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4" /> Thêm loại phòng
-        </Button>
-      </div>
+      <OperationHeader
+        kicker="Room catalog"
+        title="Loại phòng"
+        description="Quản lý nội dung thương mại của từng loại phòng: ảnh, mô tả, sức chứa, tiện nghi và giá đang áp dụng."
+        actions={
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" /> Thêm loại phòng
+          </Button>
+        }
+      />
 
       <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
         {list.isLoading &&
           Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-72 w-full rounded-2xl" />
+            <Skeleton key={i} className="h-72 w-full rounded-lg" />
           ))}
         {list.data && list.data.length === 0 && (
           <div className="md:col-span-2 xl:col-span-3">
@@ -143,7 +143,7 @@ export default function AdminRoomTypesPage() {
               <img
                 src={
                   rt.images?.[0] ||
-                  "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&auto=format&fit=crop&q=80"
+                  hotelFallbackImage(rt.name)
                 }
                 alt={rt.name}
                 className="h-full w-full object-cover"

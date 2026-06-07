@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { OperationHeader } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import type { Role } from "@/lib/types";
 
@@ -86,19 +87,18 @@ export default function AdminStaffPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Nhân viên</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Quản lý tài khoản nhân viên và phân quyền
-          </p>
-        </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4" /> Thêm nhân viên
-        </Button>
-      </div>
+      <OperationHeader
+        kicker="Access"
+        title="Nhân viên"
+        description="Quản lý tài khoản vận hành, phân quyền và trạng thái khóa/mở của nhân sự."
+        actions={
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4" /> Thêm nhân viên
+          </Button>
+        }
+      />
 
-      <div className="mt-4 flex gap-3">
+      <div className="toolbar-panel mt-4 flex gap-3">
         <div className="w-60">
           <Select
             label="Vai trò"

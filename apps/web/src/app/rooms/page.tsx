@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Skeleton, EmptyState } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import { SearchFieldShell, SectionHeading } from "@/components/hotel/commercial";
 import { formatCurrency } from "@/lib/utils";
 import type { RoomType, HotelBranch } from "@/lib/types";
 
@@ -172,71 +173,85 @@ function RoomsSearchInner() {
   };
 
   return (
-    <main className="container-page py-8">
-      <h1 className="text-2xl font-bold text-slate-900">
-        Tìm phòng phù hợp với bạn
-      </h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Lựa chọn ngày, số khách và khu vực để xem các phòng còn trống
-      </p>
+    <main className="customer-page">
+      <section className="border-b border-slate-200 bg-white">
+        <div className="container-page py-8">
+          <SectionHeading
+            kicker="Search"
+            title="Tìm phòng phù hợp với lịch lưu trú"
+            description="Chọn ngày, số khách và khu vực để xem phòng còn trống. Nếu ngày bị giữ hoặc đã kín, hệ thống sẽ chặn trước khi gửi yêu cầu đặt."
+          />
 
-      <form
-        onSubmit={submit}
-        className="mt-6 grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card md:grid-cols-5"
-      >
-        <Input
-          label="Nhận phòng"
-          type="date"
-          min={todayISO()}
-          value={checkIn}
-          onChange={(e) => setCheckIn(e.target.value)}
-          leftIcon={<CalendarDays className="h-4 w-4" />}
-        />
-        <Input
-          label="Trả phòng"
-          type="date"
-          min={checkIn}
-          value={checkOut}
-          onChange={(e) => setCheckOut(e.target.value)}
-          leftIcon={<CalendarDays className="h-4 w-4" />}
-        />
-        <Input
-          label="Số khách"
-          type="number"
-          min={1}
-          max={10}
-          value={guests}
-          onChange={(e) => setGuests(Number(e.target.value))}
-          leftIcon={<Users className="h-4 w-4" />}
-        />
-        <Select
-          label="Khu vực"
-          value={province}
-          onChange={(e) => setProvince(e.target.value)}
-        >
-          <option value="">Toàn quốc</option>
-          {provincesQ.data?.map((p: string) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </Select>
-        <div className="flex items-end">
-          <Button
-            type="submit"
-            className="w-full"
-            size="lg"
-            loading={infiniteQ.isFetching}
+          <form
+            onSubmit={submit}
+            className="mt-6 grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-[#f7f8f5] p-3 shadow-card sm:grid-cols-2 lg:grid-cols-[1fr_1fr_0.8fr_1fr_auto]"
           >
-            <Search className="h-4 w-4" /> Tìm kiếm
-          </Button>
+            <SearchFieldShell
+              icon={<CalendarDays className="h-4 w-4" />}
+              label="Nhận phòng"
+            >
+              <input
+                type="date"
+                min={todayISO()}
+                value={checkIn}
+                onChange={(e) => setCheckIn(e.target.value)}
+                className="w-full border-0 bg-transparent p-0 text-sm text-slate-900 focus:ring-0"
+              />
+            </SearchFieldShell>
+            <SearchFieldShell
+              icon={<CalendarDays className="h-4 w-4" />}
+              label="Trả phòng"
+            >
+              <input
+                type="date"
+                min={checkIn}
+                value={checkOut}
+                onChange={(e) => setCheckOut(e.target.value)}
+                className="w-full border-0 bg-transparent p-0 text-sm text-slate-900 focus:ring-0"
+              />
+            </SearchFieldShell>
+            <SearchFieldShell icon={<Users className="h-4 w-4" />} label="Số khách">
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={guests}
+                onChange={(e) => setGuests(Number(e.target.value))}
+                className="w-full border-0 bg-transparent p-0 text-sm text-slate-900 focus:ring-0"
+              />
+            </SearchFieldShell>
+            <SearchFieldShell icon={<MapPin className="h-4 w-4" />} label="Khu vực">
+              <select
+                value={province}
+                onChange={(e) => setProvince(e.target.value)}
+                className="w-full border-0 bg-transparent p-0 text-sm text-slate-900 focus:ring-0"
+              >
+                <option value="">Toàn quốc</option>
+                {provincesQ.data?.map((p: string) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </SearchFieldShell>
+            <Button
+              type="submit"
+              className="h-16 w-full lg:w-auto"
+              size="lg"
+              variant="accent"
+              loading={infiniteQ.isFetching}
+            >
+              <Search className="h-4 w-4" /> Tìm kiếm
+            </Button>
+          </form>
         </div>
-      </form>
+      </section>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <section className="container-page py-6">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={() => setShowFilters((s) => !s)}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
         >
           <SlidersHorizontal className="h-4 w-4" />
           Bộ lọc
@@ -268,7 +283,7 @@ function RoomsSearchInner() {
       </div>
 
       {showFilters && (
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+        <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-card">
           <div className="flex items-center justify-between">
             <p className="font-semibold text-slate-900">Bộ lọc</p>
             <button
@@ -306,7 +321,7 @@ function RoomsSearchInner() {
                     onClick={() =>
                       setStarRating((prev) => (prev === s ? undefined : s))
                     }
-                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm ${
+                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm font-medium ${
                       starRating === s
                         ? "border-amber-400 bg-amber-50 text-amber-700"
                         : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -324,7 +339,7 @@ function RoomsSearchInner() {
                   <button
                     key={a}
                     onClick={() => toggleAmenity(a)}
-                    className={`rounded-lg border px-2.5 py-1.5 text-sm ${
+                    className={`rounded-lg border px-2.5 py-1.5 text-sm font-medium ${
                       selectedAmenities.includes(a)
                         ? "border-brand-400 bg-brand-50 text-brand-700"
                         : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -353,17 +368,37 @@ function RoomsSearchInner() {
             icon={<BedDouble className="h-5 w-5" />}
             title="Không tìm thấy phòng phù hợp"
             description="Hãy thử thay đổi ngày, số khách hoặc bộ lọc."
+            action={
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setMinPrice("");
+                  setMaxPrice("");
+                  setStarRating(undefined);
+                  setSelectedAmenities([]);
+                  setProvince("");
+                }}
+              >
+                Xóa bộ lọc
+              </Button>
+            }
           />
         )}
         {allItems.length > 0 && (
           <>
-            <p className="mb-4 text-sm text-slate-600">
-              Tìm thấy{" "}
-              <span className="font-semibold">
-                {infiniteQ.data?.pages[0]?.total ?? allItems.length}
-              </span>{" "}
-              phòng phù hợp
-            </p>
+            <div className="mb-4 flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-4 shadow-card sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">
+                  {infiniteQ.data?.pages[0]?.total ?? allItems.length} phòng phù hợp
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {province || "Toàn quốc"} · {checkIn} → {checkOut} · {guests} khách
+                </p>
+              </div>
+              <p className="text-xs text-emerald-700">
+                Chỉ hiển thị phòng có thể gửi yêu cầu cho khoảng ngày đã chọn.
+              </p>
+            </div>
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               {allItems.map((item) => (
                 <RoomCard
@@ -389,6 +424,7 @@ function RoomsSearchInner() {
           </>
         )}
       </div>
+      </section>
     </main>
   );
 }
@@ -434,7 +470,10 @@ function RoomCard({
   const stars = item.roomType.starRating ?? 3;
 
   return (
-    <Card className="cursor-pointer overflow-hidden" onClick={goDetail}>
+    <Card
+      className="cursor-pointer overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-lift"
+      onClick={goDetail}
+    >
       <div className="relative h-56 w-full overflow-hidden bg-slate-100">
         <img
           src={img}
@@ -444,13 +483,13 @@ function RoomCard({
         <div className="absolute top-3 right-3 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-emerald-700 shadow ring-1 ring-emerald-200">
           {item.room.roomNumber}
         </div>
-        <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-bold text-amber-600">
+        <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-bold text-gold-700">
           <Star className="h-3 w-3 fill-current" /> {stars}.0
         </div>
       </div>
       <CardContent className="space-y-3">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900">
+          <h3 className="line-clamp-2 text-lg font-semibold text-ink-950">
             {item.roomType.name} · {item.room.roomNumber}
           </h3>
           <p className="mt-1 line-clamp-2 text-sm text-slate-500">
@@ -484,12 +523,12 @@ function RoomCard({
           </span>
         </div>
 
-        <div className="flex items-end justify-between border-t border-slate-100 pt-3">
+        <div className="flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs text-slate-500">
               {item.nights} đêm · Tổng cộng
             </p>
-            <p className="text-2xl font-bold text-brand-700">
+            <p className="text-2xl font-bold text-brand-800">
               {formatCurrency(item.totalPrice)}
             </p>
             <p className="text-xs text-slate-500">
@@ -497,6 +536,8 @@ function RoomCard({
             </p>
           </div>
           <Button
+            variant="accent"
+            className="w-full sm:w-auto"
             onClick={(e) => {
               e.stopPropagation();
               goBook();
