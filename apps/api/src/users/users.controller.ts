@@ -39,8 +39,12 @@ export class UsersController {
     @Query("page") page = 1,
     @Query("limit") limit = 20,
     @Query("role") role?: Role,
+    @Query("search") search?: string,
+    @Query("isActive") isActive?: string,
   ) {
-    return this.usersService.listUsers(+page, +limit, role);
+    const activeFilter =
+      isActive === "true" ? true : isActive === "false" ? false : undefined;
+    return this.usersService.listUsers(+page, +limit, role, search, activeFilter);
   }
 
   @Post("staff")

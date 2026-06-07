@@ -69,37 +69,55 @@ export class ReportsService {
 
     const totalRooms = await this.prisma.room.count();
 
-    const checkedIn = await this.prisma.booking.count({
+    const bookings = await this.prisma.booking.findMany({
       where: {
         status: { in: [BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT] },
-        checkIn: { gte: fromDate },
-        checkOut: { lte: toDate },
+        checkIn: { lt: toDate },
+        checkOut: { gt: fromDate },
       },
+      select: { checkIn: true, checkOut: true, roomId: true },
     });
+
+    let occupiedNights = 0;
+    for (const b of bookings) {
+      const overlapStart = b.checkIn > fromDate ? b.checkIn : fromDate;
+      const overlapEnd = b.checkOut < toDate ? b.checkOut : toDate;
+      const nights = Math.max(
+        0,
+        Math.ceil(
+          (overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60 * 24),
+        ),
+      );
+      occupiedNights += nights;
+    }
 
     const days = Math.ceil(
       (toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24),
     );
     const totalRoomNights = totalRooms * days;
     const occupancyRate =
-      totalRoomNights > 0 ? (checkedIn / totalRoomNights) * 100 : 0;
+      totalRoomNights > 0 ? (occupiedNights / totalRoomNights) * 100 : 0;
 
-    const byRoomType = await this.prisma.booking.groupBy({
-      by: ["roomId"],
-      where: {
-        status: { in: [BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT] },
-        checkIn: { gte: fromDate },
-        checkOut: { lte: toDate },
-      },
-      _count: { id: true },
-    });
+    const byRoomOccupancy: Record<string, number> = {};
+    for (const b of bookings) {
+      const overlapStart = b.checkIn > fromDate ? b.checkIn : fromDate;
+      const overlapEnd = b.checkOut < toDate ? b.checkOut : toDate;
+      const nights = Math.max(
+        0,
+        Math.ceil(
+          (overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60 * 24),
+        ),
+      );
+      byRoomOccupancy[b.roomId] =
+        (byRoomOccupancy[b.roomId] || 0) + nights;
+    }
 
     return {
       from,
       to,
       totalRooms,
       totalRoomNights,
-      occupiedNights: checkedIn,
+      occupiedNights,
       occupancyRate: Math.round(occupancyRate * 100) / 100,
     };
   }
@@ -131,6 +149,35 @@ export class ReportsService {
         },
       });
     return result;
+  }
+
+  async getUserStats() {
+    const [total, byRole, newThisMonth] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.groupBy({
+        by: ["role"],
+        _count: { id: true },
+      }),
+      this.prisma.user.count({
+        where: {
+          createdAt: {
+            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          },
+        },
+      }),
+    ]);
+
+    const roles: Record<string, number> = {
+      CUSTOMER: 0,
+      RECEPTIONIST: 0,
+      HOUSEKEEPING: 0,
+      ADMIN: 0,
+    };
+    for (const r of byRole) {
+      roles[r.role] = r._count.id;
+    }
+
+    return { total, roles, newThisMonth };
   }
 
   async exportRevenueCsv(

@@ -1,11 +1,18 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Lock, Unlock } from "lucide-react";
+import {
+  Plus,
+  Lock,
+  Unlock,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -38,19 +45,54 @@ interface UserRow {
   lastName: string;
   role: Role;
   isActive: boolean;
+  createdAt: string;
+}
+
+interface ListResponse {
+  items: UserRow[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+const roleLabel: Record<Role, string> = {
+  CUSTOMER: "Khách hàng",
+  RECEPTIONIST: "Lễ tân",
+  HOUSEKEEPING: "Dọn phòng",
+  ADMIN: "Quản trị viên",
+};
+
+function roleTone(r: Role) {
+  return r === "ADMIN"
+    ? "violet"
+    : r === "RECEPTIONIST"
+      ? "sky"
+      : r === "HOUSEKEEPING"
+        ? "amber"
+        : "slate";
 }
 
 export default function AdminStaffPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [role, setRole] = useState<string>("");
+  const [page, setPage] = useState(1);
+  const [role, setRole] = useState("");
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   const list = useQuery({
-    queryKey: ["users", role],
+    queryKey: ["users", page, role, search, statusFilter],
     queryFn: () =>
       api
-        .get("/users", {
-          params: { page: 1, limit: 50, ...(role ? { role } : {}) },
+        .get<ListResponse>("/users", {
+          params: {
+            page,
+            limit: 20,
+            ...(role ? { role } : {}),
+            ...(search ? { search } : {}),
+            ...(statusFilter ? { isActive: statusFilter } : {}),
+          },
         })
         .then((r) => r.data),
   });
@@ -79,14 +121,28 @@ export default function AdminStaffPage() {
     defaultValues: { role: "RECEPTIONIST" },
   });
 
-  const items: UserRow[] = list.data?.items ?? list.data?.data ?? [];
+  const items: UserRow[] = list.data?.items ?? [];
+  const total = list.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / 20));
+
+  const handleSearch = useCallback(() => {
+    setPage(1);
+    setSearch(searchInput.trim());
+  }, [searchInput]);
+
+  const handleFilterChange = (setter: (v: string) => void, value: string) => {
+    setter(value);
+    setPage(1);
+  };
+
+  const pages = getPages(page, totalPages);
 
   return (
     <div>
       <OperationHeader
         kicker="Access"
-        title="Nhân viên"
-        description="Quản lý tài khoản vận hành, phân quyền và trạng thái khóa/mở của nhân sự."
+        title="Người dùng"
+        description="Quản lý tài khoản khách hàng và nhân viên, phân quyền, trạng thái khóa/mở."
         actions={
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" /> Thêm nhân viên
@@ -94,20 +150,45 @@ export default function AdminStaffPage() {
         }
       />
 
-      <div className="toolbar-panel mt-4 flex gap-3">
-        <div className="w-60">
+      <div className="toolbar-panel mt-4 flex flex-wrap items-end gap-3">
+        <div className="w-64">
+          <Input
+            label="Tìm kiếm"
+            placeholder="Tên hoặc email..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            leftIcon={<Search className="h-4 w-4" />}
+          />
+        </div>
+        <div className="w-44">
           <Select
             label="Vai trò"
             value={role}
-            onChange={(e) => setRole(e.target.value)}
+            onChange={(e) => handleFilterChange(setRole, e.target.value)}
           >
-            <option value="">Tất cả</option>
-            <option value="ADMIN">Admin</option>
-            <option value="RECEPTIONIST">Receptionist</option>
-            <option value="HOUSEKEEPING">Housekeeping</option>
-            <option value="CUSTOMER">Customer</option>
+            <option value="">Tất cả vai trò</option>
+            <option value="ADMIN">Quản trị viên</option>
+            <option value="RECEPTIONIST">Lễ tân</option>
+            <option value="HOUSEKEEPING">Dọn phòng</option>
+            <option value="CUSTOMER">Khách hàng</option>
           </Select>
         </div>
+        <div className="w-44">
+          <Select
+            label="Trạng thái"
+            value={statusFilter}
+            onChange={(e) => handleFilterChange(setStatusFilter, e.target.value)}
+          >
+            <option value="">Tất cả</option>
+            <option value="true">Hoạt động</option>
+            <option value="false">Đã khóa</option>
+          </Select>
+        </div>
+
+        <p className="ml-auto pb-2 text-sm text-slate-500">
+          {total} người dùng
+        </p>
       </div>
 
       <Card className="mt-5 overflow-hidden">
@@ -124,9 +205,23 @@ export default function AdminStaffPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {list.isLoading && (
+                <>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <tr key={i}>
+                      <td className="p-4" colSpan={5}>
+                        <Skeleton className="h-10 w-full" />
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              )}
+              {!list.isLoading && items.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-4">
-                    <Skeleton className="h-10 w-full" />
+                  <td
+                    colSpan={5}
+                    className="px-4 py-12 text-center text-sm text-slate-500"
+                  >
+                    Không tìm thấy người dùng nào
                   </td>
                 </tr>
               )}
@@ -137,7 +232,7 @@ export default function AdminStaffPage() {
                   </Td>
                   <Td>{u.email}</Td>
                   <Td>
-                    <Badge tone={roleTone(u.role)}>{u.role}</Badge>
+                    <Badge tone={roleTone(u.role)}>{roleLabel[u.role]}</Badge>
                   </Td>
                   <Td>
                     {u.isActive ? (
@@ -168,6 +263,51 @@ export default function AdminStaffPage() {
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
+            <p className="text-sm text-slate-500">
+              Trang {page}/{totalPages}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {pages.map((p, i) =>
+                p === "..." ? (
+                  <span key={`dot-${i}`} className="px-2 text-sm text-slate-400">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p as number)}
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
+                      page === p
+                        ? "bg-brand-600 text-white"
+                        : "text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ),
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Modal
@@ -214,9 +354,9 @@ export default function AdminStaffPage() {
             error={form.formState.errors.password?.message}
           />
           <Select label="Vai trò" {...form.register("role")}>
-            <option value="RECEPTIONIST">Receptionist</option>
-            <option value="HOUSEKEEPING">Housekeeping</option>
-            <option value="ADMIN">Admin</option>
+            <option value="RECEPTIONIST">Lễ tân</option>
+            <option value="HOUSEKEEPING">Dọn phòng</option>
+            <option value="ADMIN">Quản trị viên</option>
           </Select>
         </div>
       </Modal>
@@ -224,14 +364,16 @@ export default function AdminStaffPage() {
   );
 }
 
-function roleTone(r: Role): any {
-  return r === "ADMIN"
-    ? "violet"
-    : r === "RECEPTIONIST"
-      ? "sky"
-      : r === "HOUSEKEEPING"
-        ? "amber"
-        : "slate";
+function getPages(current: number, total: number): (number | "...")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages: (number | "...")[] = [1];
+  if (current > 3) pages.push("...");
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (current < total - 2) pages.push("...");
+  pages.push(total);
+  return pages;
 }
 
 function Th({
@@ -249,6 +391,7 @@ function Th({
     </th>
   );
 }
+
 function Td({
   children,
   className = "",

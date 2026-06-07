@@ -131,7 +131,7 @@ const ITEMS: NavItem[] = [
   },
   {
     href: "/admin/staff",
-    label: "Nhân viên",
+    label: "Người dùng",
     icon: Users,
     roles: ["ADMIN"],
     group: "setup",

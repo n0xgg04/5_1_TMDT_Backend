@@ -49,6 +49,18 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function firstOfPrevMonth() {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1, 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function lastOfPrevMonth() {
+  const d = new Date();
+  d.setDate(0);
+  return d.toISOString().slice(0, 10);
+}
+
 const statusLabels: Record<string, string> = {
   PENDING_HOST_APPROVAL: "Chờ duyệt yêu cầu",
   PENDING_PAYMENT: "Chờ thanh toán",
@@ -91,9 +103,15 @@ type OccupancyResponse = {
   occupancyRate: number;
 };
 
+type UserStatsResponse = {
+  total: number;
+  roles: { CUSTOMER: number; RECEPTIONIST: number; HOUSEKEEPING: number; ADMIN: number };
+  newThisMonth: number;
+};
+
 export default function AdminDashboard() {
-  const [from, setFrom] = useState(firstOfMonth());
-  const [to, setTo] = useState(today());
+  const [from, setFrom] = useState(firstOfPrevMonth());
+  const [to, setTo] = useState(lastOfPrevMonth());
 
   const revenue = useQuery({
     queryKey: ["reports-revenue", from, to],
@@ -123,11 +141,20 @@ export default function AdminDashboard() {
         .then((r) => r.data),
   });
 
+  const userStats = useQuery({
+    queryKey: ["reports-users"],
+    queryFn: () =>
+      api.get<UserStatsResponse>("/reports/users").then((r) => r.data),
+  });
+
   const totalRevenue = Number(revenue.data?.total ?? 0);
   const totalPaidBookings = Number(revenue.data?.totalBookings ?? 0);
   const occRate = Number(occupancy.data?.occupancyRate ?? 0);
   const totalRooms = Number(occupancy.data?.totalRooms ?? 0);
   const occupiedNights = Number(occupancy.data?.occupiedNights ?? 0);
+  const totalUsers = Number(userStats.data?.total ?? 0);
+  const newUsers = Number(userStats.data?.newThisMonth ?? 0);
+  const userRoles = userStats.data?.roles ?? { CUSTOMER: 0, RECEPTIONIST: 0, HOUSEKEEPING: 0, ADMIN: 0 };
 
   const summaryData = summary.data ?? {};
   const pendingHostApproval = Number(summaryData.PENDING_HOST_APPROVAL ?? 0);
@@ -219,7 +246,7 @@ export default function AdminDashboard() {
         }
       />
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
           icon={<DollarSign className="h-5 w-5" />}
           label="Doanh thu thực thu"
@@ -232,7 +259,7 @@ export default function AdminDashboard() {
           icon={<TrendingUp className="h-5 w-5" />}
           label="Tỷ lệ lấp phòng"
           value={`${occRate.toFixed(1)}%`}
-          subtext={`${occupiedNights} occupied room-nights / ${totalRooms} phòng`}
+          subtext={`${occupiedNights} đêm đã thuê / ${totalRooms} phòng`}
           tone="emerald"
           loading={occupancy.isLoading}
         />
@@ -251,6 +278,14 @@ export default function AdminDashboard() {
           subtext={`${confirmed} confirmed, ${checkedIn} đang lưu trú`}
           tone="sky"
           loading={summary.isLoading}
+        />
+        <MetricCard
+          icon={<Users className="h-5 w-5" />}
+          label="Người dùng"
+          value={String(totalUsers)}
+          subtext={`${newUsers} mới tháng này · KH: ${userRoles.CUSTOMER}, NV: ${userRoles.RECEPTIONIST + userRoles.HOUSEKEEPING + userRoles.ADMIN}`}
+          tone="indigo"
+          loading={userStats.isLoading}
         />
       </div>
 
@@ -450,7 +485,7 @@ function MetricCard({
   label: string;
   value: string;
   subtext: string;
-  tone: "brand" | "emerald" | "sky" | "violet";
+  tone: "brand" | "emerald" | "sky" | "violet" | "indigo";
   loading?: boolean;
 }) {
   const tones = {
@@ -458,6 +493,7 @@ function MetricCard({
     emerald: "from-emerald-500 to-emerald-700",
     sky: "from-sky-500 to-sky-700",
     violet: "from-violet-500 to-violet-700",
+    indigo: "from-indigo-500 to-indigo-700",
   } as const;
 
   return (
@@ -480,7 +516,7 @@ function MetricCard({
         </>
       ) : (
         <>
-          <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
+          <p className="mt-2 truncate text-2xl font-bold text-slate-900">{value}</p>
           <p className="mt-1 text-sm leading-6 text-slate-600">{subtext}</p>
         </>
       )}

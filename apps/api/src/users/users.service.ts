@@ -67,9 +67,24 @@ export class UsersService {
     });
   }
 
-  async listUsers(page = 1, limit = 20, role?: Role) {
+  async listUsers(
+    page = 1,
+    limit = 20,
+    role?: Role,
+    search?: string,
+    isActive?: boolean,
+  ) {
     const skip = (page - 1) * limit;
-    const where = role ? { role } : {};
+    const where: any = {};
+    if (role) where.role = role;
+    if (isActive !== undefined) where.isActive = isActive;
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+      ];
+    }
     const [items, total] = await Promise.all([
       this.prisma.user.findMany({
         where,

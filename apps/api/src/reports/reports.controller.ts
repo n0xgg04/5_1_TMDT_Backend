@@ -74,4 +74,10 @@ export class ReportsController {
   getBookingsSummary(@Query("from") from: string, @Query("to") to: string) {
     return this.reportsService.getBookingStatusSummary(from, to);
   }
+
+  @Get("users")
+  @ApiOperation({ summary: "Thống kê người dùng (Admin)" })
+  getUserStats() {
+    return this.reportsService.getUserStats();
+  }
 }
