@@ -65,7 +65,6 @@ export default function BookingDetailPage() {
     paymentDeadline?: string;
   } | null>(null);
   const [showQr, setShowQr] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const q = useQuery({
     queryKey: ["booking", id],
@@ -92,7 +91,8 @@ export default function BookingDetailPage() {
       ) {
         setShowQr(false);
         setBankTransferResult(null);
-        setShowSuccess(true);
+        qc.invalidateQueries({ queryKey: ["booking", id] });
+        toast.success("Thanh toán thành công!", "Đơn đã được xác nhận.");
       }
       if (prev === "PENDING_HOST_APPROVAL" && curr === "PENDING_PAYMENT") {
         toast.success("Yêu cầu đã được duyệt!", "Bạn có thể thanh toán ngay.");
@@ -601,33 +601,6 @@ export default function BookingDetailPage() {
         );
       })()}
 
-      {/* Success Dialog */}
-      {showSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <div className="flex flex-col items-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <CheckCircle2 className="h-8 w-8" />
-              </div>
-              <h3 className="mt-4 text-lg font-bold text-slate-900">
-                Thanh toán thành công!
-              </h3>
-              <p className="mt-1 text-center text-sm text-slate-500">
-                Đơn đặt phòng của bạn đã được xác nhận.
-              </p>
-            </div>
-            <Button
-              className="mt-6 w-full"
-              onClick={() => {
-                setShowSuccess(false);
-                qc.invalidateQueries({ queryKey: ["booking", id] });
-              }}
-            >
-              Xem đơn đã xác nhận
-            </Button>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

@@ -93,7 +93,7 @@ export const bookingMap: Record<
   },
   CONFIRMED: {
     tone: "emerald",
-    label: "Đã xác nhận",
+    label: "Đã thanh toán",
     action: "Đặt chỗ đã hoàn tất, phòng được giữ cho lịch lưu trú.",
     icon: <CheckCircle2 className="h-3.5 w-3.5" />,
   },
