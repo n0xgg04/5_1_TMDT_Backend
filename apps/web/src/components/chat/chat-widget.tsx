@@ -18,6 +18,7 @@ interface Message {
 
 interface Conversation {
   id: string;
+  subject?: string | null;
   messages: Message[];
 }
 
@@ -81,9 +82,11 @@ export function ChatWidget() {
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <div>
               <p className="text-sm font-semibold text-slate-900">
-                Hỗ trợ trực tuyến
+                Hỗ trợ chung
               </p>
-              <p className="text-xs text-slate-500">Phản hồi trong vài phút</p>
+              <p className="text-xs text-slate-500">
+                Trao đổi với lễ tân về các câu hỏi chung
+              </p>
             </div>
             <button
               onClick={() => setOpen(false)}
@@ -101,7 +104,11 @@ export function ChatWidget() {
             )}
             {conversationQ.data?.messages?.length === 0 && (
               <div className="text-center text-sm text-slate-400">
-                Chào bạn! Chúng tôi có thể giúp gì?
+                <p>Chào bạn! Hãy gửi câu hỏi chung cho chúng tôi.</p>
+                <p className="mt-2 text-xs">
+                  Nếu bạn cần trao đổi về một đơn đặt phòng cụ thể,
+                  vui lòng vào chi tiết đơn để chat trực tiếp với admin.
+                </p>
               </div>
             )}
             {conversationQ.data?.messages?.map((msg, idx, arr) => {
@@ -147,7 +154,7 @@ export function ChatWidget() {
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Nhập tin nhắn…"
+                placeholder="Nhập câu hỏi chung…"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => {

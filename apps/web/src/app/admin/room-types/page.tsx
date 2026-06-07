@@ -244,100 +244,175 @@ function RoomTypeModal({
   loading: boolean;
   editing: RoomTypeRow | null;
 }) {
-  const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: editing
+  const form = useForm<FormValues>(
+    editing
       ? {
-          name: editing.name,
-          description: editing.description ?? "",
-          maxGuests: editing.maxGuests,
-          areaSqm: editing.areaSqm,
-          bedType: editing.bedType,
-          amenities: (editing.amenities ?? []).join(", "),
-          imageUrl: editing.images?.[0] ?? "",
-        }
-      : undefined,
-    values: editing
-      ? {
-          name: editing.name,
-          description: editing.description ?? "",
-          maxGuests: editing.maxGuests,
-          areaSqm: editing.areaSqm,
-          bedType: editing.bedType,
-          amenities: (editing.amenities ?? []).join(", "),
-          imageUrl: editing.images?.[0] ?? "",
+          resolver: zodResolver(schema),
+          values: {
+            name: editing.name,
+            description: editing.description ?? "",
+            maxGuests: editing.maxGuests,
+            areaSqm: editing.areaSqm,
+            bedType: editing.bedType,
+            amenities: (editing.amenities ?? []).join(", "),
+            imageUrl: editing.images?.[0] ?? "",
+          },
         }
       : {
-          name: "",
-          description: "",
-          maxGuests: 2,
-          areaSqm: 25,
-          bedType: "Queen",
-          amenities: "Wifi, TV, Minibar",
-          imageUrl: "",
+          resolver: zodResolver(schema),
+          defaultValues: {
+            name: "",
+            description: "",
+            maxGuests: 2,
+            areaSqm: 25,
+            bedType: "Double",
+            amenities: "Wifi, TV, Minibar",
+            imageUrl: "",
+          },
         },
-  });
+  );
+
+  const previewUrl = form.watch("imageUrl");
+  const fallbackImg = hotelFallbackImage(form.watch("name") ?? "");
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? "Sửa loại phòng" : "Thêm loại phòng"}
-      size="lg"
+      title={editing ? "Cập nhật loại phòng" : "Thêm loại phòng mới"}
+      size="xl"
+      description="Cấu hình thông tin danh mục loại phòng thương mại. Thông tin này sẽ hiển thị trực tiếp cho khách hàng trên website đặt phòng."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
             Hủy
           </Button>
           <Button onClick={form.handleSubmit(onSubmit)} loading={loading}>
-            Lưu
+            Lưu thay đổi
           </Button>
         </>
       }
     >
-      <form className="grid grid-cols-2 gap-4">
-        <Input
-          label="Tên loại phòng"
-          {...form.register("name")}
-          error={form.formState.errors.name?.message}
-        />
-        <Input
-          label="Loại giường"
-          {...form.register("bedType")}
-          error={form.formState.errors.bedType?.message}
-        />
-        <Input
-          label="Số khách tối đa"
-          type="number"
-          {...form.register("maxGuests")}
-          error={form.formState.errors.maxGuests?.message}
-        />
-        <Input
-          label="Diện tích (m²)"
-          type="number"
-          step="0.1"
-          {...form.register("areaSqm")}
-          error={form.formState.errors.areaSqm?.message}
-        />
-        <div className="col-span-2">
-          <Textarea label="Mô tả" rows={3} {...form.register("description")} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
+          {/* Group 1: Basic Info */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <h4 className="text-sm font-semibold text-slate-900">Thông tin cơ bản</h4>
+            <p className="mt-0.5 text-xs text-slate-500">Tên thương mại và mô tả hiển thị với khách hàng.</p>
+            <div className="mt-4 space-y-4">
+              <Input
+                label="Tên loại phòng"
+                placeholder="Ví dụ: Deluxe Double Room"
+                {...form.register("name")}
+                error={form.formState.errors.name?.message}
+              />
+              <Textarea
+                label="Mô tả loại phòng"
+                rows={3}
+                placeholder="Phòng Deluxe cao cấp với không gian rộng rãi, tầm nhìn hướng phố..."
+                {...form.register("description")}
+              />
+            </div>
+          </div>
+
+          {/* Group 2: Capacity & Area */}
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <h4 className="text-sm font-semibold text-slate-900">Thông số kỹ thuật</h4>
+            <p className="mt-0.5 text-xs text-slate-500">Quy định về diện tích, số giường và sức chứa tối đa.</p>
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Input
+                label="Loại giường"
+                placeholder="Ví dụ: King, Queen, Double"
+                {...form.register("bedType")}
+                error={form.formState.errors.bedType?.message}
+              />
+              <Input
+                label="Số khách tối đa"
+                type="number"
+                placeholder="2"
+                {...form.register("maxGuests")}
+                error={form.formState.errors.maxGuests?.message}
+              />
+              <Input
+                label="Diện tích (m²)"
+                type="number"
+                step="0.1"
+                placeholder="30"
+                {...form.register("areaSqm")}
+                error={form.formState.errors.areaSqm?.message}
+              />
+            </div>
+          </div>
+
+          {/* Group 3: Amenities & Services */}
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <h4 className="text-sm font-semibold text-slate-900">Tiện nghi phòng</h4>
+            <p className="mt-0.5 text-xs text-slate-500">Các tiện nghi được trang bị sẵn trong phòng (phân cách bằng dấu phẩy).</p>
+            <div className="mt-4">
+              <Input
+                label="Danh sách tiện nghi"
+                placeholder="Wifi, Điều hòa, TV, Minibar, Bồn tắm, Máy sấy tóc..."
+                {...form.register("amenities")}
+              />
+            </div>
+          </div>
         </div>
-        <div className="col-span-2">
-          <Input
-            label="Tiện nghi (phân cách bằng dấu phẩy)"
-            placeholder="Wifi, TV, Minibar, Smart lock"
-            {...form.register("amenities")}
-          />
+
+        {/* Group 4: Image & Preview (Col 3) */}
+        <div className="space-y-5">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <h4 className="text-sm font-semibold text-slate-900">Hình ảnh minh họa</h4>
+            <p className="mt-0.5 text-xs text-slate-500">Cung cấp đường dẫn ảnh chất lượng cao làm ảnh đại diện cho loại phòng.</p>
+            <div className="mt-4 space-y-4">
+              <Input
+                label="Ảnh URL"
+                placeholder="https://images.unsplash.com/..."
+                {...form.register("imageUrl")}
+                error={form.formState.errors.imageUrl?.message}
+              />
+              <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                <div className="aspect-[4/3] w-full relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewUrl || fallbackImg}
+                    alt="Preview"
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = fallbackImg;
+                    }}
+                  />
+                  <div className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+                    Ảnh xem trước
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Helper details summary card */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Kiểm tra thông số hiển thị</h4>
+            <div className="mt-3 space-y-2 text-xs text-slate-600">
+              <div className="flex justify-between">
+                <span>Cấu hình phòng:</span>
+                <span className="font-semibold text-slate-900">
+                  {form.watch("maxGuests") ?? 2} khách · {form.watch("bedType") || "Double"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Diện tích:</span>
+                <span className="font-semibold text-slate-900">{form.watch("areaSqm") ?? 25} m²</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Trạng thái chỉnh sửa:</span>
+                <span className={`font-semibold ${editing ? "text-amber-600" : "text-brand-600"}`}>
+                  {editing ? "Đang sửa loại phòng" : "Tạo loại phòng mới"}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="col-span-2">
-          <Input
-            label="Ảnh URL"
-            placeholder="https://…"
-            {...form.register("imageUrl")}
-            error={form.formState.errors.imageUrl?.message}
-          />
-        </div>
-      </form>
+      </div>
     </Modal>
   );
 }

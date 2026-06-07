@@ -95,10 +95,16 @@ export class RoomsController {
   listRooms(
     @Query("roomTypeId") roomTypeId?: string,
     @Query("floor") floor?: string,
+    @Query("branchId") branchId?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
   ) {
     return this.roomsService.listRooms(
       roomTypeId,
       floor !== undefined ? +floor : undefined,
+      branchId,
+      page !== undefined ? +page : undefined,
+      limit !== undefined ? +limit : undefined,
     );
   }
 

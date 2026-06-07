@@ -50,7 +50,7 @@ export function Modal({
       />
       <div
         className={cn(
-          "relative max-h-[92vh] w-full overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-white/20 animate-fade-in",
+          "relative max-h-[92vh] w-full overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-white/20 animate-fade-in flex flex-col",
           sizes[size],
         )}
       >
@@ -77,7 +77,7 @@ export function Modal({
             </button>
           </div>
         )}
-        <div className="max-h-[calc(92vh-9rem)] overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
           {children}
         </div>
         {footer && (

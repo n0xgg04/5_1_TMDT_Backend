@@ -198,12 +198,36 @@ export class RoomsService {
     return { message: "Đã xóa phòng" };
   }
 
-  async listRooms(roomTypeId?: string, floor?: number) {
+  async listRooms(
+    roomTypeId?: string,
+    floor?: number,
+    branchId?: string,
+    page?: number,
+    limit?: number,
+  ) {
+    const where = {
+      ...(roomTypeId && { roomTypeId }),
+      ...(floor !== undefined && { floor }),
+      ...(branchId && { branchId }),
+    };
+
+    if (page && limit) {
+      const skip = (page - 1) * limit;
+      const [items, total] = await Promise.all([
+        this.prisma.room.findMany({
+          where,
+          skip,
+          take: limit,
+          include: { roomType: true, branch: true },
+          orderBy: [{ floor: "asc" }, { roomNumber: "asc" }],
+        }),
+        this.prisma.room.count({ where }),
+      ]);
+      return { data: items, total, page, limit };
+    }
+
     return this.prisma.room.findMany({
-      where: {
-        ...(roomTypeId && { roomTypeId }),
-        ...(floor !== undefined && { floor }),
-      },
+      where,
       include: { roomType: true, branch: true },
       orderBy: [{ floor: "asc" }, { roomNumber: "asc" }],
     });
