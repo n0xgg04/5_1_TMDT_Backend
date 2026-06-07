@@ -31,7 +31,9 @@ export class SearchService {
   async searchAvailableRooms(params: SearchParams) {
     const cacheKey = `search:${JSON.stringify(params)}`;
     const cached = await this.redis.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      try { return JSON.parse(cached); } catch { /* stale cache, refetch */ }
+    }
 
     const checkIn = new Date(params.checkIn);
     const checkOut = new Date(params.checkOut);
@@ -176,15 +178,22 @@ export class SearchService {
   async getProvinces() {
     const cacheKey = "provinces";
     const cached = await this.redis.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      try { return JSON.parse(cached); } catch { /* stale cache, refetch */ }
+    }
 
     const branches = await this.prisma.hotelBranch.findMany({
       where: { isActive: true },
-      select: { province: true },
-      distinct: ["province"],
       orderBy: { province: "asc" },
     });
-    const result = branches.map((b) => b.province);
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const b of branches) {
+      if (!seen.has(b.province)) {
+        seen.add(b.province);
+        result.push(b.province);
+      }
+    }
     await this.redis.set(cacheKey, JSON.stringify(result), 3600);
     return result;
   }
@@ -192,7 +201,9 @@ export class SearchService {
   async getFeaturedRooms() {
     const cacheKey = "featured-rooms";
     const cached = await this.redis.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      try { return JSON.parse(cached); } catch { /* stale cache, refetch */ }
+    }
 
     const roomTypes = await this.prisma.roomType.findMany({
       where: { isActive: true },
@@ -224,7 +235,9 @@ export class SearchService {
   async getFlashSales() {
     const cacheKey = "flash-sales";
     const cached = await this.redis.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      try { return JSON.parse(cached); } catch { /* stale cache, refetch */ }
+    }
 
     const now = new Date();
     const flashSales = await this.prisma.flashSale.findMany({

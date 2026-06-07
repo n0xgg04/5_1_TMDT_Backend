@@ -14,6 +14,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    // Log actual error for debugging
+    if (!(exception instanceof HttpException)) {
+      console.error("[Unhandled Error]", request.url, exception);
+    }
+
     const status =
       exception instanceof HttpException
         ? exception.getStatus()

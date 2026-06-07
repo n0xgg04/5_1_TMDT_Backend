@@ -81,8 +81,13 @@ export class SearchController {
   @Public()
   @Get("provinces")
   @ApiOperation({ summary: "Lấy danh sách tỉnh/thành có chi nhánh" })
-  getProvinces() {
-    return this.searchService.getProvinces();
+  async getProvinces() {
+    try {
+      return await this.searchService.getProvinces();
+    } catch (e) {
+      console.error("PROVINCES ERROR:", e);
+      throw e;
+    }
   }
 
   @Public()
