@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Search,
   Eye,
@@ -12,6 +12,8 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { useChatRealtime } from "@/hooks/use-chat-realtime";
+import { mergeBookingConversationSummary } from "@/lib/chat-cache";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,7 +24,11 @@ import { Badge, bookingStatusLabel, bookingStatusTone } from "@/components/ui/ba
 import { OperationHeader } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Booking, BookingStatus } from "@/lib/types";
+import type {
+  Booking,
+  BookingStatus,
+  ChatMessageCreatedEvent,
+} from "@/lib/types";
 
 const STATUS_OPTIONS: { value: string; label: string; tone: string }[] = [
   { value: "", label: "Tất cả", tone: "slate" },
@@ -256,9 +262,11 @@ export default function AdminBookingsPage() {
   const [to, setTo] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [chatStreamConnected, setChatStreamConnected] = useState(false);
 
   const list = useQuery({
     queryKey: ["admin-bookings", page, status, search, from, to],
+    refetchInterval: chatStreamConnected ? false : 5000,
     queryFn: () =>
       api
         .get("/bookings", {
@@ -272,6 +280,33 @@ export default function AdminBookingsPage() {
           },
         })
         .then((r) => r.data),
+  });
+
+  const handleChatMessage = useCallback(
+    (event: ChatMessageCreatedEvent) => {
+      if (event.bookingStatus !== "PENDING_HOST_APPROVAL") return;
+      qc.setQueriesData(
+        { queryKey: ["admin-bookings"] },
+        (current: any) => mergeBookingConversationSummary(current, event),
+      );
+      setSelectedBooking((current) => {
+        if (!current || current.id !== event.bookingId) return current;
+        return (
+          mergeBookingConversationSummary({ data: [current] }, event)?.data?.[0]
+          ?? current
+        );
+      });
+    },
+    [qc],
+  );
+
+  useChatRealtime({
+    enabled: true,
+    onMessage: handleChatMessage,
+    onReconnect: () => {
+      qc.invalidateQueries({ queryKey: ["admin-bookings"] });
+    },
+    onConnectionChange: setChatStreamConnected,
   });
 
   const approve = useMutation({

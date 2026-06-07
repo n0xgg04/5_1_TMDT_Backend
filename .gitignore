@@ -21,3 +21,4 @@ coverage/
 !.cursor/rules/*.mdc
 .claude
 .vercel
+.omc

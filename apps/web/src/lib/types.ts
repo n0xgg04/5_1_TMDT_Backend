@@ -139,6 +139,7 @@ export interface Conversation {
   status: string;
   createdAt: string;
   updatedAt: string;
+  customer?: Pick<AuthUser, "id" | "firstName" | "lastName" | "email">;
   messages?: Message[];
 }
 
@@ -149,6 +150,20 @@ export interface Message {
   content: string;
   isRead: boolean;
   createdAt: string;
+}
+
+export interface ChatMessageCreatedEvent {
+  type: "chat.message.created";
+  conversationId: string;
+  bookingId: string | null;
+  bookingStatus: BookingStatus | null;
+  customerId: string;
+  staffId: string | null;
+  senderId: string;
+  message: Message;
+  latestMessage: Message;
+  updatedAt: string;
+  conversation: Conversation;
 }
 
 export interface BookingAttachment {

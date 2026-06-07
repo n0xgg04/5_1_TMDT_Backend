@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MessageCircle, CheckCircle, User, Clock, Send } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { useChatRealtime } from "@/hooks/use-chat-realtime";
+import {
+  mergeConversationList,
+  mergeMessageIntoConversation,
+} from "@/lib/chat-cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils";
+import type { ChatMessageCreatedEvent } from "@/lib/types";
 
 interface Message {
   id: string;
@@ -34,10 +40,11 @@ export default function StaffConversationsPage() {
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reply, setReply] = useState("");
+  const [chatStreamConnected, setChatStreamConnected] = useState(false);
 
   const listQ = useQuery({
     queryKey: ["staff-conversations"],
-    refetchInterval: 5000,
+    refetchInterval: chatStreamConnected ? false : 5000,
     queryFn: () =>
       api.get<Conversation[]>("/chat/staff/conversations").then((r) => r.data),
   });
@@ -45,11 +52,37 @@ export default function StaffConversationsPage() {
   const detailQ = useQuery({
     queryKey: ["staff-conversation", selectedId],
     enabled: !!selectedId,
-    refetchInterval: 5000,
+    refetchInterval: chatStreamConnected ? false : 5000,
     queryFn: () =>
       api
         .get<Conversation>(`/chat/staff/conversations/${selectedId}`)
         .then((r) => r.data),
+  });
+
+  const handleChatMessage = useCallback(
+    (event: ChatMessageCreatedEvent) => {
+      qc.setQueryData<Conversation[]>(["staff-conversations"], (current) =>
+        mergeConversationList(current, event) as Conversation[],
+      );
+      qc.setQueryData<Conversation>(
+        ["staff-conversation", event.conversationId],
+        (current) =>
+          mergeMessageIntoConversation(current, event) as Conversation,
+      );
+    },
+    [qc],
+  );
+
+  useChatRealtime({
+    enabled: true,
+    onMessage: handleChatMessage,
+    onReconnect: () => {
+      qc.invalidateQueries({ queryKey: ["staff-conversations"] });
+      if (selectedId) {
+        qc.invalidateQueries({ queryKey: ["staff-conversation", selectedId] });
+      }
+    },
+    onConnectionChange: setChatStreamConnected,
   });
 
   const assignM = useMutation({

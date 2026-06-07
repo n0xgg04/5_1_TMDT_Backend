@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle,
@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { useChatRealtime } from "@/hooks/use-chat-realtime";
+import { mergeBookingConversationSummary } from "@/lib/chat-cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +23,7 @@ import { BookingStatusBadge, RoomStatusBadge } from "@/components/ui/badge";
 import { OperationHeader } from "@/components/hotel/commercial";
 import { toast } from "@/lib/toast";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
-import type { Booking } from "@/lib/types";
+import type { Booking, ChatMessageCreatedEvent } from "@/lib/types";
 
 export default function StaffPendingBookingsPage() {
   const qc = useQueryClient();
@@ -30,15 +32,37 @@ export default function StaffPendingBookingsPage() {
   const [showRejectInput, setShowRejectInput] = useState<
     Record<string, boolean>
   >({});
+  const [chatStreamConnected, setChatStreamConnected] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["staff-pending-bookings"],
+    refetchInterval: chatStreamConnected ? false : 5000,
     queryFn: () =>
       api
         .get<{ items: Booking[]; total: number }>(
           "/bookings/staff/approval-requests",
         )
         .then((r) => r.data),
+  });
+
+  const handleChatMessage = useCallback(
+    (event: ChatMessageCreatedEvent) => {
+      if (event.bookingStatus !== "PENDING_HOST_APPROVAL") return;
+      qc.setQueryData<{ items: Booking[]; total: number }>(
+        ["staff-pending-bookings"],
+        (current) => mergeBookingConversationSummary(current, event),
+      );
+    },
+    [qc],
+  );
+
+  useChatRealtime({
+    enabled: true,
+    onMessage: handleChatMessage,
+    onReconnect: () => {
+      qc.invalidateQueries({ queryKey: ["staff-pending-bookings"] });
+    },
+    onConnectionChange: setChatStreamConnected,
   });
 
   const approve = useMutation({

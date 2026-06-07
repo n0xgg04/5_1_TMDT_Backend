@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ChevronLeft,
   Calendar,
@@ -34,7 +34,14 @@ import {
   formatDateTime,
   diffNights,
 } from "@/lib/utils";
-import type { Booking, BookingStatus, Conversation } from "@/lib/types";
+import { useChatRealtime } from "@/hooks/use-chat-realtime";
+import { mergeMessageIntoConversation } from "@/lib/chat-cache";
+import type {
+  Booking,
+  BookingStatus,
+  ChatMessageCreatedEvent,
+  Conversation,
+} from "@/lib/types";
 
 export default function BookingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +50,7 @@ export default function BookingDetailPage() {
   const user = useAuthStore((s) => s.user);
   const [couponCode, setCouponCode] = useState("");
   const [message, setMessage] = useState("");
+  const [chatStreamConnected, setChatStreamConnected] = useState(false);
 
   const q = useQuery({
     queryKey: ["booking", id],
@@ -80,10 +88,31 @@ export default function BookingDetailPage() {
   const chatQ = useQuery({
     queryKey: ["booking-chat", id],
     enabled: q.data?.status === "PENDING_HOST_APPROVAL",
+    refetchInterval: chatStreamConnected ? false : 5000,
     queryFn: () =>
       api
         .get<Conversation>(`/chat/conversation/booking/${id}`)
         .then((r) => r.data),
+  });
+
+  const handleChatMessage = useCallback(
+    (event: ChatMessageCreatedEvent) => {
+      if (event.bookingId !== id) return;
+      qc.setQueryData<Conversation>(["booking-chat", id], (current) =>
+        mergeMessageIntoConversation(current, event) as Conversation,
+      );
+    },
+    [id, qc],
+  );
+
+  useChatRealtime({
+    enabled:
+      q.data?.status === "PENDING_HOST_APPROVAL" && Boolean(chatQ.data?.id),
+    onMessage: handleChatMessage,
+    onReconnect: () => {
+      qc.invalidateQueries({ queryKey: ["booking-chat", id] });
+    },
+    onConnectionChange: setChatStreamConnected,
   });
 
   const sendMessageM = useMutation({
