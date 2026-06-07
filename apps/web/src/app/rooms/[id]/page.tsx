@@ -1035,7 +1035,7 @@ export default function RoomDetailPage() {
       {showBackTop && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-20 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 lg:bottom-6"
+          className="fixed bottom-20 left-4 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 lg:bottom-6"
         >
           <ArrowUp className="h-5 w-5" />
         </button>
