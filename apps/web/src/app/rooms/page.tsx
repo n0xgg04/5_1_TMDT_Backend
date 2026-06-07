@@ -177,9 +177,9 @@ function RoomsSearchInner() {
       <section className="border-b border-slate-200 bg-white">
         <div className="container-page py-8">
           <SectionHeading
-            kicker="Search"
-            title="Tìm phòng phù hợp với lịch lưu trú"
-            description="Chọn ngày, số khách và khu vực để xem phòng còn trống. Nếu ngày bị giữ hoặc đã kín, hệ thống sẽ chặn trước khi gửi yêu cầu đặt."
+            kicker="Khám phá phòng"
+            title="Tìm phòng phù hợp với kỳ nghỉ của bạn"
+            description="Chọn ngày nhận phòng, số khách và khu vực mong muốn. Hệ thống sẽ hiển thị những phòng còn trống và mức giá tốt nhất cho bạn."
           />
 
           <form
@@ -226,7 +226,7 @@ function RoomsSearchInner() {
                 onChange={(e) => setProvince(e.target.value)}
                 className="w-full border-0 bg-transparent p-0 text-sm text-slate-900 focus:ring-0"
               >
-                <option value="">Toàn quốc</option>
+                <option value="">Tất cả khu vực</option>
                 {provincesQ.data?.map((p: string) => (
                   <option key={p} value={p}>
                     {p}
@@ -254,7 +254,7 @@ function RoomsSearchInner() {
           className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
         >
           <SlidersHorizontal className="h-4 w-4" />
-          Bộ lọc
+          Lọc
           {selectedAmenities.length > 0 ||
           starRating ||
           minPrice ||
@@ -268,7 +268,7 @@ function RoomsSearchInner() {
         </button>
 
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-sm text-slate-500">Sắp xếp:</span>
+          <span className="text-sm text-slate-500">Sắp xếp theo:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
@@ -285,7 +285,7 @@ function RoomsSearchInner() {
       {showFilters && (
         <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-card">
           <div className="flex items-center justify-between">
-            <p className="font-semibold text-slate-900">Bộ lọc</p>
+            <p className="font-semibold text-slate-900">Lọc kết quả</p>
             <button
               onClick={() => setShowFilters(false)}
               className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
@@ -380,7 +380,7 @@ function RoomsSearchInner() {
         {infiniteQ.error && (
           <EmptyState
             icon={<AlertCircle className="h-5 w-5" />}
-            title="Không thể tải kết quả"
+            title="Không thể tải danh sách phòng"
             description={getApiErrorMessage(infiniteQ.error)}
           />
         )}
@@ -388,7 +388,7 @@ function RoomsSearchInner() {
           <EmptyState
             icon={<BedDouble className="h-5 w-5" />}
             title="Không tìm thấy phòng phù hợp"
-            description="Hãy thử thay đổi ngày, số khách hoặc bộ lọc."
+            description="Rất tiếc, không có phòng nào phù hợp. Hãy thử thay đổi ngày, số khách hoặc bộ lọc để tìm thêm lựa chọn."
             action={
               <Button
                 variant="outline"
@@ -514,7 +514,7 @@ function RoomCard({
             {item.roomType.name} · {item.room.roomNumber}
           </h3>
           <p className="mt-1 line-clamp-2 text-sm text-slate-500">
-            {item.roomType.description ?? "Phòng đầy đủ tiện nghi."}
+            {item.roomType.description ?? "Phòng tiện nghi đầy đủ, sẵn sàng cho kỳ nghỉ của bạn."}
           </p>
           {branchName && (
             <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
