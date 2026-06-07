@@ -66,6 +66,7 @@ interface BookingDetailModalProps {
   onReject: (id: string, reason: string) => void;
   onCheckin: (id: string) => void;
   onCheckout: (id: string) => void;
+  onCancel: (id: string, reason: string) => void;
 }
 
 function BookingDetailModal({
@@ -78,6 +79,7 @@ function BookingDetailModal({
   onReject,
   onCheckin,
   onCheckout,
+  onCancel,
 }: BookingDetailModalProps) {
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
@@ -209,6 +211,24 @@ function BookingDetailModal({
           {booking.status === "CHECKED_IN" && (
             <Button onClick={() => onCheckout(booking.id)}>
               <DoorClosed className="h-4 w-4" /> Check-out
+            </Button>
+          )}
+          {[
+            "PENDING_HOST_APPROVAL",
+            "PENDING_PAYMENT",
+            "PAYING",
+            "CONFIRMED",
+          ].includes(booking.status) && (
+            <Button
+              variant="danger"
+              onClick={() => {
+                const reason = prompt("Lý do hủy (khách yêu cầu qua điện thoại):");
+                if (reason !== null) {
+                  onCancel(booking.id, reason || "Hủy theo yêu cầu khách hàng");
+                }
+              }}
+            >
+              <XCircle className="h-4 w-4" /> Hủy đơn
             </Button>
           )}
         </div>
@@ -369,6 +389,17 @@ export default function AdminBookingsPage() {
       qc.invalidateQueries({ queryKey: ["admin-bookings"] });
     },
     onError: (e) => toast.error("Lỗi", getApiErrorMessage(e)),
+  });
+
+  const cancel = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api.post(`/bookings/${id}/cancel`, { reason }),
+    onSuccess: () => {
+      toast.success("Đã hủy đơn");
+      setDetailOpen(false);
+      qc.invalidateQueries({ queryKey: ["admin-bookings"] });
+    },
+    onError: (e) => toast.error("Không thể hủy", getApiErrorMessage(e)),
   });
 
   const openDetail = (b: Booking) => {
@@ -559,6 +590,7 @@ export default function AdminBookingsPage() {
         onReject={(id, reason) => reject.mutate({ id, reason })}
         onCheckin={(id) => checkin.mutate(id)}
         onCheckout={(id) => checkout.mutate(id)}
+        onCancel={(id, reason) => cancel.mutate({ id, reason })}
       />
     </div>
   );

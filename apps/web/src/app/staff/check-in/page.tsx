@@ -13,6 +13,7 @@ import {
   Mail,
   Receipt,
   Wallet,
+  XCircle,
 } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { Input } from "@/components/ui/input";
@@ -92,6 +93,39 @@ export default function StaffCheckInPage() {
     onError: (e) => toast.error("Xác nhận thanh toán thất bại", getApiErrorMessage(e)),
   });
 
+  const reopen = useMutation({
+    mutationFn: (id: string) =>
+      api.post(`/bookings/${id}/reopen`).then((r) => r.data),
+    onSuccess: () => {
+      toast.success("Đã mở lại đơn thành công");
+      qc.invalidateQueries({ queryKey: ["booking-detail"] });
+      qc.invalidateQueries({ queryKey: ["front-desk-bookings"] });
+    },
+    onError: (e) => {
+      const msg = getApiErrorMessage(e);
+      if (msg.includes("đã có người đặt")) {
+        toast.error(
+          "Không thể mở lại đơn",
+          msg + "\nHãy tạo đơn mới cho khách với phòng khác còn trống.",
+        );
+      } else {
+        toast.error("Không thể mở lại đơn", msg);
+      }
+    },
+  });
+
+  const cancelBooking = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api.post(`/bookings/${id}/cancel`, { reason }).then((r) => r.data),
+    onSuccess: () => {
+      toast.success("Đã hủy đơn theo yêu cầu khách");
+      qc.invalidateQueries({ queryKey: ["booking-detail"] });
+      qc.invalidateQueries({ queryKey: ["front-desk-bookings"] });
+    },
+    onError: (e) =>
+      toast.error("Không thể hủy đơn", getApiErrorMessage(e)),
+  });
+
   return (
     <div>
       <OperationHeader
@@ -150,6 +184,7 @@ export default function StaffCheckInPage() {
               search.data.data.map((item) => {
                 const activeStay =
                   item.status === "CONFIRMED" || item.status === "CHECKED_IN";
+                const isCancelled = item.status === "CANCELLED";
 
                 return (
                   <button
@@ -198,7 +233,9 @@ export default function StaffCheckInPage() {
                         <p className="mt-1">
                           {activeStay
                             ? "Sẵn sàng thao tác tại lễ tân"
-                            : "Booking này không thuộc luồng nhận/trả phòng"}
+                            : isCancelled
+                              ? "Đơn đã hủy · có thể mở lại nếu phòng còn trống"
+                              : "Booking này không thuộc luồng nhận/trả phòng"}
                         </p>
                       </div>
                     </div>
@@ -291,9 +328,42 @@ export default function StaffCheckInPage() {
                       }
                       loading={collectCash.isPending}
                     >
-                      <Wallet className="h-4 w-4" /> Xác nhận đã thu tiền
+                  <Wallet className="h-4 w-4" /> Xác nhận đã thu tiền
                     </Button>
                   )}
+                {booking.data.status === "CANCELLED" && (
+                  <Button
+                    variant="accent"
+                    onClick={() => reopen.mutate(booking.data!.id)}
+                    loading={reopen.isPending}
+                  >
+                    <LogIn className="h-4 w-4" /> Mở lại đơn
+                  </Button>
+                )}
+                {[
+                  "PENDING_HOST_APPROVAL",
+                  "PENDING_PAYMENT",
+                  "PAYING",
+                  "CONFIRMED",
+                ].includes(booking.data.status) && (
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      const reason = prompt(
+                        "Lý do hủy (khách yêu cầu qua điện thoại):",
+                      );
+                      if (reason !== null) {
+                        cancelBooking.mutate({
+                          id: booking.data!.id,
+                          reason: reason || "Hủy theo yêu cầu khách hàng",
+                        });
+                      }
+                    }}
+                    loading={cancelBooking.isPending}
+                  >
+                    <XCircle className="h-4 w-4" /> Hủy đơn
+                  </Button>
+                )}
                 <Button
                   onClick={() => checkin.mutate(booking.data!.id)}
                   loading={checkin.isPending}

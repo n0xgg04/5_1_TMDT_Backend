@@ -89,6 +89,7 @@ model User {
   userCoupons    UserCoupon[]
   userPaymentMethods UserPaymentMethod[]
   wishlists      Wishlist[]
+  refundRequests RefundRequest[]
 
   @@map("users")
 }
@@ -205,9 +206,10 @@ model Booking {
   room        Room                @relation(fields: [roomId], references: [id])
   approvedBy  User?               @relation(fields: [approvedById], references: [id], name: "approvedBookings")
   addons      BookingAddon[]
-  review      Review?
-  payment     Payment?
-  attachments BookingAttachment[]
+  review       Review?
+  payment      Payment?
+  attachments  BookingAttachment[]
+  refundRequest RefundRequest?
 
   @@index([customerId, status])
   @@index([checkIn, checkOut, status])
@@ -451,4 +453,27 @@ model UserPaymentMethod {
 
   @@index([userId])
   @@map("user_payment_methods")
+}
+
+model RefundRequest {
+  id            String   @id @default(cuid())
+  bookingId     String   @unique
+  customerId    String
+  accountHolder String
+  accountNumber String
+  bankName      String
+  bankBranch    String?
+  refundAmount  Decimal  @db.Decimal(12, 2)
+  refundPercent Int
+  notes         String?
+  status        String   @default("pending")
+  processedAt   DateTime?
+  processedBy   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  booking  Booking @relation(fields: [bookingId], references: [id])
+  customer User    @relation(fields: [customerId], references: [id])
+
+  @@map("refund_requests")
 }
