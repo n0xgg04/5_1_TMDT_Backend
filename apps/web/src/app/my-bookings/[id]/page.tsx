@@ -237,10 +237,27 @@ export default function BookingDetailPage() {
     "PAYING",
   ];
   const canPayLaterAtDesk =
-    b.status === "PENDING_PAYMENT" && !b.payment?.gatewayUrl;
+    b.status === "PENDING_PAYMENT" || b.status === "PAYING";
   const canReview = b.status === "CHECKED_OUT" && !b.review;
   const fallbackImg = hotelFallbackImage(b.room?.roomType?.name ?? "");
   const roomImg = b.room?.roomType?.images?.[0] ?? fallbackImg;
+
+  const REQUEST_LABELS: Record<string, string> = {
+    non_smoking: "Phòng không hút thuốc",
+    connecting: "Phòng liên thông",
+    high_floor: "Tầng cao",
+    early_checkin: "Nhận phòng sớm",
+    late_checkout: "Trả phòng muộn",
+    extra_bed: "Giường phụ",
+    baby_cot: "Cũi em bé",
+    airport_transfer: "Đưa đón sân bay",
+  };
+  const specialRequestsLabel = b.specialRequests
+    ? b.specialRequests
+        .split(",")
+        .map((k: string) => REQUEST_LABELS[k.trim()] ?? k.trim())
+        .join(", ")
+    : null;
 
   return (
     <main className="customer-page">
@@ -271,7 +288,7 @@ export default function BookingDetailPage() {
             </div>
             <p className="mt-1 text-sm text-slate-500">
               <Tag className="mr-1 inline h-3.5 w-3.5" />
-              {b.bookingCode}
+              {b.bookingCode.toUpperCase()}
             </p>
           </div>
 
@@ -333,16 +350,27 @@ export default function BookingDetailPage() {
                   value={b.room?.branch?.name ?? "-"}
                 />
               </div>
-              {b.specialRequests && (
+              {specialRequestsLabel && (
                 <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
                   <span className="font-medium">Yêu cầu đặc biệt:</span>{" "}
-                  {b.specialRequests}
+                  {specialRequestsLabel}
                 </div>
               )}
               {b.rejectedReason && (
                 <div className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
                   <span className="font-medium">Lý do từ chối:</span>{" "}
                   {b.rejectedReason}
+                </div>
+              )}
+              {b.status === "CANCELLED" && (
+                <div className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
+                  <span className="font-medium">Đơn đã bị hủy</span>
+                  {b.rejectedReason && <> — {b.rejectedReason}</>}
+                </div>
+              )}
+              {b.status === "REJECTED" && !b.rejectedReason && (
+                <div className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
+                  <span className="font-medium">Đơn đã bị từ chối</span>
                 </div>
               )}
               {b.status === "PENDING_HOST_APPROVAL" &&
@@ -366,7 +394,7 @@ export default function BookingDetailPage() {
             </CardContent>
           </Card>
 
-          {b && (
+          {b && b.status === "PENDING_HOST_APPROVAL" && (
             <Card>
               <CardContent className="p-5 space-y-4">
                 <div className="flex items-center justify-between gap-2">
@@ -374,7 +402,7 @@ export default function BookingDetailPage() {
                     <MessageSquare className="h-5 w-5 text-brand-600" />
                     <div>
                       <h2 className="text-lg font-bold text-slate-900">
-                        Hỗ trợ đơn #{b.bookingCode}
+                        Hỗ trợ đơn #{b.bookingCode.toUpperCase()}
                       </h2>
                       <p className="text-xs text-slate-500">
                         {b.room?.roomType?.name ?? "Phòng"} · #{b.room?.roomNumber}
@@ -528,7 +556,7 @@ export default function BookingDetailPage() {
                         <span className="text-slate-600">Nội dung CK:</span>
                         <div className="flex items-center gap-1">
                           <span className="font-mono font-bold text-brand-700 bg-white px-2 py-0.5 rounded border">
-                            {bankTransferResult.paymentCode}
+                            {bankTransferResult.paymentCode.toUpperCase()}
                           </span>
                           <button
                             type="button"
@@ -671,7 +699,7 @@ export default function BookingDetailPage() {
                     {formatCurrency(bankTransferResult.amount)}
                   </p>
                   <p className="text-sm text-slate-500">
-                    Nội dung: <span className="font-mono font-bold text-brand-700">{bankTransferResult.paymentCode}</span>
+                    Nội dung: <span className="font-mono font-bold text-brand-700">{bankTransferResult.paymentCode.toUpperCase()}</span>
                   </p>
                   <p className="text-sm text-slate-500">
                     Chủ TK: {bankTransferResult.accountHolder}

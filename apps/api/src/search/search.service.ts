@@ -174,16 +174,26 @@ export class SearchService {
   }
 
   async getProvinces() {
+    const cacheKey = "provinces";
+    const cached = await this.redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
     const branches = await this.prisma.hotelBranch.findMany({
       where: { isActive: true },
       select: { province: true },
       distinct: ["province"],
       orderBy: { province: "asc" },
     });
-    return branches.map((b) => b.province);
+    const result = branches.map((b) => b.province);
+    await this.redis.set(cacheKey, JSON.stringify(result), 3600);
+    return result;
   }
 
   async getFeaturedRooms() {
+    const cacheKey = "featured-rooms";
+    const cached = await this.redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
     const roomTypes = await this.prisma.roomType.findMany({
       where: { isActive: true },
       include: {
@@ -196,7 +206,7 @@ export class SearchService {
       },
       take: 6,
     });
-    return roomTypes.map((rt) => ({
+    const result = roomTypes.map((rt) => ({
       id: rt.id,
       name: rt.name,
       description: rt.description,
@@ -207,16 +217,22 @@ export class SearchService {
       pricePerNight: rt.pricingRules[0]?.pricePerNight ?? 0,
       branch: rt.rooms[0]?.branch,
     }));
+    await this.redis.set(cacheKey, JSON.stringify(result), 300);
+    return result;
   }
 
   async getFlashSales() {
+    const cacheKey = "flash-sales";
+    const cached = await this.redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
     const now = new Date();
     const flashSales = await this.prisma.flashSale.findMany({
       where: { isActive: true, startDate: { lte: now }, endDate: { gte: now } },
       include: { roomType: true },
       take: 4,
     });
-    return flashSales.map((fs) => ({
+    const result = flashSales.map((fs) => ({
       id: fs.id,
       roomTypeId: fs.roomTypeId,
       roomTypeName: fs.roomType?.name,
@@ -227,6 +243,8 @@ export class SearchService {
       quantity: fs.quantity,
       soldCount: fs.soldCount,
     }));
+    await this.redis.set(cacheKey, JSON.stringify(result), 60);
+    return result;
   }
 
 }
