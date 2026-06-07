@@ -41,6 +41,75 @@ export class ChatService {
     return conversation;
   }
 
+  async getCustomerConversations(customerId: string) {
+    const conversations = await this.prisma.conversation.findMany({
+      where: { customerId },
+      include: {
+        messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    const bookingIds = conversations
+      .map((c) => c.bookingId)
+      .filter(Boolean) as string[];
+
+    let bookingMap = new Map<string, unknown>();
+    if (bookingIds.length > 0) {
+      const bookings = await this.prisma.booking.findMany({
+        where: { id: { in: bookingIds } },
+        select: {
+          id: true,
+          bookingCode: true,
+          room: {
+            select: { roomNumber: true, roomType: { select: { name: true } } },
+          },
+        },
+      });
+      bookingMap = new Map(bookings.map((b) => [b.id, b]));
+    }
+
+    return conversations.map((c) => ({
+      id: c.id,
+      subject: c.subject,
+      bookingId: c.bookingId,
+      status: c.status,
+      updatedAt: c.updatedAt,
+      booking: c.bookingId ? bookingMap.get(c.bookingId) ?? null : null,
+      lastMessage: c.messages[0] ?? null,
+    }));
+  }
+
+  async getConversationById(conversationId: string, customerId: string) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        messages: { orderBy: { createdAt: "asc" } },
+      },
+    });
+
+    if (!conversation) throw new NotFoundException("Conversation not found");
+    if (conversation.customerId !== customerId) {
+      throw new ForbiddenException("Không có quyền truy cập hội thoại này");
+    }
+
+    let booking = null;
+    if (conversation.bookingId) {
+      booking = await this.prisma.booking.findUnique({
+        where: { id: conversation.bookingId },
+        select: {
+          id: true,
+          bookingCode: true,
+          room: {
+            select: { roomNumber: true, roomType: { select: { name: true } } },
+          },
+        },
+      });
+    }
+
+    return { ...conversation, booking };
+  }
+
   async sendMessage(
     conversationId: string,
     sender: { id: string; role: Role },

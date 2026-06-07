@@ -11,7 +11,6 @@ import {
   Menu,
   X,
   User,
-  CreditCard,
   Ticket,
   ChevronDown,
   Heart,
@@ -156,14 +155,6 @@ export function Navbar() {
                     >
                       <User className="h-4 w-4 text-slate-400" />
                       Thông tin cá nhân
-                    </Link>
-                    <Link
-                      href="/profile?tab=payment"
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                    >
-                      <CreditCard className="h-4 w-4 text-slate-400" />
-                      Phương thức thanh toán
                     </Link>
                     <Link
                       href="/my-coupons"
