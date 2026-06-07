@@ -241,11 +241,21 @@ export class BookingsService {
   async cancelBooking(bookingId: string, userId: string, reason?: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { payment: true },
+      include: { payment: true, customer: { select: { id: true } } },
     });
     if (!booking) throw new NotFoundException("Đơn đặt phòng không tồn tại");
-    if (booking.customerId !== userId)
-      throw new ForbiddenException("Không có quyền hủy đơn này");
+    if (booking.customerId !== userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+      const isStaff =
+        user?.role === Role.ADMIN ||
+        user?.role === Role.RECEPTIONIST;
+      if (!isStaff) {
+        throw new ForbiddenException("Không có quyền hủy đơn này");
+      }
+    }
 
     const cancellable: BookingStatus[] = [
       BookingStatus.PENDING_HOST_APPROVAL,
@@ -263,6 +273,16 @@ export class BookingsService {
       where: { id: bookingId },
       data: { status: BookingStatus.CANCELLED },
     });
+
+    if (
+      booking.status === BookingStatus.CONFIRMED ||
+      booking.status === BookingStatus.PENDING_HOST_APPROVAL
+    ) {
+      await this.prisma.room.update({
+        where: { id: booking.roomId },
+        data: { status: "AVAILABLE" },
+      });
+    }
 
     await this.events.emit("booking.cancelled", {
       bookingId,
@@ -803,6 +823,49 @@ export class BookingsService {
     return { message: "Đã từ chối booking" };
   }
 
+  async reopenBooking(bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { room: { include: { roomType: true } }, payment: true },
+    });
+    if (!booking) throw new NotFoundException("Đơn đặt phòng không tồn tại");
+
+    if (booking.status !== BookingStatus.CANCELLED) {
+      throw new BadRequestException(
+        "Chỉ có thể mở lại đơn đã bị hủy",
+      );
+    }
+
+    const conflict = await this.availability.findActiveOverlap(
+      booking.roomId,
+      booking.checkIn,
+      booking.checkOut,
+    );
+    if (conflict) {
+      throw new ConflictException(
+        `Không thể mở lại đơn vì phòng ${booking.room.roomNumber} (${booking.room.roomType?.name ?? "Phòng"}) đã có người đặt trong khoảng ${booking.checkIn.toISOString().slice(0, 10)} → ${booking.checkOut.toISOString().slice(0, 10)}. Vui lòng tạo đơn mới với phòng khác cho khách.`,
+      );
+    }
+
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: BookingStatus.CONFIRMED },
+      }),
+      this.prisma.room.update({
+        where: { id: booking.roomId },
+        data: { status: "RESERVED" },
+      }),
+    ]);
+
+    await this.events.emit("booking.reopened", {
+      bookingId,
+      customerId: booking.customerId,
+    });
+
+    return updated;
+  }
+
   /**
    * Persists the event into the outbox table for durability/audit, then
    * dispatches it through the in-process bus. Historical calls used
@@ -824,4 +887,150 @@ export class BookingsService {
     await this.events.emit(eventType as never, payload);
   }
 
+  calculateRefund(booking: {
+    checkIn: Date;
+    totalAmount: unknown;
+    payment?: { amount: unknown } | null;
+  }): { refundPercent: number; refundAmount: number } {
+    const paidAmount = booking.payment
+      ? Number((booking.payment.amount as any)?.toString?.() ?? "0")
+      : 0;
+    if (paidAmount <= 0) {
+      return { refundPercent: 0, refundAmount: 0 };
+    }
+
+    const now = new Date();
+    const checkIn = new Date(booking.checkIn);
+    const hoursUntilCheckIn =
+      (checkIn.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    let refundPercent: number;
+
+    if (hoursUntilCheckIn >= 168) {
+      refundPercent = 100;
+    } else if (hoursUntilCheckIn >= 72) {
+      refundPercent = 70;
+    } else if (hoursUntilCheckIn >= 24) {
+      refundPercent = 50;
+    } else if (hoursUntilCheckIn > 0) {
+      refundPercent = 30;
+    } else {
+      refundPercent = 0;
+    }
+
+    const refundAmount = Math.floor(paidAmount * (refundPercent / 100));
+
+    return { refundPercent, refundAmount };
+  }
+
+  async submitRefundRequest(
+    bookingId: string,
+    customerId: string,
+    data: {
+      accountHolder: string;
+      accountNumber: string;
+      bankName: string;
+      bankBranch?: string;
+    },
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { payment: true },
+    });
+    if (!booking) throw new NotFoundException("Đơn đặt phòng không tồn tại");
+    if (booking.customerId !== customerId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: customerId },
+        select: { role: true },
+      });
+      const isStaff =
+        user?.role === Role.ADMIN || user?.role === Role.RECEPTIONIST;
+      if (!isStaff) {
+        throw new ForbiddenException("Không có quyền yêu cầu hoàn tiền đơn này");
+      }
+    }
+    if (booking.status !== BookingStatus.CANCELLED) {
+      throw new BadRequestException(
+        "Chỉ có thể yêu cầu hoàn tiền khi đơn đã bị hủy",
+      );
+    }
+
+    const existing = await this.prisma.refundRequest.findFirst({
+      where: { bookingId },
+    }).catch(() => null);
+    if (existing) {
+      throw new ConflictException("Đã gửi yêu cầu hoàn tiền cho đơn này");
+    }
+
+    const { refundPercent, refundAmount } = this.calculateRefund(booking);
+
+    if (refundAmount <= 0) {
+      throw new BadRequestException(
+        `Đơn này không đủ điều kiện hoàn tiền (còn ${Math.round((new Date(booking.checkIn).getTime() - Date.now()) / (1000 * 60 * 60))} giờ đến check-in). Chính sách: trên 7 ngày 100%, 3-7 ngày 70%, 1-3 ngày 50%, dưới 1 ngày 30%, sau check-in 0%.`,
+      );
+    }
+
+    try {
+      return await this.prisma.refundRequest.create({
+        data: {
+          bookingId,
+          customerId,
+          accountHolder: data.accountHolder,
+          accountNumber: data.accountNumber,
+          bankName: data.bankName,
+          bankBranch: data.bankBranch,
+          refundAmount,
+          refundPercent,
+        },
+      });
+    } catch (err) {
+      throw new BadRequestException(
+        `Không thể tạo yêu cầu hoàn tiền: ${err instanceof Error ? err.message : "Lỗi không xác định"}`,
+      );
+    }
+  }
+
+  async getRefundRequests(page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      this.prisma.refundRequest.findMany({
+        skip,
+        take: limit,
+        include: {
+          booking: {
+            select: {
+              bookingCode: true,
+              checkIn: true,
+              checkOut: true,
+              room: { select: { roomNumber: true, roomType: { select: { name: true } } } },
+            },
+          },
+          customer: {
+            select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.refundRequest.count(),
+    ]);
+    return { items, total, page, limit };
+  }
+
+  async processRefund(refundId: string, staffId: string) {
+    const refund = await this.prisma.refundRequest.findUnique({
+      where: { id: refundId },
+    });
+    if (!refund) throw new NotFoundException("Yêu cầu hoàn tiền không tồn tại");
+    if (refund.status !== "pending") {
+      throw new BadRequestException("Yêu cầu đã được xử lý trước đó");
+    }
+    return this.prisma.refundRequest.update({
+      where: { id: refundId },
+      data: { status: "completed", processedAt: new Date(), processedBy: staffId },
+    });
+  }
+
+  async getExistingRefund(bookingId: string) {
+    return this.prisma.refundRequest.findFirst({ where: { bookingId } });
+  }
 }
