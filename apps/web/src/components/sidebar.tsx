@@ -20,6 +20,7 @@ import {
   TicketPercent,
   BookOpen,
   RefreshCw,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
@@ -67,9 +68,23 @@ const ITEMS: NavItem[] = [
     group: "booking-flow",
   },
   {
+    href: "/admin/bookings-by-room-type",
+    label: "Đơn theo loại phòng",
+    icon: BarChart3,
+    roles: ["ADMIN"],
+    group: "booking-flow",
+  },
+  {
     href: "/admin/refunds",
     label: "Hoàn tiền",
     icon: RefreshCw,
+    roles: ["ADMIN"],
+    group: "booking-flow",
+  },
+  {
+    href: "/admin/payments",
+    label: "Lịch sử thanh toán",
+    icon: CreditCard,
     roles: ["ADMIN"],
     group: "booking-flow",
   },

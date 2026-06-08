@@ -122,6 +122,30 @@ export class ReportsService {
     };
   }
 
+  async getBookingsByRoomType(from: string, to: string) {
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    toDate.setHours(23, 59, 59, 999);
+
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        createdAt: { gte: fromDate, lte: toDate },
+      },
+      include: { room: { include: { roomType: true } } },
+    });
+
+    const byRoomType: Record<string, { count: number; names: string[] }> = {};
+    for (const b of bookings) {
+      const name = b.room.roomType.name;
+      if (!byRoomType[name]) byRoomType[name] = { count: 0, names: [] };
+      byRoomType[name].count++;
+    }
+
+    return Object.entries(byRoomType)
+      .map(([roomType, data]) => ({ roomType, count: data.count }))
+      .sort((a, b) => b.count - a.count);
+  }
+
   async getBookingStatusSummary(from: string, to: string) {
     const fromDate = new Date(from);
     const toDate = new Date(to);

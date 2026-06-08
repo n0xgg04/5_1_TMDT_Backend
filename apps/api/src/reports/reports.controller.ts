@@ -69,6 +69,15 @@ export class ReportsController {
     return res!.json(result);
   }
 
+  @Get("bookings-by-room-type")
+  @ApiOperation({ summary: "Số đơn theo loại phòng (Admin)" })
+  getBookingsByRoomType(
+    @Query("from") from: string,
+    @Query("to") to: string,
+  ) {
+    return this.reportsService.getBookingsByRoomType(from, to);
+  }
+
   @Get("bookings/summary")
   @ApiOperation({ summary: "Tổng hợp trạng thái đơn (Admin)" })
   getBookingsSummary(@Query("from") from: string, @Query("to") to: string) {
